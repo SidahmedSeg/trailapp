@@ -1,6 +1,12 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { lazy, Suspense, useEffect } from 'react';
 import { AuthProvider } from './hooks/useAuth.jsx';
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
 
 // Public pages (eagerly loaded)
 import Register from './pages/public/Register';
@@ -38,6 +44,7 @@ function LoadingFallback() {
 export default function App() {
   return (
     <AuthProvider>
+      <ScrollToTop />
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
           {/* Public routes */}
