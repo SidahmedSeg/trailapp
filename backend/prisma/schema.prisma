@@ -1,0 +1,154 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Registration {
+  id                        String    @id @default(uuid())
+
+  // Informations personnelles
+  lastName                  String
+  firstName                 String
+  birthDate                 DateTime
+  gender                    String    // "Homme" | "Femme"
+  nationality               String
+  phoneCountryCode          String    // Ex: "+213" (UI)
+  phoneNumber               String    // Ex: "770585909" (UI)
+  phone                     String    // E.164: "+213770585909"
+  email                     String    @unique
+
+  // Résidence
+  countryOfResidence        String
+  wilaya                    String?
+  commune                   String?
+  ville                     String?
+
+  // Urgence
+  emergencyPhoneCountryCode String
+  emergencyPhoneNumber      String
+  emergencyPhone            String    // E.164
+
+  // Préférences
+  tshirtSize                String    // S | M | L | XL | XXL
+  runnerLevel               String    // Débutant | Intermédiaire | Avancé
+
+  // Déclarations
+  declarationFit            Boolean   @default(false)
+  declarationRules          Boolean   @default(false)
+  declarationImage          Boolean   @default(false)
+  termsAccepted             Boolean   @default(false)
+
+  // Attribution
+  bibNumber                 Int?      @unique
+  qrToken                   String?   @unique
+
+  // Paiement
+  paymentStatus             String    @default("pending") // pending | processing | success | failed | manual
+  paymentMethod             String?   // CIB / EDAHABIA / null
+  transactionId             String?   @unique
+  transactionNumber         String?
+  approvalCode              String?
+  paymentAmount             Int       @default(200000) // centimes
+  paymentDate               DateTime?
+
+  // Statut
+  status                    String    @default("en_attente") // en_attente | distribué
+  distributedAt             DateTime?
+  distributedBy             String?
+
+  // Source
+  source                    String    @default("public") // public | admin
+  createdBy                 String?
+
+  // Relations
+  emailsSent                EmailLog[]
+
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([lastName, firstName])
+  @@index([email])
+  @@index([bibNumber])
+}
+
+model AdminUser {
+  id              String    @id @default(uuid())
+  username        String    @unique
+  email           String    @unique
+  passwordHash    String?
+  role            String    @default("admin") // super_admin | admin | scanner
+  active          Boolean   @default(true)
+  inviteToken     String?   @unique
+  inviteExpiresAt DateTime?
+  inviteAccepted  Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+}
+
+model ScannerSession {
+  id             String   @id @default(uuid())
+  operatorId     String
+  operatorName   String
+  registrationId String
+  bibNumber      Int
+  runnerName     String
+  scannedAt      DateTime @default(now())
+  method         String   @default("qr") // qr | manual
+}
+
+model Settings {
+  id                    String    @id @default("default")
+
+  // Contrôle inscriptions
+  registrationOpen      Boolean   @default(true)
+  registrationDeadline  DateTime?
+  maxCapacity           Int?
+
+  // Configuration dossards
+  bibStart              Int       @default(101)
+  bibEnd                Int       @default(1500)
+  bibPrefix             String?
+  bibRangeLocked        Boolean   @default(false)
+  autoCloseOnExhaustion Boolean   @default(true)
+
+  // Infos événement
+  eventName             String    @default("Trail des Mouflons d'Or 2026")
+  eventDate             DateTime?
+  eventCity             String    @default("Alger")
+
+  updatedAt             DateTime  @updatedAt
+}
+
+model EmailLog {
+  id             String       @id @default(uuid())
+  registrationId String
+  registration   Registration @relation(fields: [registrationId], references: [id])
+  templateName   String       // confirmation | invitation
+  sentAt         DateTime     @default(now())
+  sentBy         String       // "system" or admin username
+}
+
+model EmailTemplate {
+  id      String @id @default(uuid())
+  name    String @unique // confirmation | invitation
+  subject String
+  body    String // HTML with {{prenom}}, {{dossard}} etc.
+}
+
+model ActivityLog {
+  id            String   @id @default(uuid())
+  action        String
+  adminUsername String
+  targetType    String?  // registration | settings | admin_user
+  targetId      String?
+  details       Json?
+  createdAt     DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([adminUsername])
+}

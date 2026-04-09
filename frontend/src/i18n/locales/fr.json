@@ -1,0 +1,193 @@
+{
+  "common": {
+    "back": "← Retour",
+    "backHome": "← Retour à l'accueil",
+    "loading": "Chargement...",
+    "choose": "— Choisir —",
+    "error": "Erreur",
+    "success": "Succès",
+    "save": "Sauvegarder",
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "retry": "Réessayer",
+    "sending": "Envoi...",
+    "redirecting": "Redirection..."
+  },
+  "header": {
+    "faq": "FAQ",
+    "signUp": "S'INSCRIRE"
+  },
+  "footer": {
+    "copyright": "Tous droits réservés © Trail des Mouflons d'Or 2026",
+    "privacy": "Politique de confidentialité",
+    "terms": "Conditions générales",
+    "legal": "Mentions légales"
+  },
+  "register": {
+    "title": "Inscription",
+    "closedTitle": "Inscriptions fermées",
+    "closedMessage": "Les inscriptions sont fermées pour le moment.",
+    "sections": {
+      "personal": "Informations personnelles",
+      "contact": "Contact & E-mail",
+      "residence": "Résidence",
+      "emergency": "Contact d'urgence",
+      "tshirt": "T-shirt",
+      "level": "Quel est votre niveau ?",
+      "declarations": "Déclarations obligatoires"
+    },
+    "fields": {
+      "lastName": "Nom",
+      "firstName": "Prénom",
+      "birthDate": "Date de naissance",
+      "gender": "Genre",
+      "nationality": "Nationalité",
+      "phone": "Téléphone",
+      "email": "Adresse e-mail",
+      "confirmEmail": "Confirmer e-mail",
+      "country": "Pays de résidence",
+      "wilaya": "Wilaya",
+      "commune": "Commune",
+      "city": "Ville",
+      "emergencyPhone": "Téléphone d'urgence",
+      "tshirtSize": "Taille",
+      "level": "Votre niveau en trail"
+    },
+    "placeholders": {
+      "phone": "770 585 909",
+      "emergencyPhone": "661 234 567",
+      "city": "Ville de résidence",
+      "selectWilaya": "Choisir une wilaya",
+      "enterName": "Saisissez le nom"
+    },
+    "genders": {
+      "male": "Homme",
+      "female": "Femme"
+    },
+    "levels": {
+      "beginner": "Débutant",
+      "intermediate": "Intermédiaire",
+      "advanced": "Avancé"
+    },
+    "declarations": {
+      "fit": "Je déclare être en bonne condition physique et apte à participer.",
+      "rules": "J'accepte le règlement officiel de la course.",
+      "image": "J'autorise l'utilisation de mon image dans le cadre de l'événement."
+    },
+    "errors": {
+      "emailTaken": "Cette adresse e-mail est déjà utilisée.",
+      "emailMismatch": "Les emails ne correspondent pas.",
+      "declarationsRequired": "Veuillez accepter toutes les déclarations obligatoires.",
+      "generic": "Erreur lors de l'inscription."
+    },
+    "submit": "Confirmer l'inscription",
+    "submitting": "Envoi en cours..."
+  },
+  "recap": {
+    "title": "Récapitulatif & Paiement",
+    "summary": "Résumé de l'inscription",
+    "payment": "Méthode de paiement",
+    "fields": {
+      "fullName": "Nom complet",
+      "email": "E-mail",
+      "tshirt": "T-shirt",
+      "level": "Niveau",
+      "amount": "Montant à payer"
+    },
+    "paymentMethod": "Carte CIB / Dahabia",
+    "paymentSecure": "Paiement sécurisé via SATIM",
+    "terms": "J'accepte les conditions générales de vente et la politique de remboursement.",
+    "submit": "Confirmer et Payer",
+    "paying": "Redirection...",
+    "errors": {
+      "noId": "Aucun identifiant d'inscription trouvé.",
+      "notFound": "Inscription introuvable.",
+      "initFailed": "Erreur lors de l'initiation du paiement.",
+      "noUrl": "URL de paiement manquante."
+    }
+  },
+  "processing": {
+    "title": "Paiement en cours",
+    "heading": "Paiement en cours",
+    "message": "Traitement de votre paiement en cours...",
+    "doNotClose": "Veuillez ne pas fermer cette page."
+  },
+  "success": {
+    "title": "Inscription réussie",
+    "banner": "INSCRIPTION RÉUSSIE",
+    "message": "Votre inscription a été confirmée avec succès.",
+    "bib": "Votre dossard",
+    "participant": "Informations du participant",
+    "event": "Événement",
+    "transaction": "Détails de la transaction",
+    "fields": {
+      "fullName": "Nom complet",
+      "email": "E-mail",
+      "phone": "Téléphone",
+      "tshirt": "T-shirt",
+      "level": "Niveau",
+      "gender": "Genre",
+      "date": "Date",
+      "location": "Lieu",
+      "transactionId": "N° de transaction",
+      "orderId": "N° de commande",
+      "paymentDate": "Date du paiement",
+      "method": "Méthode",
+      "amountPaid": "Montant payé",
+      "status": "Statut"
+    },
+    "paid": "Payé",
+    "scanToVerify": "Scanner pour vérifier",
+    "downloadPdf": "Télécharger le PDF",
+    "sendEmail": "Envoyer par e-mail",
+    "emailSent": "E-mail envoyé"
+  },
+  "failed": {
+    "title": "Échec du paiement",
+    "banner": "ÉCHEC DU PAIEMENT",
+    "message": "Votre paiement n'a pas pu être traité. Aucun montant n'a été débité de votre compte.",
+    "retry": "Réessayer le paiement",
+    "errors": {
+      "initFailed": "Erreur lors de l'initiation du paiement.",
+      "noUrl": "URL de paiement manquante."
+    }
+  },
+  "setPassword": {
+    "title": "Définir le mot de passe",
+    "heading": "Définir votre mot de passe",
+    "subtitle": "Créez un mot de passe pour accéder à l'espace administration.",
+    "fields": {
+      "password": "Nouveau mot de passe",
+      "confirm": "Confirmer le mot de passe"
+    },
+    "placeholders": {
+      "password": "Minimum 8 caractères",
+      "confirm": "Retapez le mot de passe"
+    },
+    "submit": "Définir le mot de passe",
+    "submitting": "Enregistrement...",
+    "errors": {
+      "minLength": "Le mot de passe doit contenir au moins 8 caractères.",
+      "mismatch": "Les mots de passe ne correspondent pas.",
+      "invalidToken": "Token d'invitation manquant ou invalide.",
+      "generic": "Erreur lors de la définition du mot de passe.",
+      "expired": "Lien invalide ou expiré.",
+      "expiredDetail": "Le token d'invitation est manquant. Veuillez vérifier votre lien."
+    }
+  },
+  "countries": {
+    "DZ": "Algérie",
+    "FR": "France",
+    "TN": "Tunisie",
+    "MA": "Maroc",
+    "LY": "Libye",
+    "EG": "Égypte",
+    "ES": "Espagne",
+    "DE": "Allemagne",
+    "GB": "Royaume-Uni",
+    "US": "États-Unis",
+    "CA": "Canada",
+    "IT": "Italie",
+    "TR": "Turquie"
+  }
+}

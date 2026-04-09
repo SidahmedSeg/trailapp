@@ -1,0 +1,193 @@
+{
+  "common": {
+    "back": "Back",
+    "backHome": "Back to Home",
+    "loading": "Loading...",
+    "choose": "Choose",
+    "error": "Error",
+    "success": "Success",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "retry": "Retry",
+    "sending": "Sending...",
+    "redirecting": "Redirecting..."
+  },
+  "header": {
+    "faq": "FAQ",
+    "signUp": "Sign Up"
+  },
+  "footer": {
+    "copyright": "All rights reserved.",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "legal": "Legal Notice"
+  },
+  "register": {
+    "title": "Registration",
+    "closedTitle": "Registrations Closed",
+    "closedMessage": "Registrations are currently closed. Please check back later.",
+    "sections": {
+      "personal": "Personal Information",
+      "contact": "Contact Information",
+      "residence": "Place of Residence",
+      "emergency": "Emergency Contact",
+      "tshirt": "T-Shirt",
+      "level": "Level",
+      "declarations": "Declarations"
+    },
+    "fields": {
+      "lastName": "Last Name",
+      "firstName": "First Name",
+      "birthDate": "Date of Birth",
+      "gender": "Gender",
+      "nationality": "Nationality",
+      "phone": "Phone Number",
+      "email": "Email Address",
+      "confirmEmail": "Confirm Email",
+      "country": "Country",
+      "wilaya": "Wilaya",
+      "commune": "Commune",
+      "city": "City",
+      "emergencyPhone": "Emergency Phone Number",
+      "tshirtSize": "T-Shirt Size",
+      "level": "Level"
+    },
+    "placeholders": {
+      "phone": "e.g. +213 555 123 456",
+      "emergencyPhone": "e.g. +213 555 123 456",
+      "city": "Enter your city",
+      "selectWilaya": "Select a wilaya",
+      "enterName": "Enter your name"
+    },
+    "genders": {
+      "male": "Male",
+      "female": "Female"
+    },
+    "levels": {
+      "beginner": "Beginner",
+      "intermediate": "Intermediate",
+      "advanced": "Advanced"
+    },
+    "declarations": {
+      "fit": "I declare that I am physically fit to participate in this event.",
+      "rules": "I accept the rules and regulations of the event.",
+      "image": "I authorize the use of my image for the event."
+    },
+    "errors": {
+      "emailTaken": "This email address is already registered.",
+      "emailMismatch": "Email addresses do not match.",
+      "declarationsRequired": "You must accept all declarations to continue.",
+      "generic": "An error occurred. Please try again."
+    },
+    "submit": "Submit Registration",
+    "submitting": "Submitting..."
+  },
+  "recap": {
+    "title": "Summary",
+    "summary": "Registration Summary",
+    "payment": "Payment",
+    "fields": {
+      "fullName": "Full Name",
+      "email": "Email",
+      "tshirt": "T-Shirt",
+      "level": "Level",
+      "amount": "Amount"
+    },
+    "paymentMethod": "Payment Method",
+    "paymentSecure": "Secure payment",
+    "terms": "By proceeding, you agree to the terms and conditions.",
+    "submit": "Proceed to Payment",
+    "paying": "Processing payment...",
+    "errors": {
+      "noId": "No registration ID found.",
+      "notFound": "Registration not found.",
+      "initFailed": "Payment initialization failed.",
+      "noUrl": "No payment URL received."
+    }
+  },
+  "processing": {
+    "title": "Processing",
+    "heading": "Payment in Progress",
+    "message": "Your payment is being processed. Please wait...",
+    "doNotClose": "Do not close this page."
+  },
+  "success": {
+    "title": "Confirmation",
+    "banner": "Registration Confirmed!",
+    "message": "Your registration has been successfully completed.",
+    "bib": "Bib Number",
+    "participant": "Participant",
+    "event": "Event",
+    "transaction": "Transaction",
+    "fields": {
+      "fullName": "Full Name",
+      "email": "Email",
+      "phone": "Phone",
+      "tshirt": "T-Shirt",
+      "level": "Level",
+      "gender": "Gender",
+      "date": "Date",
+      "location": "Location",
+      "transactionId": "Transaction ID",
+      "orderId": "Order ID",
+      "paymentDate": "Payment Date",
+      "method": "Method",
+      "amountPaid": "Amount Paid",
+      "status": "Status"
+    },
+    "paid": "Paid",
+    "scanToVerify": "Scan to verify",
+    "downloadPdf": "Download PDF",
+    "sendEmail": "Send by Email",
+    "emailSent": "Email sent successfully!"
+  },
+  "failed": {
+    "title": "Payment Failed",
+    "banner": "Payment Failed",
+    "message": "Your payment could not be processed. Please try again.",
+    "retry": "Try Again",
+    "errors": {
+      "initFailed": "Payment initialization failed.",
+      "noUrl": "No payment URL received."
+    }
+  },
+  "setPassword": {
+    "title": "Set Password",
+    "heading": "Set Your Password",
+    "subtitle": "Choose a secure password for your account.",
+    "fields": {
+      "password": "Password",
+      "confirm": "Confirm Password"
+    },
+    "placeholders": {
+      "password": "Enter your password",
+      "confirm": "Confirm your password"
+    },
+    "submit": "Set Password",
+    "submitting": "Setting password...",
+    "errors": {
+      "minLength": "Password must be at least 8 characters.",
+      "mismatch": "Passwords do not match.",
+      "invalidToken": "Invalid or expired token.",
+      "generic": "An error occurred. Please try again.",
+      "expired": "Link Expired",
+      "expiredDetail": "This link has expired. Please request a new one."
+    }
+  },
+  "countries": {
+    "DZ": "Algeria",
+    "FR": "France",
+    "TN": "Tunisia",
+    "MA": "Morocco",
+    "LY": "Libya",
+    "EG": "Egypt",
+    "ES": "Spain",
+    "DE": "Germany",
+    "GB": "United Kingdom",
+    "US": "United States",
+    "CA": "Canada",
+    "IT": "Italy",
+    "TR": "Turkey"
+  }
+}

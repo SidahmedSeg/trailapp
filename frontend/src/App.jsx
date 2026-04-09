@@ -1,0 +1,60 @@
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+import { AuthProvider } from './hooks/useAuth.jsx';
+
+// Public pages (eagerly loaded)
+import Register from './pages/public/Register';
+import Recap from './pages/public/Recap';
+import Processing from './pages/public/Processing';
+import Success from './pages/public/Success';
+import Failed from './pages/public/Failed';
+import SetPassword from './pages/public/SetPassword';
+
+// Admin pages (lazy loaded)
+const Login = lazy(() => import('./pages/admin/Login'));
+const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
+const ScannerView = lazy(() => import('./pages/admin/ScannerView'));
+const Settings = lazy(() => import('./pages/admin/Settings'));
+const Activity = lazy(() => import('./pages/admin/Activity'));
+const UserManagement = lazy(() => import('./pages/admin/UserManagement'));
+
+function AdminRoute({ children }) {
+  const token = localStorage.getItem('access_token');
+  if (!token) return <Navigate to="/admin/login" replace />;
+  return children;
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<Navigate to="/register" replace />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/recap" element={<Recap />} />
+          <Route path="/payment/processing" element={<Processing />} />
+          <Route path="/success" element={<Success />} />
+          <Route path="/failed" element={<Failed />} />
+          <Route path="/set-password" element={<SetPassword />} />
+
+          {/* Admin routes */}
+          <Route path="/admin/login" element={<Login />} />
+          <Route path="/admin" element={<AdminRoute><Dashboard /></AdminRoute>} />
+          <Route path="/admin/scan" element={<AdminRoute><ScannerView /></AdminRoute>} />
+          <Route path="/admin/settings" element={<AdminRoute><Settings /></AdminRoute>} />
+          <Route path="/admin/activity" element={<AdminRoute><Activity /></AdminRoute>} />
+          <Route path="/admin/users" element={<AdminRoute><UserManagement /></AdminRoute>} />
+        </Routes>
+      </Suspense>
+    </AuthProvider>
+  );
+}
