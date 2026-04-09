@@ -131,13 +131,16 @@ export default function Recap() {
           <div className="bg-white rounded-2xl shadow-sm p-6 space-y-5">
             <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">{t('recap.payment')}</h2>
 
-            <div className="space-y-3">
-              <div className="border border-[#C42826]/30 bg-[#C42826]/5 rounded-xl p-4 flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#C42826]/10 rounded-lg flex items-center justify-center text-[#C42826] font-bold text-xs">CIB</div>
-                <div>
-                  <p className="text-sm font-medium text-gray-800">{t('recap.paymentMethod')}</p>
-                  <p className="text-xs text-gray-500">{t('recap.paymentSecure')}</p>
-                </div>
+            <div className="border border-gray-200 rounded-xl p-4 flex items-center gap-3 bg-white">
+              <img src="/cib_dahabia.svg" alt="CIB / Dahabia" className="h-9 w-auto" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-gray-900">{t('recap.paymentMethod')}</p>
+                <p className="text-xs text-gray-500">{t('recap.paymentSecure')}</p>
+              </div>
+              <div className="w-8 h-8 bg-[#C42826]/10 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-[#C42826]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
               </div>
             </div>
 

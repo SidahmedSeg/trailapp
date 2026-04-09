@@ -1,4 +1,4 @@
-const { registerPayment, getOrderStatus } = require('../services/satim');
+const { registerPayment, confirmOrder, getOrderStatus } = require('../services/satim');
 const { sendConfirmationEmail } = require('../services/sendgrid');
 const { getNextBib } = require('../services/bib');
 const registrationGuard = require('../middleware/registrationGuard');
@@ -55,13 +55,15 @@ async function paymentRoutes(fastify) {
 
     // Register payment with SATIM
     const orderId = `TM-${Date.now()}-${registrationId.substring(0, 8)}`;
-    const callbackUrl = `${env.SATIM_CALLBACK_URL}?registrationId=${registrationId}`;
+    const returnUrl = `${env.SATIM_CALLBACK_URL}?registrationId=${registrationId}`;
+    const failUrl = `${env.APP_URL}/failed?id=${registrationId}`;
 
     try {
       const satimResult = await registerPayment({
         orderId,
         amount: env.PAYMENT_AMOUNT_CENTIMES,
-        returnUrl: callbackUrl,
+        returnUrl,
+        failUrl,
       });
 
       // Store SATIM order ID
@@ -103,6 +105,12 @@ async function paymentRoutes(fastify) {
 
     try {
       // IMPORTANT: Never trust query params — call SATIM server-to-server
+      // Step 1: Confirm the order (triggers capture)
+      await confirmOrder(orderId).catch((err) => {
+        request.log.warn(err, 'confirmOrder failed (may already be confirmed)');
+      });
+
+      // Step 2: Get actual payment status
       const satimStatus = await getOrderStatus(orderId);
 
       if (satimStatus.orderStatus === 2 && satimStatus.actionCode === 0) {
