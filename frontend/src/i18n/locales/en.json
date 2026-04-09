@@ -189,5 +189,143 @@
     "CA": "Canada",
     "IT": "Italy",
     "TR": "Turkey"
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "subtitle": "Trail des Mouflons d'Or 2026",
+    "dataCollected": {
+      "title": "Data Collected",
+      "text": "As part of your registration for Trail des Mouflons d'Or 2026, we collect personal data necessary for the proper organization of the event."
+    },
+    "websiteData": {
+      "title": "Website Data",
+      "items": {
+        "session": "Session cookies required for the proper functioning of the website.",
+        "analytics": "Anonymous analytics data to improve the user experience.",
+        "performance": "Performance data to optimize site loading times."
+      },
+      "note": "This data is collected anonymously and cannot be used to personally identify you."
+    },
+    "dataUsage": {
+      "title": "Use of Your Data",
+      "items": {
+        "registration": "Processing and managing your event registration.",
+        "bib": "Assigning your bib number and managing race logistics.",
+        "communication": "Communicating important information about the event (schedule changes, safety instructions, etc.).",
+        "medical": "Managing medical emergencies during the event.",
+        "results": "Publishing race results and rankings.",
+        "payment": "Processing your payment securely."
+      },
+      "noMarketing": "Your data will never be used for marketing or commercial prospecting purposes."
+    },
+    "dataSharing": {
+      "title": "Data Sharing",
+      "items": {
+        "satim": "SATIM: solely for the purpose of securely processing your electronic payment.",
+        "officials": "Race officials and timekeepers: for organizing the event and publishing results.",
+        "authorities": "Competent authorities: only when required by law or in case of a medical emergency."
+      },
+      "noSale": "Your personal data is never sold or transferred to third parties for commercial purposes."
+    },
+    "dataSecurity": {
+      "title": "Data Security",
+      "items": {
+        "ssl": "All communications between your browser and our servers are encrypted via SSL/TLS.",
+        "satim": "Payments are processed securely through SATIM. We never store your bank card details.",
+        "access": "Access to personal data is strictly limited to authorized members of the organizing team."
+      },
+      "note": "We implement appropriate technical and organizational measures to protect your data against unauthorized access, alteration, disclosure, or destruction."
+    },
+    "changes": {
+      "title": "Changes to This Policy",
+      "text": "We reserve the right to update this privacy policy at any time. Any changes will be published on this page with an updated effective date. We encourage you to review this policy regularly."
+    },
+    "thirdParty": {
+      "title": "Third-Party Links",
+      "text": "Our website may contain links to third-party sites. We are not responsible for the privacy practices or content of these external sites. We encourage you to read their privacy policies before providing any personal information."
+    },
+    "contact": {
+      "title": "Contact & Your Rights",
+      "rights": "In accordance with applicable data protection regulations, you have the right to access, rectify, delete, and port your personal data. You also have the right to restrict or object to the processing of your data.",
+      "org": "Algiers Ski and Mountain Sports League (LASSM)",
+      "address": "Gymnase Abdelghani Hazem, Bab Ezzouar, Algiers",
+      "email": "contact@lassm.dz"
+    },
+    "lastUpdate": "Last updated: April 2026"
+  },
+  "terms": {
+    "title": "Terms and Conditions of Electronic Payment",
+    "subtitle": "MOUFLON 2026",
+    "bank": "BNA (Banque Nationale d'Algerie)",
+    "gateway": "SATIM",
+    "sections": {
+      "identification": {
+        "title": "Seller Identification",
+        "text": "Legal name: Algiers Ski and Mountain Sports League (LASSM). Legal form: Association. No commercial registry or tax identification number. Address: Gymnase Abdelghani Hazem, Bab Ezzouar, Algiers. Website: tmo.lassm.dz. Email: contact@lassm.dz. Bank: BNA (Banque Nationale d'Algerie)."
+      },
+      "object": {
+        "title": "Purpose",
+        "text": "These terms and conditions govern the electronic payment for registration to the MOUFLON 2026 trail running event, processed through the SATIM payment gateway."
+      },
+      "paymentMethods": {
+        "title": "Payment Methods",
+        "text": "Payments are accepted exclusively in Algerian Dinars (DZD). Accepted cards: CIB or EDAHABIA, processed through the SATIM secure payment platform. Bank card details are entered directly on the SATIM platform and are never transmitted to or stored by the organizer."
+      },
+      "withdrawal": {
+        "title": "Right of Withdrawal",
+        "text": "The buyer may cancel the transaction at any time before the SATIM payment validation step. Once bank authorization has been granted, the transaction is final and irreversible."
+      },
+      "validation": {
+        "title": "Transaction Validation",
+        "text": "Registration is considered final upon receipt of bank authorization and electronic confirmation. The participant will receive a confirmation email with their registration details."
+      },
+      "amount": {
+        "title": "Amount",
+        "text": "The amount charged corresponds exactly to the price displayed on the registration page at the time of payment."
+      },
+      "proof": {
+        "title": "Proof of Transaction",
+        "text": "Electronic records stored by SATIM constitute proof of the transaction. The confirmation email and the payment receipt serve as proof of payment. In the event of a dispute, bank records shall prevail."
+      },
+      "refund": {
+        "title": "Refund Policy",
+        "text": "No refund will be issued except in the case of force majeure or administrative cancellation of the event by the organizer. Approved refunds will be credited back to the original payment card. Refund processing time is approximately 90 days."
+      },
+      "dispute": {
+        "title": "Disputes",
+        "text": "In the event of a payment dispute, the buyer must contact the bank that issued their card, in accordance with Algerian banking regulations in force."
+      },
+      "dataProtection": {
+        "title": "Data Protection",
+        "text": "In accordance with Law 18-07 on the protection of personal data, the buyer has the right to access, rectify, and object to the processing of their personal data."
+      },
+      "acceptance": {
+        "title": "Acceptance of Terms",
+        "text": "By clicking \"Pay\", the buyer expressly acknowledges having read and accepted these terms and conditions of electronic payment in their entirety."
+      }
+    },
+    "lastUpdate": "Last updated: April 2026"
+  },
+  "legal": {
+    "title": "Legal Notice",
+    "editor": {
+      "title": "Site Editor",
+      "text": "This website is published by the Algiers Ski and Mountain Sports League (LASSM).",
+      "address": "Gymnase Abdelghani Hazem, Bab Ezzouar, Algiers",
+      "director": "Publication Director: LASSM Communications Team"
+    },
+    "hosting": {
+      "title": "Hosting",
+      "text": "This website is hosted by DZSecurity."
+    },
+    "ip": {
+      "title": "Intellectual Property",
+      "text": "All content on this website (texts, images, graphics, logos, icons, etc.) is the property of the association, unless otherwise stated. Partner trademarks and logos remain the property of their respective owners."
+    },
+    "cookies": {
+      "title": "Cookies",
+      "text": "This website may request your acceptance of cookies for statistical purposes. You may configure your browser to refuse cookies, though some features of the site may not function correctly as a result."
+    },
+    "lastUpdate": "Last updated: April 2026"
   }
 }

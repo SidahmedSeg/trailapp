@@ -9,6 +9,9 @@ import Processing from './pages/public/Processing';
 import Success from './pages/public/Success';
 import Failed from './pages/public/Failed';
 import SetPassword from './pages/public/SetPassword';
+import PrivacyPolicy from './pages/public/PrivacyPolicy';
+import Terms from './pages/public/Terms';
+import LegalNotice from './pages/public/LegalNotice';
 
 // Admin pages (lazy loaded)
 const Login = lazy(() => import('./pages/admin/Login'));
@@ -45,6 +48,9 @@ export default function App() {
           <Route path="/success" element={<Success />} />
           <Route path="/failed" element={<Failed />} />
           <Route path="/set-password" element={<SetPassword />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms-conditions" element={<Terms />} />
+          <Route path="/mentions-legales" element={<LegalNotice />} />
 
           {/* Admin routes */}
           <Route path="/admin/login" element={<Login />} />

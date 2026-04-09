@@ -189,5 +189,145 @@
     "CA": "Canada",
     "IT": "Italie",
     "TR": "Turquie"
+  },
+  "privacy": {
+    "title": "Politique de confidentialité",
+    "dataCollected": {
+      "title": "Données collectées",
+      "text": "Lors de votre inscription au Trail des Mouflons d'or 2026, nous collectons les données standard des participants."
+    },
+    "websiteData": {
+      "title": "Données du site Web",
+      "text": "Nous pouvons utiliser des cookies et des technologies similaires pour améliorer votre expérience de navigation sur lassm.dz. Ces cookies sont utilisés pour :",
+      "items": {
+        "session": "La gestion de session (maintien de votre session pendant l'inscription)",
+        "analytics": "L'analyse statistique (comprendre comment les visiteurs utilisent notre site)",
+        "performance": "L'optimisation des performances"
+      },
+      "note": "Vous pouvez désactiver les cookies dans les paramètres de votre navigateur, mais cela peut affecter certaines fonctionnalités du processus d'inscription."
+    },
+    "dataUsage": {
+      "title": "Utilisation de vos données",
+      "text": "Les données personnelles que vous fournissez sont utilisées exclusivement aux fins suivantes :",
+      "items": {
+        "registration": "Traitement et gestion de votre inscription à la course",
+        "bib": "Attribution de votre numéro de dossard",
+        "communication": "Communication des informations relatives à l'événement (heure de départ, retrait des dossards, instructions du jour de la course)",
+        "medical": "Gestion des urgences médicales pendant l'événement",
+        "results": "Publication des résultats de la course",
+        "payment": "Envoi des confirmations et des reçus de paiement"
+      },
+      "noMarketing": "Vos données ne seront pas utilisées à des fins de marketing commercial sans votre consentement explicite."
+    },
+    "dataSharing": {
+      "title": "Partage des données",
+      "text": "Vos données personnelles peuvent être partagées uniquement dans les cas suivants :",
+      "items": {
+        "satim": "Avec SATIM (passerelle de paiement) et la BNA (Banque Nationale d'Algérie) dans le seul but de traiter votre paiement d'inscription. SATIM ne stocke pas vos données bancaires en notre nom.",
+        "officials": "Avec les officiels de la course et les équipes médicales pour la sécurité et la gestion des dossards pendant l'événement.",
+        "authorities": "Avec les autorités publiques si la loi algérienne l'exige."
+      },
+      "noSale": "Nous ne vendrons, ne louerons ni ne transmettrons jamais vos données personnelles à des tiers à des fins commerciales."
+    },
+    "dataSecurity": {
+      "title": "Sécurité des données",
+      "text": "Nous mettons en œuvre des mesures techniques et organisationnelles appropriées pour protéger vos données personnelles :",
+      "items": {
+        "ssl": "Toutes les données sont transmises par chiffrement SSL/TLS.",
+        "satim": "Les données de paiement sont traitées entièrement par la plateforme sécurisée de SATIM — nous ne stockons pas vos coordonnées bancaires.",
+        "access": "L'accès aux données des inscrits est limité aux membres autorisés de la LASSM."
+      },
+      "note": "Malgré ces mesures, aucune méthode de transmission ou de stockage sur Internet n'est sécurisée à 100%. Nous vous encourageons à nous contacter immédiatement si vous soupçonnez un accès non autorisé à vos données."
+    },
+    "changes": {
+      "title": "Modifications de la politique",
+      "text": "Nous pouvons mettre à jour cette politique de confidentialité de temps à autre. Toute modification sera publiée sur cette page avec une date de mise à jour. Nous vous encourageons à consulter cette politique régulièrement."
+    },
+    "thirdParty": {
+      "title": "Services tiers",
+      "text": "Notre site peut contenir des liens vers des sites tiers. Nous ne sommes pas responsables des pratiques de confidentialité de ces sites. Le traitement des paiements est assuré par SATIM, qui dispose de ses propres politiques de confidentialité et de sécurité conformément à la réglementation bancaire algérienne."
+    },
+    "contact": {
+      "title": "Contact & Vos droits",
+      "rights": "Conformément à la loi algérienne N° 18-07, vous disposez d'un droit d'accès, de rectification et d'opposition au traitement de vos données personnelles. Pour exercer vos droits ou pour toute question relative à cette politique de confidentialité, contactez-nous :",
+      "org": "Ligue Algéroise de Ski et des Sports de Montagne (LASSM)",
+      "address": "Gymnase Abdelghani Hazem, Bab Ezzouar, Alger"
+    },
+    "lastUpdate": "Dernière mise à jour : 5 mars 2026."
+  },
+  "terms": {
+    "title": "Conditions générales",
+    "subtitle": "CONDITIONS GÉNÉRALES DE PAIEMENT ÉLECTRONIQUE MOUFLON 2026",
+    "bank": "Banque acquéreuse",
+    "gateway": "Passerelle de paiement",
+    "sections": {
+      "identification": {
+        "title": "Identification du e-commerçant",
+        "text": "Dénomination sociale : Ligue Algéroise de Ski et des Sports de Montagne\nForme juridique : Association sportive\nRC : Néant\nNIF : Néant\nAdresse légale : Gymnase Abdelghani Hazem, Bab Ezzouar, Alger\nSite web : tmo.lassm.dz\nEmail : contact@lassm.dz\nCompte domicilié à : BNA – AGENCE BELAHDJEL, 24, RUE HOCINE BELAHDJEL, ALGER"
+      },
+      "object": {
+        "title": "Objet",
+        "text": "Les présentes conditions encadrent les paiements électroniques réalisés pour l'inscription au MOUFLON 2026 via la plateforme sécurisée SATIM."
+      },
+      "paymentMethods": {
+        "title": "Modalités de paiement",
+        "text": "Le paiement est effectué exclusivement en dinar algérien (DZD) par carte bancaire CIB ou EDAHABIA via la plateforme sécurisée SATIM.\n\nLes données bancaires sont saisies directement sur l'interface SATIM et ne sont ni collectées ni conservées par le commerçant."
+      },
+      "withdrawal": {
+        "title": "Droit de rétractation et annulation avant validation",
+        "text": "Le participant dispose de la possibilité d'annuler la procédure de paiement tant que la transaction n'a pas été validée sur la plateforme SATIM.\n\nAvant la confirmation définitive, le client peut revenir à l'étape précédente et modifier ou abandonner sa commande sans frais.\n\nUne fois la transaction autorisée par le centre monétique et confirmée, le paiement devient irrévocable conformément à la réglementation bancaire en vigueur."
+      },
+      "validation": {
+        "title": "Validation de la transaction",
+        "text": "L'inscription devient définitive uniquement après autorisation bancaire et réception d'une confirmation électronique."
+      },
+      "amount": {
+        "title": "Montant",
+        "text": "Le montant débité correspond au tarif affiché avant validation."
+      },
+      "proof": {
+        "title": "Preuve des transactions payées par carte bancaire",
+        "text": "Les enregistrements électroniques conservés par SATIM et les systèmes monétiques de la banque constituent la preuve des transactions effectuées.\n\nLa confirmation électronique envoyée au client ainsi que le ticket de paiement généré par la plateforme tiennent lieu de preuve de la transaction.\n\nEn cas de litige, les données issues des systèmes bancaires feront foi entre les parties."
+      },
+      "refund": {
+        "title": "Politique de remboursement",
+        "text": "Toute inscription validée est ferme et définitive.\n\nAucun remboursement ne sera effectué sauf en cas d'annulation de l'événement pour force majeure ou décision administrative.\n\nLe remboursement éventuel sera effectué exclusivement sur la carte ayant servi au paiement, conformément aux procédures BNA / SATIM, dans un délai indicatif de 90 jours."
+      },
+      "dispute": {
+        "title": "Contestation",
+        "text": "Toute contestation doit être adressée à la banque émettrice de la carte conformément à la réglementation bancaire algérienne."
+      },
+      "dataProtection": {
+        "title": "Protection des données personnelles – Loi 18-07",
+        "text": "Les données personnelles collectées sont traitées conformément à la loi algérienne n°18-07.\n\nLe participant dispose d'un droit d'accès, de rectification et d'opposition."
+      },
+      "acceptance": {
+        "title": "Acceptation",
+        "text": "En cliquant sur « Payer », le client reconnaît accepter les présentes conditions."
+      }
+    },
+    "lastUpdate": "Dernière mise à jour : 17 février 2026. L'organisation se réserve le droit de modifier ces conditions à tout moment."
+  },
+  "legal": {
+    "title": "Mentions légales",
+    "editor": {
+      "title": "Éditeur du Site",
+      "text": "Le site Trail des Mouflons d'or (lassm.dz) est édité par la Ligue Algéroise de Ski et des Sports de Montagne (LASSM).",
+      "address": "Siège social : Gymnase Abdelghani Hazem, Bab Ezzouar, Alger, Algérie.",
+      "director": "Directeur de la publication : Équipe de Communication LASSM."
+    },
+    "hosting": {
+      "title": "Hébergement",
+      "text": "Le site est hébergé par dzsecurity."
+    },
+    "ip": {
+      "title": "Propriété Intellectuelle",
+      "text": "Tout le contenu du présent site lassm.dz, incluant, de façon non limitative, les graphismes, images, textes, vidéos, animations, sons, logos, gifs et icônes ainsi que leur mise en forme sont la propriété exclusive de l'association à l'exception des marques, logos ou contenus appartenant à d'autres sociétés partenaires ou auteurs."
+    },
+    "cookies": {
+      "title": "Cookies",
+      "text": "Le site lassm.dz peut être amené à vous demander l'acceptation des cookies pour des besoins de statistiques et d'affichage. Un cookie est une information déposée sur votre disque dur par le serveur du site que vous visitez."
+    },
+    "lastUpdate": "Dernière mise à jour : 17 février 2026."
   }
 }

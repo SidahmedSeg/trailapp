@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 export default function Footer() {
@@ -26,15 +27,15 @@ export default function Footer() {
             {t('footer.copyright')}
           </p>
           <div className="flex items-center gap-6">
-            <a href="#" className="text-white/80 text-xs uppercase tracking-wider hover:text-white transition">
+            <Link to="/privacy-policy" className="text-white/80 text-xs uppercase tracking-wider hover:text-white transition">
               {t('footer.privacy')}
-            </a>
-            <a href="#" className="text-white/80 text-xs uppercase tracking-wider hover:text-white transition">
+            </Link>
+            <Link to="/terms-conditions" className="text-white/80 text-xs uppercase tracking-wider hover:text-white transition">
               {t('footer.terms')}
-            </a>
-            <a href="#" className="text-white/80 text-xs uppercase tracking-wider hover:text-white transition">
+            </Link>
+            <Link to="/mentions-legales" className="text-white/80 text-xs uppercase tracking-wider hover:text-white transition">
               {t('footer.legal')}
-            </a>
+            </Link>
           </div>
         </div>
       </div>
