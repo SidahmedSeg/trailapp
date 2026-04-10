@@ -21,6 +21,10 @@ jobs:
             echo "=== Pulling latest code ==="
             git pull origin main
 
+            echo "=== Ensure Docker services are running ==="
+            docker compose up -d
+            sleep 3
+
             echo "=== Backend: install deps ==="
             cd backend
             npm install --omit=dev
