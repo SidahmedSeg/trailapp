@@ -6,10 +6,10 @@ import { useAuth } from '../../hooks/useAuth';
 /* ─── Status Badge ─── */
 function StatusBadge({ status }) {
   const map = {
-    confirmed: 'bg-emerald-500/15 text-emerald-400',
-    pending: 'bg-amber-500/15 text-amber-400',
-    distributed: 'bg-blue-500/15 text-blue-400',
-    cancelled: 'bg-red-500/15 text-red-400',
+    confirmed: 'bg-emerald-50 text-emerald-700',
+    pending: 'bg-amber-50 text-amber-700',
+    distributed: 'bg-emerald-50 text-emerald-700',
+    cancelled: 'bg-red-50 text-red-600',
   };
   const labels = {
     confirmed: 'Confirmé',
@@ -18,7 +18,7 @@ function StatusBadge({ status }) {
     cancelled: 'Annulé',
   };
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${map[status] || 'bg-slate-500/15 text-slate-400'}`}>
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${map[status] || 'bg-gray-100 text-gray-500'}`}>
       {labels[status] || status}
     </span>
   );
@@ -46,12 +46,12 @@ function RunnerModal({ runner, onClose, onDistribute }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative bg-slate-900 border border-white/10 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-white border border-gray-200 rounded-2xl shadow-lg w-full max-w-md overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-          <h3 className="text-lg font-semibold text-white">Coureur - Dossard #{runner.bib}</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition cursor-pointer">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">Coureur - Dossard #{runner.bib}</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-900 transition cursor-pointer">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -68,23 +68,23 @@ function RunnerModal({ runner, onClose, onDistribute }) {
           <InfoRow label="Statut" value={<StatusBadge status={runner.status} />} />
 
           {success && (
-            <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-4 py-3 text-sm text-emerald-400">
+            <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-[#C42826]">
               Dossard distribué avec succès !
             </div>
           )}
 
           {error && (
-            <div className="rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
               {error}
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-white/10 flex justify-end gap-3">
+        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="rounded-lg border border-white/10 px-4 py-2 text-sm text-slate-300 hover:bg-white/5 transition cursor-pointer"
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 transition cursor-pointer"
           >
             Fermer
           </button>
@@ -92,7 +92,7 @@ function RunnerModal({ runner, onClose, onDistribute }) {
             <button
               onClick={handleDistribute}
               disabled={distributing}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50 transition cursor-pointer"
+              className="rounded-lg bg-[#C42826] px-4 py-2 text-sm font-medium text-white hover:bg-[#a82220] disabled:opacity-50 transition cursor-pointer"
             >
               {distributing ? 'Distribution...' : 'Confirmer la distribution'}
             </button>
@@ -106,8 +106,8 @@ function RunnerModal({ runner, onClose, onDistribute }) {
 function InfoRow({ label, value }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-sm text-slate-400">{label}</span>
-      <span className="text-sm text-white">{value || '—'}</span>
+      <span className="text-sm text-gray-500">{label}</span>
+      <span className="text-sm text-gray-900">{value || '—'}</span>
     </div>
   );
 }
@@ -175,18 +175,18 @@ export default function ScannerView() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <div className="min-h-screen bg-gray-50 text-gray-900">
       {/* Top Bar */}
-      <header className="sticky top-0 z-30 bg-slate-900/95 backdrop-blur border-b border-white/10">
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-gray-200">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-emerald-400 font-bold text-lg">Scanner</span>
-            <span className="text-slate-500 text-sm">|</span>
-            <span className="text-slate-400 text-sm">{user?.username}</span>
+            <span className="text-[#C42826] font-bold text-lg">Scanner</span>
+            <span className="text-gray-400 text-sm">|</span>
+            <span className="text-gray-500 text-sm">{user?.username}</span>
           </div>
           <button
             onClick={handleLogout}
-            className="text-sm text-red-400 hover:text-red-300 transition cursor-pointer"
+            className="text-sm text-red-600 hover:text-red-500 transition cursor-pointer"
           >
             Déconnexion
           </button>
@@ -195,7 +195,7 @@ export default function ScannerView() {
 
       <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
         {/* Manual Bib Search */}
-        <section className="bg-slate-900 border border-white/10 rounded-xl p-6">
+        <section className="bg-white border border-gray-200 rounded-xl p-6">
           <h2 className="text-lg font-semibold mb-4">Recherche manuelle par dossard</h2>
           <div className="flex gap-3">
             <input
@@ -204,18 +204,18 @@ export default function ScannerView() {
               value={bibInput}
               onChange={(e) => setBibInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-emerald-500 transition"
+              className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-[#C42826] transition"
             />
             <button
               onClick={handleManualSearch}
               disabled={loading}
-              className="rounded-lg bg-emerald-600 px-6 py-2.5 text-sm font-medium hover:bg-emerald-500 disabled:opacity-50 transition cursor-pointer"
+              className="rounded-lg bg-[#C42826] px-6 py-2.5 text-sm font-medium text-white hover:bg-[#a82220] disabled:opacity-50 transition cursor-pointer"
             >
               {loading ? '...' : 'Rechercher'}
             </button>
           </div>
           {error && (
-            <div className="mt-3 rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-2.5 text-sm text-red-400">
+            <div className="mt-3 rounded-lg bg-red-50 border border-red-200 px-4 py-2.5 text-sm text-red-600">
               {error}
             </div>
           )}
@@ -230,22 +230,22 @@ export default function ScannerView() {
               placeholder="Rechercher..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-64 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder-slate-500 outline-none focus:border-emerald-500 transition"
+              className="w-64 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-[#C42826] transition"
             />
           </div>
-          <div className="rounded-xl border border-white/10 overflow-hidden">
+          <div className="rounded-xl border border-gray-200 overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-white/5 text-left text-slate-400">
+                <tr className="bg-gray-50 text-left text-gray-500">
                   <th className="px-4 py-3 font-medium">Dossard</th>
                   <th className="px-4 py-3 font-medium">Nom</th>
                   <th className="px-4 py-3 font-medium">Statut</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-gray-100">
                 {runners.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="px-4 py-8 text-center text-slate-500">
+                    <td colSpan={3} className="px-4 py-8 text-center text-gray-400">
                       Aucun coureur trouvé.
                     </td>
                   </tr>
@@ -254,10 +254,10 @@ export default function ScannerView() {
                     <tr
                       key={r.id}
                       onClick={() => setSelectedRunner(r)}
-                      className="hover:bg-white/5 cursor-pointer transition"
+                      className="hover:bg-gray-50 cursor-pointer transition"
                     >
-                      <td className="px-4 py-3 font-mono text-emerald-400">{r.bib || '—'}</td>
-                      <td className="px-4 py-3 text-white">{r.firstName} {r.lastName}</td>
+                      <td className="px-4 py-3 font-mono text-[#C42826]">{r.bib || '—'}</td>
+                      <td className="px-4 py-3 text-gray-900">{r.firstName} {r.lastName}</td>
                       <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
                     </tr>
                   ))
@@ -270,20 +270,20 @@ export default function ScannerView() {
         {/* Session History */}
         <section>
           <h2 className="text-lg font-semibold mb-4">Historique de session</h2>
-          <div className="rounded-xl border border-white/10 overflow-hidden">
+          <div className="rounded-xl border border-gray-200 overflow-hidden">
             {history.length === 0 ? (
-              <div className="px-4 py-8 text-center text-slate-500 text-sm">
+              <div className="px-4 py-8 text-center text-gray-400 text-sm">
                 Aucune distribution enregistrée pour cette session.
               </div>
             ) : (
-              <ul className="divide-y divide-white/5">
+              <ul className="divide-y divide-gray-100">
                 {history.map((h, i) => (
                   <li key={i} className="px-4 py-3 flex items-center justify-between">
                     <div>
-                      <span className="font-mono text-emerald-400">#{h.bib}</span>
-                      <span className="ml-3 text-white">{h.firstName} {h.lastName}</span>
+                      <span className="font-mono text-[#C42826]">#{h.bib}</span>
+                      <span className="ml-3 text-gray-900">{h.firstName} {h.lastName}</span>
                     </div>
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-gray-400">
                       {h.distributedAt ? new Date(h.distributedAt).toLocaleTimeString('fr-FR') : '—'}
                     </span>
                   </li>

@@ -28,9 +28,9 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="fixed inset-y-0 left-0 w-60 bg-slate-900 border-r border-white/5 flex flex-col">
-      <div className="px-5 py-6 border-b border-white/5">
-        <h1 className="text-lg font-bold text-emerald-400">Trail Admin</h1>
+    <aside className="fixed inset-y-0 left-0 w-60 bg-white border-r border-gray-200 flex flex-col">
+      <div className="px-5 py-6 border-b border-gray-200">
+        <h1 className="text-lg font-bold text-[#C42826]">Trail Admin</h1>
       </div>
       <nav className="flex-1 p-3 space-y-1">
         {navItems.map((item) => {
@@ -43,8 +43,8 @@ export default function Sidebar() {
               onClick={() => navigate(item.to)}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition cursor-pointer ${
                 active
-                  ? 'bg-emerald-600/15 text-emerald-400'
-                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                  ? 'bg-[#C42826]/5 text-[#C42826] font-medium border-l-2 border-[#C42826]'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
               }`}
             >
               <Icon size={18} />
@@ -53,11 +53,11 @@ export default function Sidebar() {
           );
         })}
       </nav>
-      <div className="p-3 border-t border-white/5">
-        <div className="px-3 py-2 text-sm text-slate-400 truncate">{user?.username}</div>
+      <div className="p-3 border-t border-gray-200">
+        <div className="px-3 py-2 text-sm text-gray-500 truncate">{user?.username}</div>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition cursor-pointer"
+          className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg transition cursor-pointer"
         >
           <LogOut size={18} />
           <span>Déconnexion</span>

@@ -8,11 +8,11 @@ import { Users, Clock, CheckCircle, Ticket, DollarSign } from 'lucide-react';
 /* ─── Stat Card ─── */
 function StatCard({ label, value, icon: Icon, color }) {
   const colorMap = {
-    blue: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-    amber: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-    emerald: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-    purple: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-    rose: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+    blue: 'bg-blue-50 text-blue-600 border-blue-200',
+    amber: 'bg-amber-50 text-amber-600 border-amber-200',
+    emerald: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+    purple: 'bg-purple-50 text-purple-600 border-purple-200',
+    rose: 'bg-rose-50 text-rose-600 border-rose-200',
   };
   return (
     <div className={`rounded-xl border p-5 ${colorMap[color] || colorMap.blue}`}>
@@ -28,11 +28,11 @@ function StatCard({ label, value, icon: Icon, color }) {
 /* ─── Status Badge ─── */
 function StatusBadge({ status }) {
   const map = {
-    confirmed: 'bg-emerald-500/15 text-emerald-400',
-    pending: 'bg-amber-500/15 text-amber-400',
-    distributed: 'bg-blue-500/15 text-blue-400',
-    cancelled: 'bg-red-500/15 text-red-400',
-    paid: 'bg-emerald-500/15 text-emerald-400',
+    confirmed: 'bg-emerald-50 text-emerald-700',
+    pending: 'bg-amber-50 text-amber-700',
+    distributed: 'bg-emerald-50 text-emerald-700',
+    cancelled: 'bg-red-50 text-red-700',
+    paid: 'bg-emerald-50 text-emerald-700',
   };
   const labels = {
     confirmed: 'Confirmé',
@@ -42,7 +42,7 @@ function StatusBadge({ status }) {
     paid: 'Payé',
   };
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${map[status] || 'bg-slate-500/15 text-slate-400'}`}>
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${map[status] || 'bg-gray-50 text-gray-500'}`}>
       {labels[status] || status}
     </span>
   );
@@ -55,12 +55,12 @@ function DetailPanel({ runner, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-slate-900 border-l border-white/10 shadow-2xl overflow-y-auto animate-slide-in">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-white border-l border-gray-200 shadow-2xl overflow-y-auto animate-slide-in">
         {/* Header */}
-        <div className="sticky top-0 bg-slate-900/95 backdrop-blur border-b border-white/10 px-6 py-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-white">Dossard #{runner.bib}</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition cursor-pointer">
+        <div className="sticky top-0 bg-white/95 backdrop-blur border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">Dossard #{runner.bib}</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-900 transition cursor-pointer">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -68,13 +68,13 @@ function DetailPanel({ runner, onClose }) {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-white/10">
+        <div className="flex border-b border-gray-200">
           {['profil', 'paiement'].map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
               className={`flex-1 px-4 py-3 text-sm font-medium transition cursor-pointer ${
-                tab === t ? 'text-emerald-400 border-b-2 border-emerald-400' : 'text-slate-400 hover:text-white'
+                tab === t ? 'text-[#C42826] border-b-2 border-[#C42826]' : 'text-gray-500 hover:text-gray-900'
               }`}
             >
               {t === 'profil' ? 'Profil' : 'Paiement'}
@@ -117,8 +117,8 @@ function DetailPanel({ runner, onClose }) {
 function Field({ label, value }) {
   return (
     <div>
-      <dt className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</dt>
-      <dd className="mt-1 text-sm text-slate-200">{value || '—'}</dd>
+      <dt className="text-xs font-medium text-gray-400 uppercase tracking-wide">{label}</dt>
+      <dd className="mt-1 text-sm text-gray-700">{value || '—'}</dd>
     </div>
   );
 }
@@ -193,7 +193,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <div className="min-h-screen bg-gray-50 text-gray-900">
       <Sidebar />
 
       {/* Main */}
@@ -202,12 +202,12 @@ export default function Dashboard() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h2 className="text-2xl font-bold">Tableau de bord</h2>
-            <p className="text-slate-400 text-sm mt-1">Vue d'ensemble des inscriptions</p>
+            <p className="text-gray-500 text-sm mt-1">Vue d'ensemble des inscriptions</p>
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={handleRefresh}
-              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm hover:bg-white/10 transition cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm hover:bg-gray-100 transition cursor-pointer"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -216,13 +216,13 @@ export default function Dashboard() {
             </button>
             <button
               onClick={() => navigate('/admin/add-runner')}
-              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium hover:bg-emerald-500 transition cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-lg bg-[#C42826] px-4 py-2 text-sm font-medium text-white hover:bg-[#a82220] transition cursor-pointer"
             >
               + Ajouter coureur
             </button>
             <button
               onClick={handleExportCSV}
-              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm hover:bg-white/10 transition cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm hover:bg-gray-100 transition cursor-pointer"
             >
               Export CSV
             </button>
@@ -245,12 +245,12 @@ export default function Dashboard() {
             placeholder="Rechercher par nom, email, dossard..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="flex-1 min-w-[240px] rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder-slate-500 outline-none focus:border-emerald-500 transition"
+            className="flex-1 min-w-[240px] rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-[#C42826] transition"
           />
           <select
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white outline-none focus:border-emerald-500 transition cursor-pointer"
+            className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 outline-none focus:border-[#C42826] transition cursor-pointer"
           >
             <option value="">Tous les statuts</option>
             <option value="pending">En attente</option>
@@ -261,11 +261,11 @@ export default function Dashboard() {
         </div>
 
         {/* Table */}
-        <div className="rounded-xl border border-white/10 overflow-hidden">
+        <div className="rounded-xl border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-white/5 text-left text-slate-400">
+                <tr className="bg-gray-50 text-left text-gray-500">
                   <th className="px-4 py-3 font-medium">Dossard</th>
                   <th className="px-4 py-3 font-medium">Nom</th>
                   <th className="px-4 py-3 font-medium">Email</th>
@@ -275,16 +275,16 @@ export default function Dashboard() {
                   <th className="px-4 py-3 font-medium">Date</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-gray-100">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
+                    <td colSpan={7} className="px-4 py-12 text-center text-gray-400">
                       Chargement...
                     </td>
                   </tr>
                 ) : runners.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
+                    <td colSpan={7} className="px-4 py-12 text-center text-gray-400">
                       Aucun coureur trouvé.
                     </td>
                   </tr>
@@ -293,15 +293,15 @@ export default function Dashboard() {
                     <tr
                       key={r.id}
                       onClick={() => setSelectedRunner(r)}
-                      className="hover:bg-white/5 cursor-pointer transition"
+                      className="hover:bg-gray-50 cursor-pointer transition"
                     >
-                      <td className="px-4 py-3 font-mono text-emerald-400">{r.bib || '—'}</td>
-                      <td className="px-4 py-3 text-white">{r.firstName} {r.lastName}</td>
-                      <td className="px-4 py-3 text-slate-300">{r.email}</td>
-                      <td className="px-4 py-3 text-slate-300">{r.phone || '—'}</td>
+                      <td className="px-4 py-3 font-mono text-[#C42826]">{r.bib || '—'}</td>
+                      <td className="px-4 py-3 text-gray-900">{r.firstName} {r.lastName}</td>
+                      <td className="px-4 py-3 text-gray-600">{r.email}</td>
+                      <td className="px-4 py-3 text-gray-600">{r.phone || '—'}</td>
                       <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
-                      <td className="px-4 py-3 text-slate-400">{r.source || '—'}</td>
-                      <td className="px-4 py-3 text-slate-400">{r.createdAt ? new Date(r.createdAt).toLocaleDateString('fr-FR') : '—'}</td>
+                      <td className="px-4 py-3 text-gray-500">{r.source || '—'}</td>
+                      <td className="px-4 py-3 text-gray-500">{r.createdAt ? new Date(r.createdAt).toLocaleDateString('fr-FR') : '—'}</td>
                     </tr>
                   ))
                 )}
@@ -310,22 +310,22 @@ export default function Dashboard() {
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between border-t border-white/10 px-4 py-3 bg-white/5">
-            <span className="text-sm text-slate-400">
+          <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 bg-gray-50">
+            <span className="text-sm text-gray-500">
               {total} coureur{total !== 1 ? 's' : ''} — Page {page}/{totalPages}
             </span>
             <div className="flex gap-2">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="rounded-lg border border-white/10 px-3 py-1.5 text-sm disabled:opacity-30 hover:bg-white/10 transition cursor-pointer disabled:cursor-not-allowed"
+                className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm disabled:opacity-30 hover:bg-gray-100 transition cursor-pointer disabled:cursor-not-allowed"
               >
                 Précédent
               </button>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
-                className="rounded-lg border border-white/10 px-3 py-1.5 text-sm disabled:opacity-30 hover:bg-white/10 transition cursor-pointer disabled:cursor-not-allowed"
+                className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm disabled:opacity-30 hover:bg-gray-100 transition cursor-pointer disabled:cursor-not-allowed"
               >
                 Suivant
               </button>
@@ -339,4 +339,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
