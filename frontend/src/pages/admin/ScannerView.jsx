@@ -210,7 +210,7 @@ export default function ScannerView() {
               className="w-72 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-[#C42826] transition"
             />
           </div>
-          <div className="rounded-xl border border-gray-200 overflow-hidden">
+          <div className="rounded-xl border border-gray-200 overflow-hidden bg-white">
             {(() => {
               const filtered = historySearch.trim()
                 ? history.filter((h) => {

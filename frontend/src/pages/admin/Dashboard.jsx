@@ -817,7 +817,7 @@ export default function Dashboard() {
         </div>
 
         {/* Table */}
-        <div className="rounded-xl border border-gray-200 overflow-hidden">
+        <div className="rounded-xl border border-gray-200 overflow-hidden bg-white">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
