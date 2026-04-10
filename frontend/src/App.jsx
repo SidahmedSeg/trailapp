@@ -16,6 +16,7 @@ import Success from './pages/public/Success';
 import Failed from './pages/public/Failed';
 import SetPassword from './pages/public/SetPassword';
 import PrivacyPolicy from './pages/public/PrivacyPolicy';
+import FAQ from './pages/public/FAQ';
 import Terms from './pages/public/Terms';
 import LegalNotice from './pages/public/LegalNotice';
 
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-conditions" element={<Terms />} />
           <Route path="/mentions-legales" element={<LegalNotice />} />
+          <Route path="/faq" element={<FAQ />} />
 
           {/* Admin routes */}
           <Route path="/admin/login" element={<Login />} />

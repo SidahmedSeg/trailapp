@@ -12,7 +12,7 @@ export default function Header({ title }) {
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           {/* Left - FAQ */}
           <Link
-            to="#"
+            to="/faq"
             className="bg-[#C42826] text-white text-sm font-bold px-5 py-2 rounded uppercase tracking-wide hover:bg-[#a82220] transition"
           >
             {t('header.faq')}
