@@ -215,7 +215,7 @@ export default function Dashboard() {
               Actualiser
             </button>
             <button
-              onClick={() => navigate('/admin/add-runner')}
+              onClick={() => alert('Fonctionnalité à venir')}
               className="inline-flex items-center gap-2 rounded-lg bg-[#C42826] px-4 py-2 text-sm font-medium text-white hover:bg-[#a82220] transition cursor-pointer"
             >
               + Ajouter coureur
