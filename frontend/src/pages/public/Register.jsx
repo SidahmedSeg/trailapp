@@ -140,6 +140,7 @@ export default function Register() {
   const [error, setError] = useState('');
   const [emailStatus, setEmailStatus] = useState(null);
   const emailTimeout = useRef(null);
+  const [showConditions, setShowConditions] = useState(false);
 
   const [form, setForm] = useState({
     lastName: '', firstName: '', birthDate: '', gender: '',
@@ -465,10 +466,13 @@ export default function Register() {
           {/* Declarations */}
           <section className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
             <h2 className="text-lg font-semibold text-gray-800 border-b pb-2 mb-2">{t('register.sections.declarations')}</h2>
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input type="checkbox" className="mt-1 h-4 w-4 rounded border-gray-300 text-[#C42826] accent-[#C42826]" checked={form.declarationFit} onChange={(e) => update('declarationFit', e.target.checked)} />
+            <div
+              className="flex items-start gap-3 cursor-pointer"
+              onClick={() => { if (!form.declarationFit) setShowConditions(true); else update('declarationFit', false); }}
+            >
+              <input type="checkbox" readOnly className="mt-1 h-4 w-4 rounded border-gray-300 text-[#C42826] accent-[#C42826] pointer-events-none" checked={form.declarationFit} />
               <span className="text-sm text-gray-700">{t('register.declarations.fit')} *</span>
-            </label>
+            </div>
             <label className="flex items-start gap-3 cursor-pointer">
               <input type="checkbox" className="mt-1 h-4 w-4 rounded border-gray-300 text-[#C42826] accent-[#C42826]" checked={form.declarationRules} onChange={(e) => update('declarationRules', e.target.checked)} />
               <span className="text-sm text-gray-700">{t('register.declarations.rules')} *</span>
@@ -493,6 +497,163 @@ export default function Register() {
         </form>
       </div>
       </div>
+
+      {/* Conditions Modal */}
+      {showConditions && (
+        <ConditionsModal
+          onAccept={() => { update('declarationFit', true); setShowConditions(false); }}
+          onDecline={() => setShowConditions(false)}
+        />
+      )}
     </PublicLayout>
+  );
+}
+
+/* ─── Conditions de Participation Modal ─── */
+function ConditionsModal({ onAccept, onDecline }) {
+  const [canAccept, setCanAccept] = useState(false);
+  const contentRef = useRef(null);
+
+  const handleScroll = () => {
+    const el = contentRef.current;
+    if (!el) return;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 20) {
+      setCanAccept(true);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40" onClick={onDecline} />
+      <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-lg max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="px-6 py-5 border-b border-gray-200 text-center">
+          <h3 className="text-xl font-bold text-gray-900">Conditions de Participation</h3>
+          <p className="text-sm text-gray-500 mt-1">Lisez jusqu'en bas pour activer le bouton Accepter</p>
+        </div>
+
+        {/* Scrollable content */}
+        <div
+          ref={contentRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto px-6 py-5 text-sm text-gray-700 leading-relaxed space-y-5"
+        >
+          <Article title="Article 1 – Informations générales">
+            <p>La Ligue Algéroise de Ski et des Sports de Montagne (LASSM) a le plaisir de vous inviter à la 3ᵉ édition du Trail des Mouflons d'Or, organisée sous le parrainage de Monsieur le Ministre Wali d'Alger et sous l'égide de la Direction de la Jeunesse, des Sports et des Loisirs de la Wilaya d'Alger, à l'occasion du Festival d'Alger des Sports.</p>
+            <p>Le Trail des Mouflons d'Or est une épreuve de course nature se déroulant en milieu naturel, sur un parcours exigeant et vallonné au cœur du Parc Zoologique de Ben Aknoun (entrée Village Africain).</p>
+            <p className="font-medium">Informations principales :</p>
+            <ul className="list-disc list-inside space-y-1 ps-2">
+              <li>Date : 1er mai 2026</li>
+              <li>Accueil des participants : à partir de 06h00</li>
+              <li>Départ de la course : 08h00</li>
+              <li>Distance : 16,57 km</li>
+              <li>Dénivelé positif : 443 m D+</li>
+            </ul>
+          </Article>
+
+          <Article title="Article 2 – Inscriptions / Tarifs / Annulation / Dossard">
+            <p><strong>2.1 – Inscriptions</strong><br/>Les inscriptions sont ouvertes dès la publication officielle de l'événement. L'inscription se fait exclusivement en ligne via la plateforme officielle : www.tmo.lassm.dz</p>
+            <p><strong>2.2 – Procédure d'inscription</strong><br/>Pour valider son inscription, chaque participant doit :</p>
+            <ol className="list-decimal list-inside space-y-1 ps-2">
+              <li>Remplir le formulaire d'inscription en renseignant ses informations personnelles ;</li>
+              <li>Déclarer sur l'honneur être physiquement apte à participer ;</li>
+              <li>Lire et accepter intégralement le présent règlement ;</li>
+              <li>Confirmer son inscription ;</li>
+              <li>Procéder au paiement en ligne par carte CIB.</li>
+            </ol>
+            <p><strong>2.3 – Informations de paiement</strong><br/>Titulaire : Ligue Algéroise de Ski et des Sports de Montagne<br/>Domiciliation : Agence Belahdjel, 24 Rue Hocine Belahdjel, Alger</p>
+            <p><strong>2.4 – Tarif</strong><br/>2 000 DA par participant</p>
+            <p><strong>2.5 – Conditions d'annulation</strong><br/>Toute inscription est ferme, définitive et non remboursable. Aucun remboursement ne sera effectué, quel qu'en soit le motif.</p>
+            <p><strong>2.6 – Conditions obligatoires</strong><br/>La participation sans inscription est strictement interdite. Il est interdit de céder ou prêter son dossard. Toute usurpation entraîne une disqualification immédiate.</p>
+            <p><strong>2.7 – Dossard</strong><br/>Le dossard doit être porté de manière visible sur la poitrine, fixé avec 4 épingles, et conservé en bon état.</p>
+          </Article>
+
+          <Article title="Article 3 – Remise des dossards">
+            <p>Le lieu et les horaires de retrait seront communiqués sur www.lassm.dz et les réseaux sociaux. Le retrait se fait sur présentation d'une pièce d'identité. Aucun dossard ne sera remis le jour de la course, sauf décision exceptionnelle.</p>
+          </Article>
+
+          <Article title="Article 4 – L'épreuve sportive">
+            <p>Distance : 16,57 km — 443 m D+<br/>Départ et arrivée : Parc Zoologique de Ben Aknoun – entrée Village Africain<br/>Regroupement : 06h00 — Départ : 08h00<br/>Âge minimum : 19 ans</p>
+            <p>L'organisation se réserve le droit de modifier la date, le lieu, le parcours, l'horaire, ou d'annuler l'événement. Ces situations ne donnent lieu à aucune indemnisation.</p>
+          </Article>
+
+          <Article title="Article 5 – Respect de l'environnement">
+            <p>Il est strictement interdit de jeter des bouteilles d'eau, emballages, mégots ou tout autre déchet sur le parcours. Sanction : disqualification immédiate.</p>
+          </Article>
+
+          <Article title="Article 6 – Matériel obligatoire">
+            <ul className="list-disc list-inside space-y-1 ps-2">
+              <li>Téléphone portable chargé et opérationnel</li>
+              <li>Réserve d'eau d'au moins 1 litre</li>
+              <li>Chaussures adaptées au trail</li>
+              <li>Dossard officiel correctement porté</li>
+            </ul>
+          </Article>
+
+          <Article title="Article 7 – Parcours et signalisation">
+            <p>2 points de ravitaillement (km 6,30 et km 10,70), des points de contrôle obligatoires. Barrière horaire : 3h00 à l'arrivée.</p>
+          </Article>
+
+          <Article title="Article 8 – Sécurité et assistance">
+            <p>Chaque participant est responsable de sa propre sécurité. Tout participant a l'obligation de porter assistance à une personne en difficulté. Ne jamais laisser une personne blessée seule.</p>
+          </Article>
+
+          <Article title="Article 9 – Droit à l'image">
+            <p>Chaque participant autorise la LASSM à photographier, filmer, enregistrer et diffuser son image dans le cadre de l'événement, à titre gratuit.</p>
+          </Article>
+
+          <Article title="Article 10 – Données personnelles">
+            <p>Les données collectées sont utilisées exclusivement pour la gestion des inscriptions, l'organisation et la communication liée à la course.</p>
+          </Article>
+
+          <Article title="Article 11 – Service consigne">
+            <p>Un service de consigne sera disponible à partir de 06h00. L'organisation ne peut être tenue responsable en cas de perte, vol ou détérioration.</p>
+          </Article>
+
+          <Article title="Article 12 – Aptitude physique et acceptation des risques">
+            <p>En validant son inscription, chaque participant reconnaît et accepte :</p>
+            <ol className="list-decimal list-inside space-y-1 ps-2">
+              <li>Être en bonne condition physique et apte à participer ;</li>
+              <li>Participer sous sa propre responsabilité ;</li>
+              <li>Assumer l'entière responsabilité de son état de santé et de sa préparation ;</li>
+              <li>Attester qu'aucune contre-indication médicale ne l'empêche de participer ;</li>
+              <li>Reconnaître qu'il lui appartient de consulter un médecin si nécessaire ;</li>
+              <li>Reconnaître que l'organisateur ne pourra être tenu responsable d'un incident résultant d'une pathologie préexistante ;</li>
+              <li>Accepter que l'organisation puisse refuser le départ de tout participant présentant un risque.</li>
+            </ol>
+          </Article>
+
+          <Article title="Article 13 – Assurance">
+            <p>L'organisation est couverte par une assurance responsabilité civile. Il appartient à chaque participant de vérifier sa couverture personnelle. L'organisation recommande vivement de souscrire une assurance individuelle accident.</p>
+          </Article>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+          <button
+            onClick={onDecline}
+            className="rounded-lg border border-gray-200 px-6 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition cursor-pointer"
+          >
+            Décliner
+          </button>
+          <button
+            onClick={onAccept}
+            disabled={!canAccept}
+            className="rounded-lg bg-[#C42826] px-6 py-2.5 text-sm font-medium text-white hover:bg-[#a82220] disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+          >
+            Accepter
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Article({ title, children }) {
+  return (
+    <div>
+      <h4 className="font-bold text-gray-900 mb-2">{title}</h4>
+      <div className="space-y-2">{children}</div>
+    </div>
   );
 }
