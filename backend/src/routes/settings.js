@@ -78,17 +78,23 @@ async function settingsRoutes(fastify) {
     const settings = await prisma.settings.findUnique({ where: { id: 'default' } });
     const stockTotal = settings.bibEnd - settings.bibStart + 1;
 
-    const bibsAttribues = await prisma.registration.count({
-      where: { bibNumber: { gte: settings.bibStart, lte: settings.bibEnd } },
-    });
+    const [bibsAutoRange, bibsTotal] = await Promise.all([
+      prisma.registration.count({
+        where: { bibNumber: { gte: settings.bibStart, lte: settings.bibEnd } },
+      }),
+      prisma.registration.count({
+        where: { bibNumber: { not: null } },
+      }),
+    ]);
 
     const prochainNumero = await redis.get('bib:next');
 
     return {
       stockTotal,
-      bibsAttribues,
-      bibsRestants: stockTotal - bibsAttribues,
-      tauxOccupation: Math.round((bibsAttribues / stockTotal) * 100),
+      bibsAttribues: bibsTotal,
+      bibsAutoRange,
+      bibsRestants: stockTotal - bibsAutoRange,
+      tauxOccupation: Math.round((bibsAutoRange / stockTotal) * 100),
       prochainNumero: parseInt(prochainNumero, 10) || settings.bibStart,
       bibRangeLocked: settings.bibRangeLocked,
     };
