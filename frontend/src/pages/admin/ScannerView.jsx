@@ -50,7 +50,7 @@ function RunnerModal({ runner, onClose, onDistribute }) {
       <div className="relative bg-white border border-gray-200 rounded-2xl shadow-lg w-full max-w-md overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Coureur - Dossard #{runner.bib}</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Coureur - Dossard #{runner.bibNumber}</h3>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-900 transition cursor-pointer">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -63,7 +63,6 @@ function RunnerModal({ runner, onClose, onDistribute }) {
           <InfoRow label="Nom" value={`${runner.firstName || ''} ${runner.lastName || ''}`} />
           <InfoRow label="Email" value={runner.email} />
           <InfoRow label="Téléphone" value={runner.phone} />
-          <InfoRow label="Course" value={runner.race} />
           <InfoRow label="Taille t-shirt" value={runner.tshirtSize} />
           <InfoRow label="Statut" value={<StatusBadge status={runner.status} />} />
 
@@ -152,7 +151,7 @@ export default function ScannerView() {
     setError('');
     try {
       const data = await get(`/scan/manual/${bibInput.trim()}`);
-      setSelectedRunner(data);
+      setSelectedRunner(data.data || data);
     } catch (err) {
       setError(err.message || 'Coureur introuvable.');
     }
