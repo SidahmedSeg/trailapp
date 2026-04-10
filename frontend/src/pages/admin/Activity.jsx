@@ -31,6 +31,7 @@ export default function Activity() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [actionFilter, setActionFilter] = useState('');
 
   const limit = 30;
 
@@ -43,7 +44,7 @@ export default function Activity() {
       setTotal(data.total || 0);
     } catch { /* ignore */ }
     setLoading(false);
-  }, [page]);
+  }, [page, actionFilter]);
 
   useEffect(() => { fetchActivity(); }, [fetchActivity]);
 
@@ -76,15 +77,37 @@ export default function Activity() {
           </button>
         </div>
 
+        {/* Filter */}
+        <div className="flex items-center gap-3 mb-4">
+          <select
+            value={actionFilter}
+            onChange={(e) => { setActionFilter(e.target.value); setPage(1); }}
+            className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-900 outline-none focus:border-[#C42826] transition cursor-pointer"
+          >
+            <option value="">Toutes les actions</option>
+            <option value="registration_created_manual">Création coureur</option>
+            <option value="registration_edited">Modification coureur</option>
+            <option value="bib_distributed">Distribution dossard</option>
+            <option value="settings_updated">Paramètres modifiés</option>
+            <option value="user_invited">Invitation utilisateur</option>
+            <option value="user_reinvited">Réinvitation</option>
+            <option value="user_updated">Modification utilisateur</option>
+            <option value="user_deleted">Suppression utilisateur</option>
+          </select>
+        </div>
+
         {/* Activity List */}
+        {(() => {
+          const filtered = actionFilter ? entries.filter((e) => e.action === actionFilter) : entries;
+          return (
         <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
           {loading ? (
             <div className="px-4 py-12 text-center text-gray-400">Chargement...</div>
-          ) : entries.length === 0 ? (
+          ) : filtered.length === 0 ? (
             <div className="px-4 py-12 text-center text-gray-400">Aucune activité enregistrée.</div>
           ) : (
             <ul className="divide-y divide-gray-100">
-              {entries.map((entry, i) => (
+              {filtered.map((entry, i) => (
                 <li key={entry.id || i} className="px-5 py-4 hover:bg-gray-50 transition">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
@@ -141,6 +164,8 @@ export default function Activity() {
             </div>
           )}
         </div>
+          );
+        })()}
       </main>
     </div>
   );
