@@ -269,11 +269,11 @@ export default function ScannerView() {
                 {history.map((h, i) => (
                   <li key={i} className="px-4 py-3 flex items-center justify-between">
                     <div>
-                      <span className="font-mono text-[#C42826]">#{h.bib}</span>
-                      <span className="ml-3 text-gray-900">{h.firstName} {h.lastName}</span>
+                      <span className="font-mono text-[#C42826]">#{h.bibNumber}</span>
+                      <span className="ml-3 text-gray-900">{h.runnerName}</span>
                     </div>
                     <span className="text-xs text-gray-400">
-                      {h.distributedAt ? new Date(h.distributedAt).toLocaleTimeString('fr-FR') : '—'}
+                      {h.scannedAt ? new Date(h.scannedAt).toLocaleTimeString('fr-FR') : '—'}
                     </span>
                   </li>
                 ))}
