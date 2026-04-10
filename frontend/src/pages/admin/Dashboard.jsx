@@ -5,6 +5,11 @@ import { getAccessToken } from '../../lib/auth';
 import { useAuth } from '../../hooks/useAuth';
 import Sidebar from '../../components/ui/Sidebar';
 import { Users, Clock, CheckCircle, Ticket, DollarSign } from 'lucide-react';
+import Select from 'react-select';
+import {
+  flagUrl, COUNTRIES_DATA, PHONE_CODES, WILAYAS, COMMUNES_MAP,
+  TSHIRT_SIZES, selectStyles, phoneSelectStyles,
+} from '../../data/formData';
 
 /* ─── Constants ─── */
 const INPUT_CLS =
@@ -244,45 +249,61 @@ function ExportCSVModal({ open, onClose }) {
 /* ─── Runner Create Modal ─── */
 function RunnerCreateModal({ open, onClose, onCreated }) {
   const empty = {
-    bibNumber: '',
-    firstName: '',
-    lastName: '',
-    birthDate: '',
-    gender: 'Homme',
-    nationality: '',
-    phoneCountryCode: '+213',
-    phoneNumber: '',
-    email: '',
-    countryOfResidence: 'Algeria',
-    wilaya: '',
-    commune: '',
-    ville: '',
-    emergencyPhoneCountryCode: '+213',
-    emergencyPhoneNumber: '',
-    tshirtSize: 'M',
-    runnerLevel: 'Débutant',
-    declarationFit: true,
-    declarationRules: true,
-    declarationImage: true,
+    bibNumber: '', firstName: '', lastName: '', birthDate: '', gender: 'Homme',
+    nationality: 'Algérie', phoneCountryCode: '+213', phoneNumber: '',
+    email: '', countryOfResidence: 'Algérie', wilaya: '', commune: '', ville: '',
+    emergencyPhoneCountryCode: '+213', emergencyPhoneNumber: '',
+    tshirtSize: 'M', runnerLevel: 'Débutant',
+    declarationFit: true, declarationRules: true, declarationImage: true,
   };
 
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (open) {
-      setForm(empty);
-      setError('');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  useEffect(() => { if (open) { setForm(empty); setError(''); } }, [open]);
 
   if (!open) return null;
 
-  const set = (key, val) => setForm((prev) => ({ ...prev, [key]: val }));
+  const set = (key, val) => setForm((prev) => {
+    const next = { ...prev, [key]: val };
+    if (key === 'countryOfResidence' && val !== 'Algérie') { next.wilaya = ''; next.commune = ''; }
+    if (key === 'wilaya') next.commune = '';
+    return next;
+  });
 
-  const isAlgeria = form.countryOfResidence === 'Algeria';
+  const isAlgeria = form.countryOfResidence === 'Algérie';
+  const communes = (COMMUNES_MAP[form.wilaya] || []).map((c) => ({ value: c, label: c }));
+
+  const FlagLabel = ({ code, label }) => (
+    <div className="flex items-center gap-2">
+      <img src={flagUrl(code)} alt="" className="w-5 h-auto rounded-sm" />
+      <span>{label}</span>
+    </div>
+  );
+
+  const countryOptions = COUNTRIES_DATA.map((c) => ({
+    value: c.value, code: c.code,
+    label: <FlagLabel code={c.code} label={c.value} />,
+    textLabel: c.value,
+  }));
+
+  const phoneOptions = PHONE_CODES.map((p) => ({
+    value: p.value, code: p.code,
+    label: <FlagLabel code={p.code} label={p.value} />,
+    textLabel: `${p.value}`,
+  }));
+
+  const genderOptions = [
+    { value: 'Homme', label: 'Homme' },
+    { value: 'Femme', label: 'Femme' },
+  ];
+
+  const levelOptions = [
+    { value: 'Débutant', label: 'Débutant' },
+    { value: 'Intermédiaire', label: 'Intermédiaire' },
+    { value: 'Avancé', label: 'Avancé' },
+  ];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -294,10 +315,7 @@ function RunnerCreateModal({ open, onClose, onCreated }) {
     }
     setSaving(true);
     try {
-      await post('/admin/runners', {
-        ...form,
-        bibNumber: bib,
-      });
+      await post('/admin/runners', { ...form, bibNumber: bib });
       onCreated();
       onClose();
     } catch (err) {
@@ -306,8 +324,10 @@ function RunnerCreateModal({ open, onClose, onCreated }) {
     setSaving(false);
   };
 
+  const labelCls = 'block text-sm font-medium text-gray-700 mb-1';
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative w-full max-w-2xl bg-white border border-gray-200 rounded-2xl shadow-lg max-h-[90vh] flex flex-col">
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
@@ -319,170 +339,153 @@ function RunnerCreateModal({ open, onClose, onCreated }) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+        <form id="create-runner-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
           {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2">{error}</p>}
 
           {/* Bib */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Dossard *</label>
-            <input
-              type="number"
-              required
-              value={form.bibNumber}
-              onChange={(e) => set('bibNumber', e.target.value)}
-              placeholder="Ex: 50 ou 1501 (hors 101-1500)"
-              className={INPUT_CLS}
-            />
+            <label className={labelCls}>Numéro de dossard *</label>
+            <input type="number" required value={form.bibNumber} onChange={(e) => set('bibNumber', e.target.value)}
+              placeholder="Ex: 50 ou 1501 (hors plage 101-1500)" className={INPUT_CLS} />
+            <p className="text-xs text-gray-400 mt-1">Doit être en dehors de la plage automatique (101-1500)</p>
           </div>
 
-          {/* Name row */}
+          {/* Personal info */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Prénom *</label>
-              <input required value={form.firstName} onChange={(e) => set('firstName', e.target.value)} className={INPUT_CLS} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
+              <label className={labelCls}>Nom *</label>
               <input required value={form.lastName} onChange={(e) => set('lastName', e.target.value)} className={INPUT_CLS} />
             </div>
+            <div>
+              <label className={labelCls}>Prénom *</label>
+              <input required value={form.firstName} onChange={(e) => set('firstName', e.target.value)} className={INPUT_CLS} />
+            </div>
           </div>
 
-          {/* Birth + Gender */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date de naissance</label>
-              <input type="date" value={form.birthDate} onChange={(e) => set('birthDate', e.target.value)} className={INPUT_CLS} />
+              <label className={labelCls}>Date de naissance *</label>
+              <input type="date" required value={form.birthDate} onChange={(e) => set('birthDate', e.target.value)} className={INPUT_CLS} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Genre</label>
-              <select value={form.gender} onChange={(e) => set('gender', e.target.value)} className={INPUT_CLS}>
-                <option value="Homme">Homme</option>
-                <option value="Femme">Femme</option>
-              </select>
+              <label className={labelCls}>Genre *</label>
+              <Select styles={selectStyles} options={genderOptions}
+                value={genderOptions.find((g) => g.value === form.gender)}
+                onChange={(opt) => set('gender', opt?.value || 'Homme')}
+                placeholder="— Choisir —" />
             </div>
           </div>
 
-          {/* Nationality + Email */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nationalité</label>
-              <input value={form.nationality} onChange={(e) => set('nationality', e.target.value)} className={INPUT_CLS} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} className={INPUT_CLS} />
-            </div>
-          </div>
-
-          {/* Phone */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+            <label className={labelCls}>Nationalité *</label>
+            <Select styles={selectStyles} options={countryOptions}
+              value={countryOptions.find((c) => c.value === form.nationality)}
+              onChange={(opt) => set('nationality', opt?.value || '')}
+              placeholder="— Choisir —"
+              filterOption={(option, input) => option.data.textLabel?.toLowerCase().includes(input.toLowerCase())} />
+          </div>
+
+          {/* Contact */}
+          <div>
+            <label className={labelCls}>Téléphone *</label>
             <div className="flex gap-2">
-              <input
-                value={form.phoneCountryCode}
-                onChange={(e) => set('phoneCountryCode', e.target.value)}
-                className={INPUT_CLS + ' !w-24'}
-                placeholder="+213"
-              />
-              <input
-                value={form.phoneNumber}
-                onChange={(e) => set('phoneNumber', e.target.value)}
-                className={INPUT_CLS}
-                placeholder="Numéro"
-              />
+              <div className="w-48">
+                <Select styles={phoneSelectStyles} options={phoneOptions}
+                  value={phoneOptions.find((p) => p.value === form.phoneCountryCode)}
+                  onChange={(opt) => set('phoneCountryCode', opt?.value || '+213')}
+                  filterOption={(option, input) => option.data.textLabel?.toLowerCase().includes(input.toLowerCase())}
+                  isSearchable />
+              </div>
+              <input required value={form.phoneNumber} onChange={(e) => set('phoneNumber', e.target.value)}
+                placeholder="770 585 909" className={INPUT_CLS} />
             </div>
           </div>
 
-          {/* Country */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Pays de résidence</label>
-            <input value={form.countryOfResidence} onChange={(e) => set('countryOfResidence', e.target.value)} className={INPUT_CLS} />
+            <label className={labelCls}>Email *</label>
+            <input type="email" required value={form.email} onChange={(e) => set('email', e.target.value)} className={INPUT_CLS} />
           </div>
 
-          {/* Wilaya / Commune (Algeria) or Ville */}
-          {isAlgeria ? (
+          {/* Residence */}
+          <div>
+            <label className={labelCls}>Pays de résidence *</label>
+            <Select styles={selectStyles} options={countryOptions}
+              value={countryOptions.find((c) => c.value === form.countryOfResidence)}
+              onChange={(opt) => set('countryOfResidence', opt?.value || '')}
+              filterOption={(option, input) => option.data.textLabel?.toLowerCase().includes(input.toLowerCase())} />
+          </div>
+
+          {isAlgeria && (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Wilaya</label>
-                <input value={form.wilaya} onChange={(e) => set('wilaya', e.target.value)} className={INPUT_CLS} />
+                <label className={labelCls}>Wilaya *</label>
+                <Select styles={selectStyles} options={WILAYAS}
+                  value={WILAYAS.find((w) => w.value === form.wilaya)}
+                  onChange={(opt) => set('wilaya', opt?.value || '')}
+                  placeholder="— Choisir —" isSearchable />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Commune</label>
-                <input value={form.commune} onChange={(e) => set('commune', e.target.value)} className={INPUT_CLS} />
+                <label className={labelCls}>Commune *</label>
+                <Select styles={selectStyles} options={communes}
+                  value={communes.find((c) => c.value === form.commune)}
+                  onChange={(opt) => set('commune', opt?.value || '')}
+                  placeholder="— Choisir —" isSearchable
+                  noOptionsMessage={() => form.wilaya ? 'Saisissez le nom' : 'Choisir une wilaya'} />
               </div>
             </div>
-          ) : (
+          )}
+          {!isAlgeria && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Ville</label>
-              <input value={form.ville} onChange={(e) => set('ville', e.target.value)} className={INPUT_CLS} />
+              <label className={labelCls}>Ville *</label>
+              <input required={!isAlgeria} value={form.ville} onChange={(e) => set('ville', e.target.value)}
+                placeholder="Ville de résidence" className={INPUT_CLS} />
             </div>
           )}
 
-          {/* Emergency phone */}
+          {/* Emergency */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone d'urgence</label>
+            <label className={labelCls}>Téléphone d'urgence *</label>
             <div className="flex gap-2">
-              <input
-                value={form.emergencyPhoneCountryCode}
-                onChange={(e) => set('emergencyPhoneCountryCode', e.target.value)}
-                className={INPUT_CLS + ' !w-24'}
-                placeholder="+213"
-              />
-              <input
-                value={form.emergencyPhoneNumber}
-                onChange={(e) => set('emergencyPhoneNumber', e.target.value)}
-                className={INPUT_CLS}
-                placeholder="Numéro"
-              />
+              <div className="w-48">
+                <Select styles={phoneSelectStyles} options={phoneOptions}
+                  value={phoneOptions.find((p) => p.value === form.emergencyPhoneCountryCode)}
+                  onChange={(opt) => set('emergencyPhoneCountryCode', opt?.value || '+213')}
+                  filterOption={(option, input) => option.data.textLabel?.toLowerCase().includes(input.toLowerCase())}
+                  isSearchable />
+              </div>
+              <input required value={form.emergencyPhoneNumber} onChange={(e) => set('emergencyPhoneNumber', e.target.value)}
+                placeholder="661 234 567" className={INPUT_CLS} />
             </div>
           </div>
 
-          {/* T-shirt size */}
+          {/* T-shirt */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Taille t-shirt</label>
+            <label className={labelCls}>Taille t-shirt *</label>
             <div className="flex gap-2">
-              {['S', 'M', 'L', 'XL', 'XXL'].map((sz) => (
-                <button
-                  key={sz}
-                  type="button"
-                  onClick={() => set('tshirtSize', sz)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium border transition cursor-pointer ${
+              {TSHIRT_SIZES.map((sz) => (
+                <button key={sz} type="button" onClick={() => set('tshirtSize', sz)}
+                  className={`px-4 py-2.5 rounded-lg text-sm font-medium border transition cursor-pointer ${
                     form.tshirtSize === sz
                       ? 'bg-[#C42826] text-white border-[#C42826]'
                       : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  {sz}
-                </button>
+                  }`}>{sz}</button>
               ))}
             </div>
           </div>
 
-          {/* Runner level */}
+          {/* Level */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Niveau</label>
-            <select value={form.runnerLevel} onChange={(e) => set('runnerLevel', e.target.value)} className={INPUT_CLS}>
-              <option value="Débutant">Débutant</option>
-              <option value="Intermédiaire">Intermédiaire</option>
-              <option value="Avancé">Avancé</option>
-            </select>
+            <label className={labelCls}>Niveau *</label>
+            <Select styles={selectStyles} options={levelOptions}
+              value={levelOptions.find((l) => l.value === form.runnerLevel)}
+              onChange={(opt) => set('runnerLevel', opt?.value || 'Débutant')}
+              placeholder="— Choisir —" />
           </div>
         </form>
 
         <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-          <button type="button" onClick={onClose} className={BTN_SECONDARY}>
-            Annuler
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              // Trigger form submit
-              const formEl = e.target.closest('.flex.flex-col').querySelector('form');
-              if (formEl) formEl.requestSubmit();
-            }}
-            disabled={saving}
-            className={BTN_PRIMARY + ' disabled:opacity-50'}
-          >
+          <button type="button" onClick={onClose} className={BTN_SECONDARY}>Annuler</button>
+          <button type="submit" form="create-runner-form" disabled={saving} className={BTN_PRIMARY + ' disabled:opacity-50'}>
             {saving ? 'Création...' : 'Créer le coureur'}
           </button>
         </div>
