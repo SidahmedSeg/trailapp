@@ -78,12 +78,17 @@ async function settingsRoutes(fastify) {
     const settings = await prisma.settings.findUnique({ where: { id: 'default' } });
     const stockTotal = settings.bibEnd - settings.bibStart + 1;
 
-    const [bibsAutoRange, bibsTotal] = await Promise.all([
+    const manualMax = settings.bibStart - 1; // e.g. 100 if bibStart=101
+
+    const [bibsAutoRange, bibsTotal, bibsManualUsed] = await Promise.all([
       prisma.registration.count({
         where: { bibNumber: { gte: settings.bibStart, lte: settings.bibEnd } },
       }),
       prisma.registration.count({
         where: { bibNumber: { not: null } },
+      }),
+      prisma.registration.count({
+        where: { bibNumber: { gte: 1, lt: settings.bibStart } },
       }),
     ]);
 
@@ -94,6 +99,9 @@ async function settingsRoutes(fastify) {
       bibsAttribues: bibsTotal,
       bibsAutoRange,
       bibsRestants: stockTotal - bibsAutoRange,
+      bibsManualTotal: manualMax,
+      bibsManualUsed,
+      bibsManualRestants: manualMax - bibsManualUsed,
       tauxOccupation: Math.round((bibsAutoRange / stockTotal) * 100),
       prochainNumero: parseInt(prochainNumero, 10) || settings.bibStart,
       bibRangeLocked: settings.bibRangeLocked,

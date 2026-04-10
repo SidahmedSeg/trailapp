@@ -74,7 +74,10 @@ export default function Settings() {
       if (bibStatsRes) {
         s.bibsAssigned = bibStatsRes.bibsAttribues ?? 0;
         s.bibsRemaining = bibStatsRes.bibsRestants ?? 0;
-        s.bibsDistributed = bibStatsRes.tauxOccupation ?? 0;
+        s.bibsOccupation = bibStatsRes.tauxOccupation ?? 0;
+        s.bibsManualTotal = bibStatsRes.bibsManualTotal ?? 0;
+        s.bibsManualUsed = bibStatsRes.bibsManualUsed ?? 0;
+        s.bibsManualRestants = bibStatsRes.bibsManualRestants ?? 0;
         s.prochainNumero = bibStatsRes.prochainNumero;
       }
       setSettings(s);
@@ -290,7 +293,8 @@ export default function Settings() {
             </div>
 
             {/* Read-only stats */}
-            <div className="grid grid-cols-3 gap-4 pt-2">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide pt-2">Plage automatique ({settings.bibStart}–{settings.bibEnd})</p>
+            <div className="grid grid-cols-3 gap-4">
               <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-center">
                 <p className="text-xs text-gray-500 mb-1">Attribués</p>
                 <p className="text-lg font-bold text-emerald-700">{settings.bibsAssigned ?? '—'}</p>
@@ -301,7 +305,23 @@ export default function Settings() {
               </div>
               <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-center">
                 <p className="text-xs text-gray-500 mb-1">Occupation</p>
-                <p className="text-lg font-bold text-blue-700">{settings.bibsDistributed ?? 0}%</p>
+                <p className="text-lg font-bold text-blue-700">{settings.bibsOccupation ?? 0}%</p>
+              </div>
+            </div>
+
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Plage manuelle (1–{(settings.bibStart || 101) - 1})</p>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="rounded-lg bg-purple-50 border border-purple-200 p-3 text-center">
+                <p className="text-xs text-gray-500 mb-1">Total</p>
+                <p className="text-lg font-bold text-purple-700">{settings.bibsManualTotal ?? '—'}</p>
+              </div>
+              <div className="rounded-lg bg-purple-50 border border-purple-200 p-3 text-center">
+                <p className="text-xs text-gray-500 mb-1">Utilisés</p>
+                <p className="text-lg font-bold text-purple-700">{settings.bibsManualUsed ?? '—'}</p>
+              </div>
+              <div className="rounded-lg bg-purple-50 border border-purple-200 p-3 text-center">
+                <p className="text-xs text-gray-500 mb-1">Restants</p>
+                <p className="text-lg font-bold text-purple-700">{settings.bibsManualRestants ?? '—'}</p>
               </div>
             </div>
 
