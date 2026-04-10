@@ -117,23 +117,12 @@ export default function ScannerView() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const [runners, setRunners] = useState([]);
-  const [search, setSearch] = useState('');
   const [bibInput, setBibInput] = useState('');
   const [selectedRunner, setSelectedRunner] = useState(null);
   const [history, setHistory] = useState([]);
+  const [historySearch, setHistorySearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  // Fetch runners
-  const fetchRunners = useCallback(async () => {
-    try {
-      const params = new URLSearchParams({ limit: 50 });
-      if (search) params.set('search', search);
-      const data = await get(`/admin/runners?${params}`);
-      setRunners(data.runners || []);
-    } catch { /* ignore */ }
-  }, [search]);
 
   // Fetch session history
   const fetchHistory = useCallback(async () => {
@@ -143,7 +132,6 @@ export default function ScannerView() {
     } catch { /* ignore */ }
   }, []);
 
-  useEffect(() => { fetchRunners(); }, [fetchRunners]);
   useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
   const handleManualSearch = async () => {
@@ -210,75 +198,46 @@ export default function ScannerView() {
           )}
         </section>
 
-        {/* Runner Table */}
+        {/* Session History */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Coureurs</h2>
+            <h2 className="text-lg font-semibold">Historique de session</h2>
             <input
               type="text"
-              placeholder="Rechercher..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-64 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-[#C42826] transition"
+              placeholder="Rechercher par nom ou dossard..."
+              value={historySearch}
+              onChange={(e) => setHistorySearch(e.target.value)}
+              className="w-72 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-[#C42826] transition"
             />
           </div>
           <div className="rounded-xl border border-gray-200 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 text-left text-gray-500">
-                  <th className="px-4 py-3 font-medium">Dossard</th>
-                  <th className="px-4 py-3 font-medium">Nom</th>
-                  <th className="px-4 py-3 font-medium">Statut</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {runners.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="px-4 py-8 text-center text-gray-400">
-                      Aucun coureur trouvé.
-                    </td>
-                  </tr>
-                ) : (
-                  runners.map((r) => (
-                    <tr
-                      key={r.id}
-                      onClick={() => setSelectedRunner(r)}
-                      className="hover:bg-gray-50 cursor-pointer transition"
-                    >
-                      <td className="px-4 py-3 font-mono text-[#C42826]">{r.bib || '—'}</td>
-                      <td className="px-4 py-3 text-gray-900">{r.firstName} {r.lastName}</td>
-                      <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {/* Session History */}
-        <section>
-          <h2 className="text-lg font-semibold mb-4">Historique de session</h2>
-          <div className="rounded-xl border border-gray-200 overflow-hidden">
-            {history.length === 0 ? (
-              <div className="px-4 py-8 text-center text-gray-400 text-sm">
-                Aucune distribution enregistrée pour cette session.
-              </div>
-            ) : (
-              <ul className="divide-y divide-gray-100">
-                {history.map((h, i) => (
-                  <li key={i} className="px-4 py-3 flex items-center justify-between">
-                    <div>
-                      <span className="font-mono text-[#C42826]">#{h.bibNumber}</span>
-                      <span className="ml-3 text-gray-900">{h.runnerName}</span>
-                    </div>
-                    <span className="text-xs text-gray-400">
-                      {h.scannedAt ? new Date(h.scannedAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
+            {(() => {
+              const filtered = historySearch.trim()
+                ? history.filter((h) => {
+                    const q = historySearch.toLowerCase();
+                    return (h.runnerName || '').toLowerCase().includes(q) || String(h.bibNumber).includes(q);
+                  })
+                : history;
+              return filtered.length === 0 ? (
+                <div className="px-4 py-8 text-center text-gray-400 text-sm">
+                  {historySearch ? 'Aucun résultat.' : 'Aucune distribution enregistrée pour cette session.'}
+                </div>
+              ) : (
+                <ul className="divide-y divide-gray-100">
+                  {filtered.map((h, i) => (
+                    <li key={i} className="px-4 py-3 flex items-center justify-between">
+                      <div>
+                        <span className="font-mono text-[#C42826]">#{h.bibNumber}</span>
+                        <span className="ml-3 text-gray-900">{h.runnerName}</span>
+                      </div>
+                      <span className="text-xs text-gray-400">
+                        {h.scannedAt ? new Date(h.scannedAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              );
+            })()}
           </div>
         </section>
       </main>
