@@ -24,11 +24,18 @@ function RoleBadge({ role }) {
 }
 
 /* ─── Status Dot ─── */
-function StatusDot({ active }) {
+function StatusDot({ active, inviteAccepted }) {
+  const status = !active ? 'inactive' : !inviteAccepted ? 'pending' : 'active';
+  const map = {
+    active: { color: 'bg-emerald-500', label: 'Actif' },
+    pending: { color: 'bg-amber-400', label: 'En attente' },
+    inactive: { color: 'bg-gray-300', label: 'Inactif' },
+  };
+  const s = map[status];
   return (
     <span className="inline-flex items-center gap-1.5">
-      <span className={`inline-block w-2 h-2 rounded-full ${active ? 'bg-emerald-500' : 'bg-gray-300'}`} />
-      <span className="text-sm">{active ? 'Actif' : 'Inactif'}</span>
+      <span className={`inline-block w-2 h-2 rounded-full ${s.color}`} />
+      <span className="text-sm">{s.label}</span>
     </span>
   );
 }
@@ -276,7 +283,7 @@ export default function UserManagement() {
                       </td>
                       <td className="px-4 py-3 text-gray-600">{u.email || '—'}</td>
                       <td className="px-4 py-3"><RoleBadge role={u.role} /></td>
-                      <td className="px-4 py-3"><StatusDot active={u.active} /></td>
+                      <td className="px-4 py-3"><StatusDot active={u.active} inviteAccepted={u.inviteAccepted} /></td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-2">
                           <button
