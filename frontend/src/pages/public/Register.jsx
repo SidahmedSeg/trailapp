@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Select from 'react-select';
-import { Check, X, Loader2, Ban } from 'lucide-react';
+import { Check, X, Loader2, Ban, User, Mail, MapPin, Phone, Shirt, Trophy, FileCheck } from 'lucide-react';
 import PublicLayout from '../../components/ui/PublicLayout';
 
 // --- Data ---
@@ -73,11 +73,11 @@ const TSHIRT_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 const phoneSelectStyles = {
   control: (base, state) => ({
     ...base,
-    borderRadius: '0.5rem',
-    borderColor: state.isFocused ? '#C42826' : '#d1d5db',
-    boxShadow: state.isFocused ? '0 0 0 2px rgba(99,102,241,0.2)' : 'none',
-    padding: '2px 0',
-    backgroundColor: '#f9fafb',
+    borderRadius: '0.75rem',
+    borderColor: state.isFocused ? '#C42826' : '#e5e7eb',
+    boxShadow: state.isFocused ? '0 0 0 2px rgba(196,40,38,0.1)' : 'none',
+    padding: '4px 0',
+    backgroundColor: state.isFocused ? '#ffffff' : '#f9fafb80',
     '&:hover': { borderColor: '#C42826' },
   }),
   option: (base, state) => ({
@@ -99,10 +99,11 @@ const phoneSelectStyles = {
 const selectStyles = {
   control: (base, state) => ({
     ...base,
-    borderRadius: '0.5rem',
-    borderColor: state.isFocused ? '#C42826' : '#d1d5db',
-    boxShadow: state.isFocused ? '0 0 0 2px rgba(99,102,241,0.2)' : 'none',
-    padding: '2px 0',
+    borderRadius: '0.75rem',
+    borderColor: state.isFocused ? '#C42826' : '#e5e7eb',
+    boxShadow: state.isFocused ? '0 0 0 2px rgba(196,40,38,0.1)' : 'none',
+    padding: '4px 0',
+    backgroundColor: state.isFocused ? '#ffffff' : undefined,
     '&:hover': { borderColor: '#C42826' },
   }),
   option: (base, state) => ({
@@ -126,6 +127,18 @@ function FlagLabel({ code, label }) {
     <div className="flex items-center gap-2">
       <img src={flagUrl(code)} alt="" className="w-5 h-auto rounded-sm" />
       <span>{label}</span>
+    </div>
+  );
+}
+
+// --- Section header helper ---
+function SectionHeader({ icon: Icon, title }) {
+  return (
+    <div className="flex items-center gap-3 pb-4 mb-5 border-b border-gray-100">
+      <div className="w-9 h-9 rounded-lg bg-[#C42826]/10 flex items-center justify-center">
+        <Icon size={18} className="text-[#C42826]" />
+      </div>
+      <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
     </div>
   );
 }
@@ -270,33 +283,33 @@ export default function Register() {
   const communes = (COMMUNES_MAP[form.wilaya] || []).map((c) => ({ value: c, label: c }));
   const isAlgeria = form.countryOfResidence === 'Algérie';
 
-  const inputCls = 'w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C42826] focus:border-[#C42826] transition';
-  const labelCls = 'block text-sm font-medium text-gray-700 mb-1';
+  const inputCls = 'w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-[#C42826] focus:ring-2 focus:ring-[#C42826]/10 focus:bg-white transition';
+  const labelCls = 'block text-sm font-medium text-gray-700 mb-1.5';
 
   return (
     <PublicLayout title={t('register.title')}>
       <div className="py-10 px-4">
       <div className="max-w-3xl mx-auto">
 
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {/* Informations personnelles */}
-          <section className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-gray-800 border-b pb-2 mb-2">{t('register.sections.personal')}</h2>
+          <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
+            <SectionHeader icon={User} title={t('register.sections.personal')} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className={labelCls}>{t('register.fields.lastName')} *</label>
+                <label className={labelCls}>{t('register.fields.lastName')}<span className="text-[#C42826] ms-0.5">*</span></label>
                 <input className={inputCls} required value={form.lastName} onChange={(e) => update('lastName', e.target.value)} />
               </div>
               <div>
-                <label className={labelCls}>{t('register.fields.firstName')} *</label>
+                <label className={labelCls}>{t('register.fields.firstName')}<span className="text-[#C42826] ms-0.5">*</span></label>
                 <input className={inputCls} required value={form.firstName} onChange={(e) => update('firstName', e.target.value)} />
               </div>
               <div>
-                <label className={labelCls}>{t('register.fields.birthDate')} *</label>
+                <label className={labelCls}>{t('register.fields.birthDate')}<span className="text-[#C42826] ms-0.5">*</span></label>
                 <input type="date" className={inputCls} required value={form.birthDate} onChange={(e) => update('birthDate', e.target.value)} />
               </div>
               <div>
-                <label className={labelCls}>{t('register.fields.gender')} *</label>
+                <label className={labelCls}>{t('register.fields.gender')}<span className="text-[#C42826] ms-0.5">*</span></label>
                 <Select
                   styles={selectStyles}
                   options={genderOptions}
@@ -307,7 +320,7 @@ export default function Register() {
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className={labelCls}>{t('register.fields.nationality')} *</label>
+                <label className={labelCls}>{t('register.fields.nationality')}<span className="text-[#C42826] ms-0.5">*</span></label>
                 <Select
                   styles={selectStyles}
                   options={countryOptions}
@@ -321,101 +334,105 @@ export default function Register() {
           </section>
 
           {/* Contact & E-mail */}
-          <section className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-gray-800 border-b pb-2 mb-2">{t('register.sections.contact')}</h2>
-            <div>
-              <label className={labelCls}>{t('register.fields.phone')} *</label>
-              <div className="flex gap-2">
-                <div className="w-52">
-                  <Select
-                    styles={phoneSelectStyles}
-                    options={phoneOptions}
-                    value={phoneOptions.find((p) => p.value === form.phoneCountryCode) || null}
-                    onChange={(opt) => update('phoneCountryCode', opt?.value || '+213')}
-                    filterOption={(option, input) => option.data.textLabel.toLowerCase().includes(input.toLowerCase())}
-                    isSearchable
-                  />
+          <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
+            <SectionHeader icon={Mail} title={t('register.sections.contact')} />
+            <div className="space-y-4">
+              <div>
+                <label className={labelCls}>{t('register.fields.phone')}<span className="text-[#C42826] ms-0.5">*</span></label>
+                <div className="flex gap-2">
+                  <div className="w-52">
+                    <Select
+                      styles={phoneSelectStyles}
+                      options={phoneOptions}
+                      value={phoneOptions.find((p) => p.value === form.phoneCountryCode) || null}
+                      onChange={(opt) => update('phoneCountryCode', opt?.value || '+213')}
+                      filterOption={(option, input) => option.data.textLabel.toLowerCase().includes(input.toLowerCase())}
+                      isSearchable
+                    />
+                  </div>
+                  <input type="tel" className={inputCls} required placeholder={t('register.placeholders.phone')} value={form.phoneNumber} onChange={(e) => update('phoneNumber', e.target.value)} />
                 </div>
-                <input type="tel" className={inputCls} required placeholder={t('register.placeholders.phone')} value={form.phoneNumber} onChange={(e) => update('phoneNumber', e.target.value)} />
               </div>
-            </div>
-            <div>
-              <label className={labelCls}>{t('register.fields.email')} *</label>
-              <div className="relative">
-                <input type="email" className={inputCls} required value={form.email}
-                  onChange={(e) => update('email', e.target.value)}
-                  onBlur={() => checkEmail(form.email)}
+              <div>
+                <label className={labelCls}>{t('register.fields.email')}<span className="text-[#C42826] ms-0.5">*</span></label>
+                <div className="relative">
+                  <input type="email" className={inputCls} required value={form.email}
+                    onChange={(e) => update('email', e.target.value)}
+                    onBlur={() => checkEmail(form.email)}
+                  />
+                  {emailStatus === 'checking' && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" size={18} />}
+                  {emailStatus === 'available' && <Check className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500" size={20} />}
+                  {emailStatus === 'taken' && <X className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500" size={20} />}
+                </div>
+                {emailStatus === 'taken' && <p className="text-red-500 text-xs mt-1">{t('register.errors.emailTaken')}</p>}
+              </div>
+              <div>
+                <label className={labelCls}>{t('register.fields.confirmEmail')}<span className="text-[#C42826] ms-0.5">*</span></label>
+                <input type="email" className={inputCls} required value={form.confirmEmail}
+                  onChange={(e) => update('confirmEmail', e.target.value)}
                 />
-                {emailStatus === 'checking' && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" size={18} />}
-                {emailStatus === 'available' && <Check className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500" size={20} />}
-                {emailStatus === 'taken' && <X className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500" size={20} />}
+                {form.confirmEmail && form.email !== form.confirmEmail && (
+                  <p className="text-red-500 text-xs mt-1">{t('register.errors.emailMismatch')}</p>
+                )}
               </div>
-              {emailStatus === 'taken' && <p className="text-red-500 text-xs mt-1">{t('register.errors.emailTaken')}</p>}
-            </div>
-            <div>
-              <label className={labelCls}>{t('register.fields.confirmEmail')} *</label>
-              <input type="email" className={inputCls} required value={form.confirmEmail}
-                onChange={(e) => update('confirmEmail', e.target.value)}
-              />
-              {form.confirmEmail && form.email !== form.confirmEmail && (
-                <p className="text-red-500 text-xs mt-1">{t('register.errors.emailMismatch')}</p>
-              )}
             </div>
           </section>
 
           {/* Residence */}
-          <section className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-gray-800 border-b pb-2 mb-2">{t('register.sections.residence')}</h2>
-            <div>
-              <label className={labelCls}>{t('register.fields.country')} *</label>
-              <Select
-                styles={selectStyles}
-                options={countryOptions}
-                value={countryOptions.find((c) => c.value === form.countryOfResidence) || null}
-                onChange={(opt) => update('countryOfResidence', opt?.value || '')}
-                filterOption={(option, input) => option.data.textLabel.toLowerCase().includes(input.toLowerCase())}
-              />
-            </div>
-            {isAlgeria && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={labelCls}>{t('register.fields.wilaya')} *</label>
-                  <Select
-                    styles={selectStyles}
-                    options={WILAYAS}
-                    value={WILAYAS.find((w) => w.value === form.wilaya) || null}
-                    onChange={(opt) => update('wilaya', opt?.value || '')}
-                    placeholder={t('common.choose')}
-                    isSearchable
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>{t('register.fields.commune')} *</label>
-                  <Select
-                    styles={selectStyles}
-                    options={communes}
-                    value={communes.find((c) => c.value === form.commune) || null}
-                    onChange={(opt) => update('commune', opt?.value || '')}
-                    placeholder={t('common.choose')}
-                    isSearchable
-                    noOptionsMessage={() => form.wilaya ? t('register.placeholders.enterName') : t('register.placeholders.selectWilaya')}
-                  />
-                </div>
-              </div>
-            )}
-            {!isAlgeria && (
+          <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
+            <SectionHeader icon={MapPin} title={t('register.sections.residence')} />
+            <div className="space-y-4">
               <div>
-                <label className={labelCls}>{t('register.fields.city')} *</label>
-                <input className={inputCls} required={!isAlgeria} value={form.ville} onChange={(e) => update('ville', e.target.value)} placeholder={t('register.placeholders.city')} />
+                <label className={labelCls}>{t('register.fields.country')}<span className="text-[#C42826] ms-0.5">*</span></label>
+                <Select
+                  styles={selectStyles}
+                  options={countryOptions}
+                  value={countryOptions.find((c) => c.value === form.countryOfResidence) || null}
+                  onChange={(opt) => update('countryOfResidence', opt?.value || '')}
+                  filterOption={(option, input) => option.data.textLabel.toLowerCase().includes(input.toLowerCase())}
+                />
               </div>
-            )}
+              {isAlgeria && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelCls}>{t('register.fields.wilaya')}<span className="text-[#C42826] ms-0.5">*</span></label>
+                    <Select
+                      styles={selectStyles}
+                      options={WILAYAS}
+                      value={WILAYAS.find((w) => w.value === form.wilaya) || null}
+                      onChange={(opt) => update('wilaya', opt?.value || '')}
+                      placeholder={t('common.choose')}
+                      isSearchable
+                    />
+                  </div>
+                  <div>
+                    <label className={labelCls}>{t('register.fields.commune')}<span className="text-[#C42826] ms-0.5">*</span></label>
+                    <Select
+                      styles={selectStyles}
+                      options={communes}
+                      value={communes.find((c) => c.value === form.commune) || null}
+                      onChange={(opt) => update('commune', opt?.value || '')}
+                      placeholder={t('common.choose')}
+                      isSearchable
+                      noOptionsMessage={() => form.wilaya ? t('register.placeholders.enterName') : t('register.placeholders.selectWilaya')}
+                    />
+                  </div>
+                </div>
+              )}
+              {!isAlgeria && (
+                <div>
+                  <label className={labelCls}>{t('register.fields.city')}<span className="text-[#C42826] ms-0.5">*</span></label>
+                  <input className={inputCls} required={!isAlgeria} value={form.ville} onChange={(e) => update('ville', e.target.value)} placeholder={t('register.placeholders.city')} />
+                </div>
+              )}
+            </div>
           </section>
 
           {/* Emergency */}
-          <section className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-gray-800 border-b pb-2 mb-2">{t('register.sections.emergency')}</h2>
+          <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
+            <SectionHeader icon={Phone} title={t('register.sections.emergency')} />
             <div>
-              <label className={labelCls}>{t('register.fields.emergencyPhone')} *</label>
+              <label className={labelCls}>{t('register.fields.emergencyPhone')}<span className="text-[#C42826] ms-0.5">*</span></label>
               <div className="flex gap-2">
                 <div className="w-52">
                   <Select
@@ -433,17 +450,17 @@ export default function Register() {
           </section>
 
           {/* T-shirt */}
-          <section className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-gray-800 border-b pb-2 mb-2">{t('register.sections.tshirt')}</h2>
+          <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
+            <SectionHeader icon={Shirt} title={t('register.sections.tshirt')} />
             <div>
-              <label className={labelCls}>{t('register.fields.tshirtSize')} *</label>
+              <label className={labelCls}>{t('register.fields.tshirtSize')}<span className="text-[#C42826] ms-0.5">*</span></label>
               <div className="flex flex-wrap gap-3 mt-1">
                 {TSHIRT_SIZES.map((size) => (
                   <button type="button" key={size} onClick={() => update('tshirtSize', size)}
-                    className={`px-5 py-2.5 rounded-lg border text-sm font-medium transition cursor-pointer ${
+                    className={`px-5 py-3 rounded-xl border text-sm font-medium transition cursor-pointer ${
                       form.tshirtSize === size
-                        ? 'bg-[#C42826] text-white border-[#C42826]'
-                        : 'bg-white text-gray-700 border-gray-300 hover:border-[#C42826]/70'
+                        ? 'bg-[#C42826] text-white border-[#C42826] shadow-sm'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-[#C42826]/30 hover:bg-[#C42826]/5'
                     }`}
                   >{size}</button>
                 ))}
@@ -452,48 +469,54 @@ export default function Register() {
           </section>
 
           {/* Level */}
-          <section className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-gray-800 border-b pb-2 mb-2">{t('register.sections.level')}</h2>
-            <Select
-              styles={selectStyles}
-              options={levelOptions}
-              value={levelOptions.find((l) => l.value === form.runnerLevel) || null}
-              onChange={(opt) => update('runnerLevel', opt?.value || '')}
-              placeholder={t('common.choose')}
-            />
+          <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
+            <SectionHeader icon={Trophy} title={t('register.sections.level')} />
+            <div>
+              <label className={labelCls}>{t('register.fields.runnerLevel') || t('register.sections.level')}<span className="text-[#C42826] ms-0.5">*</span></label>
+              <Select
+                styles={selectStyles}
+                options={levelOptions}
+                value={levelOptions.find((l) => l.value === form.runnerLevel) || null}
+                onChange={(opt) => update('runnerLevel', opt?.value || '')}
+                placeholder={t('common.choose')}
+              />
+            </div>
           </section>
 
           {/* Declarations */}
-          <section className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-gray-800 border-b pb-2 mb-2">{t('register.sections.declarations')}</h2>
-            <div
-              className="flex items-start gap-3 cursor-pointer"
-              onClick={() => { if (!form.declarationFit) setShowConditions(true); else update('declarationFit', false); }}
-            >
-              <input type="checkbox" readOnly className="mt-1 h-4 w-4 rounded border-gray-300 text-[#C42826] accent-[#C42826] pointer-events-none" checked={form.declarationFit} />
-              <span className="text-sm text-gray-700">{t('register.declarations.fit')} *</span>
+          <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
+            <SectionHeader icon={FileCheck} title={t('register.sections.declarations')} />
+            <div className="space-y-3">
+              <div
+                className="bg-gray-50 rounded-xl px-4 py-3 flex items-start gap-3 cursor-pointer"
+                onClick={() => { if (!form.declarationFit) setShowConditions(true); else update('declarationFit', false); }}
+              >
+                <input type="checkbox" readOnly className="mt-1 h-4 w-4 rounded border-gray-300 text-[#C42826] accent-[#C42826] pointer-events-none" checked={form.declarationFit} />
+                <span className="text-sm text-gray-700">{t('register.declarations.fit')}<span className="text-[#C42826] ms-0.5">*</span></span>
+              </div>
+              <label className="bg-gray-50 rounded-xl px-4 py-3 flex items-start gap-3 cursor-pointer">
+                <input type="checkbox" className="mt-1 h-4 w-4 rounded border-gray-300 text-[#C42826] accent-[#C42826]" checked={form.declarationRules} onChange={(e) => update('declarationRules', e.target.checked)} />
+                <span className="text-sm text-gray-700">{t('register.declarations.rules')}<span className="text-[#C42826] ms-0.5">*</span></span>
+              </label>
+              <label className="bg-gray-50 rounded-xl px-4 py-3 flex items-start gap-3 cursor-pointer">
+                <input type="checkbox" className="mt-1 h-4 w-4 rounded border-gray-300 text-[#C42826] accent-[#C42826]" checked={form.declarationImage} onChange={(e) => update('declarationImage', e.target.checked)} />
+                <span className="text-sm text-gray-700">{t('register.declarations.image')}<span className="text-[#C42826] ms-0.5">*</span></span>
+              </label>
             </div>
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input type="checkbox" className="mt-1 h-4 w-4 rounded border-gray-300 text-[#C42826] accent-[#C42826]" checked={form.declarationRules} onChange={(e) => update('declarationRules', e.target.checked)} />
-              <span className="text-sm text-gray-700">{t('register.declarations.rules')} *</span>
-            </label>
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input type="checkbox" className="mt-1 h-4 w-4 rounded border-gray-300 text-[#C42826] accent-[#C42826]" checked={form.declarationImage} onChange={(e) => update('declarationImage', e.target.checked)} />
-              <span className="text-sm text-gray-700">{t('register.declarations.image')} *</span>
-            </label>
           </section>
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">{error}</div>
           )}
 
-          <div className="flex justify-center">
+          {/* Submit */}
+          <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
             <button type="submit" disabled={submitting}
-              className="bg-[#C42826] hover:bg-[#a82220] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold px-10 py-3 rounded-xl text-base transition shadow-sm cursor-pointer"
+              className="w-full bg-[#C42826] hover:bg-[#a82220] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl text-base transition shadow-md hover:shadow-lg cursor-pointer"
             >
               {submitting ? t('register.submitting') : t('register.submit')}
             </button>
-          </div>
+          </section>
         </form>
       </div>
       </div>
@@ -509,7 +532,7 @@ export default function Register() {
   );
 }
 
-/* ─── Conditions de Participation Modal ─── */
+/* --- Conditions de Participation Modal --- */
 function ConditionsModal({ onAccept, onDecline }) {
   const [canAccept, setCanAccept] = useState(false);
   const contentRef = useRef(null);
@@ -538,7 +561,7 @@ function ConditionsModal({ onAccept, onDecline }) {
           onScroll={handleScroll}
           className="flex-1 overflow-y-auto px-6 py-5 text-sm text-gray-700 leading-relaxed space-y-5"
         >
-          <Article title="Article 1 – Informations générales">
+          <Article title="Article 1 -- Informations generales">
             <p>La Ligue Algéroise de Ski et des Sports de Montagne (LASSM) a le plaisir de vous inviter à la 3ᵉ édition du Trail des Mouflons d'Or, organisée sous le parrainage de Monsieur le Ministre Wali d'Alger et sous l'égide de la Direction de la Jeunesse, des Sports et des Loisirs de la Wilaya d'Alger, à l'occasion du Festival d'Alger des Sports.</p>
             <p>Le Trail des Mouflons d'Or est une épreuve de course nature se déroulant en milieu naturel, sur un parcours exigeant et vallonné au cœur du Parc Zoologique de Ben Aknoun (entrée Village Africain).</p>
             <p className="font-medium">Informations principales :</p>
@@ -551,7 +574,7 @@ function ConditionsModal({ onAccept, onDecline }) {
             </ul>
           </Article>
 
-          <Article title="Article 2 – Inscriptions / Tarifs / Annulation / Dossard">
+          <Article title="Article 2 -- Inscriptions / Tarifs / Annulation / Dossard">
             <p><strong>2.1 – Inscriptions</strong><br/>Les inscriptions sont ouvertes dès la publication officielle de l'événement. L'inscription se fait exclusivement en ligne via la plateforme officielle : www.tmo.lassm.dz</p>
             <p><strong>2.2 – Procédure d'inscription</strong><br/>Pour valider son inscription, chaque participant doit :</p>
             <ol className="list-decimal list-inside space-y-1 ps-2">
@@ -568,20 +591,20 @@ function ConditionsModal({ onAccept, onDecline }) {
             <p><strong>2.7 – Dossard</strong><br/>Le dossard doit être porté de manière visible sur la poitrine, fixé avec 4 épingles, et conservé en bon état.</p>
           </Article>
 
-          <Article title="Article 3 – Remise des dossards">
+          <Article title="Article 3 -- Remise des dossards">
             <p>Le lieu et les horaires de retrait seront communiqués sur www.lassm.dz et les réseaux sociaux. Le retrait se fait sur présentation d'une pièce d'identité. Aucun dossard ne sera remis le jour de la course, sauf décision exceptionnelle.</p>
           </Article>
 
-          <Article title="Article 4 – L'épreuve sportive">
+          <Article title="Article 4 -- L'epreuve sportive">
             <p>Distance : 16,57 km — 443 m D+<br/>Départ et arrivée : Parc Zoologique de Ben Aknoun – entrée Village Africain<br/>Regroupement : 06h00 — Départ : 08h00<br/>Âge minimum : 19 ans</p>
             <p>L'organisation se réserve le droit de modifier la date, le lieu, le parcours, l'horaire, ou d'annuler l'événement. Ces situations ne donnent lieu à aucune indemnisation.</p>
           </Article>
 
-          <Article title="Article 5 – Respect de l'environnement">
+          <Article title="Article 5 -- Respect de l'environnement">
             <p>Il est strictement interdit de jeter des bouteilles d'eau, emballages, mégots ou tout autre déchet sur le parcours. Sanction : disqualification immédiate.</p>
           </Article>
 
-          <Article title="Article 6 – Matériel obligatoire">
+          <Article title="Article 6 -- Materiel obligatoire">
             <ul className="list-disc list-inside space-y-1 ps-2">
               <li>Téléphone portable chargé et opérationnel</li>
               <li>Réserve d'eau d'au moins 1 litre</li>
@@ -590,27 +613,27 @@ function ConditionsModal({ onAccept, onDecline }) {
             </ul>
           </Article>
 
-          <Article title="Article 7 – Parcours et signalisation">
+          <Article title="Article 7 -- Parcours et signalisation">
             <p>2 points de ravitaillement (km 6,30 et km 10,70), des points de contrôle obligatoires. Barrière horaire : 3h00 à l'arrivée.</p>
           </Article>
 
-          <Article title="Article 8 – Sécurité et assistance">
+          <Article title="Article 8 -- Securite et assistance">
             <p>Chaque participant est responsable de sa propre sécurité. Tout participant a l'obligation de porter assistance à une personne en difficulté. Ne jamais laisser une personne blessée seule.</p>
           </Article>
 
-          <Article title="Article 9 – Droit à l'image">
+          <Article title="Article 9 -- Droit a l'image">
             <p>Chaque participant autorise la LASSM à photographier, filmer, enregistrer et diffuser son image dans le cadre de l'événement, à titre gratuit.</p>
           </Article>
 
-          <Article title="Article 10 – Données personnelles">
+          <Article title="Article 10 -- Donnees personnelles">
             <p>Les données collectées sont utilisées exclusivement pour la gestion des inscriptions, l'organisation et la communication liée à la course.</p>
           </Article>
 
-          <Article title="Article 11 – Service consigne">
+          <Article title="Article 11 -- Service consigne">
             <p>Un service de consigne sera disponible à partir de 06h00. L'organisation ne peut être tenue responsable en cas de perte, vol ou détérioration.</p>
           </Article>
 
-          <Article title="Article 12 – Aptitude physique et acceptation des risques">
+          <Article title="Article 12 -- Aptitude physique et acceptation des risques">
             <p>En validant son inscription, chaque participant reconnaît et accepte :</p>
             <ol className="list-decimal list-inside space-y-1 ps-2">
               <li>Être en bonne condition physique et apte à participer ;</li>
@@ -623,7 +646,7 @@ function ConditionsModal({ onAccept, onDecline }) {
             </ol>
           </Article>
 
-          <Article title="Article 13 – Assurance">
+          <Article title="Article 13 -- Assurance">
             <p>L'organisation est couverte par une assurance responsabilité civile. Il appartient à chaque participant de vérifier sa couverture personnelle. L'organisation recommande vivement de souscrire une assurance individuelle accident.</p>
           </Article>
         </div>
@@ -632,14 +655,14 @@ function ConditionsModal({ onAccept, onDecline }) {
         <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
           <button
             onClick={onDecline}
-            className="rounded-lg border border-gray-200 px-6 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition cursor-pointer"
+            className="rounded-xl border border-gray-200 px-6 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition cursor-pointer"
           >
             Décliner
           </button>
           <button
             onClick={onAccept}
             disabled={!canAccept}
-            className="rounded-lg bg-[#C42826] px-6 py-2.5 text-sm font-medium text-white hover:bg-[#a82220] disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+            className="rounded-xl bg-[#C42826] px-6 py-2.5 text-sm font-medium text-white hover:bg-[#a82220] disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
           >
             Accepter
           </button>
