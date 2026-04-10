@@ -1,8 +1,62 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { get } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import Sidebar from '../../components/ui/Sidebar';
+import { ChevronDown } from 'lucide-react';
+
+const ACTION_OPTIONS = [
+  { value: '', label: 'Toutes les actions' },
+  { value: 'registration_created_manual', label: 'Création coureur' },
+  { value: 'registration_edited', label: 'Modification coureur' },
+  { value: 'bib_distributed', label: 'Distribution dossard' },
+  { value: 'settings_updated', label: 'Paramètres modifiés' },
+  { value: 'user_invited', label: 'Invitation utilisateur' },
+  { value: 'user_reinvited', label: 'Réinvitation' },
+  { value: 'user_updated', label: 'Modification utilisateur' },
+  { value: 'user_deleted', label: 'Suppression utilisateur' },
+];
+
+function ActionDropdown({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const current = ACTION_OPTIONS.find((o) => o.value === value) || ACTION_OPTIONS[0];
+
+  useEffect(() => {
+    function handleClick(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm hover:bg-gray-50 transition cursor-pointer"
+      >
+        {current.label}
+        <ChevronDown size={14} className={`text-gray-400 transition ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute end-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 min-w-[220px]">
+          {ACTION_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              className={`w-full text-start px-4 py-2 text-sm transition cursor-pointer ${
+                opt.value === value
+                  ? 'bg-[#C42826]/5 text-[#C42826] font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 /* ─── Action Type Badge ─── */
 function ActionBadge({ action }) {
@@ -66,34 +120,18 @@ export default function Activity() {
             <h2 className="text-2xl font-bold">Journal d'activité</h2>
             <p className="text-gray-500 text-sm mt-1">Historique des actions administratives</p>
           </div>
-          <button
-            onClick={fetchActivity}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm hover:bg-gray-50 transition cursor-pointer"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Actualiser
-          </button>
-        </div>
-
-        {/* Filter */}
-        <div className="flex items-center gap-3 mb-4">
-          <select
-            value={actionFilter}
-            onChange={(e) => { setActionFilter(e.target.value); setPage(1); }}
-            className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-900 outline-none focus:border-[#C42826] transition cursor-pointer"
-          >
-            <option value="">Toutes les actions</option>
-            <option value="registration_created_manual">Création coureur</option>
-            <option value="registration_edited">Modification coureur</option>
-            <option value="bib_distributed">Distribution dossard</option>
-            <option value="settings_updated">Paramètres modifiés</option>
-            <option value="user_invited">Invitation utilisateur</option>
-            <option value="user_reinvited">Réinvitation</option>
-            <option value="user_updated">Modification utilisateur</option>
-            <option value="user_deleted">Suppression utilisateur</option>
-          </select>
+          <div className="flex items-center gap-3">
+            <ActionDropdown value={actionFilter} onChange={(v) => { setActionFilter(v); setPage(1); }} />
+            <button
+              onClick={fetchActivity}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm hover:bg-gray-50 transition cursor-pointer"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Actualiser
+            </button>
+          </div>
         </div>
 
         {/* Activity List */}
