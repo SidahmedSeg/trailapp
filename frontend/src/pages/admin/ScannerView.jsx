@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { get, post } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
+import Sidebar from '../../components/ui/Sidebar';
 
 /* ─── Status Badge ─── */
 function StatusBadge({ status }) {
@@ -67,7 +68,7 @@ function RunnerModal({ runner, onClose, onDistribute }) {
           <InfoRow label="Statut" value={<StatusBadge status={runner.status} />} />
 
           {success && (
-            <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-[#C42826]">
+            <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
               Dossard distribué avec succès !
             </div>
           )}
@@ -175,24 +176,13 @@ export default function ScannerView() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
-      {/* Top Bar */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-[#C42826] font-bold text-lg">Scanner</span>
-            <span className="text-gray-400 text-sm">|</span>
-            <span className="text-gray-500 text-sm">{user?.username}</span>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="text-sm text-red-600 hover:text-red-500 transition cursor-pointer"
-          >
-            Déconnexion
-          </button>
-        </div>
-      </header>
+      <Sidebar />
 
-      <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
+      <main className="ml-60 p-8 space-y-8">
+        <div>
+          <h2 className="text-2xl font-bold">Scanner</h2>
+          <p className="text-gray-500 text-sm mt-1">Distribution des dossards</p>
+        </div>
         {/* Manual Bib Search */}
         <section className="bg-white border border-gray-200 rounded-xl p-6">
           <h2 className="text-lg font-semibold mb-4">Recherche manuelle par dossard</h2>
@@ -291,7 +281,7 @@ export default function ScannerView() {
             )}
           </div>
         </section>
-      </div>
+      </main>
 
       {/* Modal */}
       <RunnerModal
