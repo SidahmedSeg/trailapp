@@ -7,16 +7,16 @@ import Sidebar from '../../components/ui/Sidebar';
 /* ─── Action Type Badge ─── */
 function ActionBadge({ action }) {
   const map = {
-    create: 'bg-emerald-500/15 text-emerald-400',
-    update: 'bg-blue-500/15 text-blue-400',
-    delete: 'bg-red-500/15 text-red-400',
-    login: 'bg-purple-500/15 text-purple-400',
-    distribute: 'bg-amber-500/15 text-amber-400',
-    invite: 'bg-cyan-500/15 text-cyan-400',
-    export: 'bg-indigo-500/15 text-indigo-400',
+    create: 'bg-emerald-50 text-emerald-700',
+    update: 'bg-blue-50 text-blue-700',
+    delete: 'bg-red-50 text-red-700',
+    login: 'bg-purple-50 text-purple-700',
+    distribute: 'bg-amber-50 text-amber-700',
+    invite: 'bg-cyan-50 text-cyan-700',
+    export: 'bg-indigo-50 text-indigo-700',
   };
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${map[action] || 'bg-slate-500/15 text-slate-400'}`}>
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${map[action] || 'bg-gray-100 text-gray-500'}`}>
       {action}
     </span>
   );
@@ -39,7 +39,7 @@ export default function Activity() {
     try {
       const params = new URLSearchParams({ page, limit });
       const data = await get(`/admin/activity?${params}`);
-      setEntries(data.entries || data.activities || []);
+      setEntries(data.data || data.entries || data.activities || []);
       setTotal(data.total || 0);
     } catch { /* ignore */ }
     setLoading(false);
@@ -55,7 +55,7 @@ export default function Activity() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <div className="min-h-screen bg-gray-50 text-gray-900">
       <Sidebar />
 
       {/* Main */}
@@ -63,11 +63,11 @@ export default function Activity() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h2 className="text-2xl font-bold">Journal d'activité</h2>
-            <p className="text-slate-400 text-sm mt-1">Historique des actions administratives</p>
+            <p className="text-gray-500 text-sm mt-1">Historique des actions administratives</p>
           </div>
           <button
             onClick={fetchActivity}
-            className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm hover:bg-white/10 transition cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm hover:bg-gray-50 transition cursor-pointer"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -77,29 +77,29 @@ export default function Activity() {
         </div>
 
         {/* Activity List */}
-        <div className="rounded-xl border border-white/10 overflow-hidden">
+        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
           {loading ? (
-            <div className="px-4 py-12 text-center text-slate-500">Chargement...</div>
+            <div className="px-4 py-12 text-center text-gray-400">Chargement...</div>
           ) : entries.length === 0 ? (
-            <div className="px-4 py-12 text-center text-slate-500">Aucune activité enregistrée.</div>
+            <div className="px-4 py-12 text-center text-gray-400">Aucune activité enregistrée.</div>
           ) : (
-            <ul className="divide-y divide-white/5">
+            <ul className="divide-y divide-gray-100">
               {entries.map((entry, i) => (
-                <li key={entry.id || i} className="px-5 py-4 hover:bg-white/[.02] transition">
+                <li key={entry.id || i} className="px-5 py-4 hover:bg-gray-50 transition">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-1">
                         <ActionBadge action={entry.action} />
-                        <span className="text-sm font-medium text-slate-200">{entry.admin || entry.username || '—'}</span>
+                        <span className="text-sm font-medium text-gray-700">{entry.adminUsername || entry.admin || entry.username || '—'}</span>
                       </div>
-                      <p className="text-sm text-slate-400">
-                        {entry.description || entry.details || `${entry.action} sur ${entry.target || '—'}`}
+                      <p className="text-sm text-gray-500">
+                        {entry.description || entry.details || `${entry.action} sur ${entry.targetType || '—'}`}
                       </p>
-                      {entry.target && (
-                        <p className="text-xs text-slate-600 mt-1">Cible : {entry.target}</p>
+                      {entry.targetType && (
+                        <p className="text-xs text-gray-400 mt-1">Cible : {entry.targetType}{entry.targetId ? ` (${entry.targetId.substring(0, 8)}...)` : ''}</p>
                       )}
                     </div>
-                    <time className="text-xs text-slate-600 whitespace-nowrap">
+                    <time className="text-xs text-gray-400 whitespace-nowrap">
                       {entry.timestamp || entry.createdAt
                         ? new Date(entry.timestamp || entry.createdAt).toLocaleString('fr-FR', {
                             day: '2-digit',
@@ -118,22 +118,22 @@ export default function Activity() {
 
           {/* Pagination */}
           {total > 0 && (
-            <div className="flex items-center justify-between border-t border-white/10 px-4 py-3 bg-white/5">
-              <span className="text-sm text-slate-400">
+            <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 bg-gray-50">
+              <span className="text-sm text-gray-500">
                 {total} entrée{total !== 1 ? 's' : ''} — Page {page}/{totalPages}
               </span>
               <div className="flex gap-2">
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page <= 1}
-                  className="rounded-lg border border-white/10 px-3 py-1.5 text-sm disabled:opacity-30 hover:bg-white/10 transition cursor-pointer disabled:cursor-not-allowed"
+                  className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm disabled:opacity-30 hover:bg-gray-100 transition cursor-pointer disabled:cursor-not-allowed"
                 >
                   Précédent
                 </button>
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page >= totalPages}
-                  className="rounded-lg border border-white/10 px-3 py-1.5 text-sm disabled:opacity-30 hover:bg-white/10 transition cursor-pointer disabled:cursor-not-allowed"
+                  className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm disabled:opacity-30 hover:bg-gray-100 transition cursor-pointer disabled:cursor-not-allowed"
                 >
                   Suivant
                 </button>
@@ -145,4 +145,3 @@ export default function Activity() {
     </div>
   );
 }
-
