@@ -93,7 +93,7 @@ export default function Activity() {
                         <span className="text-sm font-medium text-gray-700">{entry.adminUsername || entry.admin || entry.username || '—'}</span>
                       </div>
                       <p className="text-sm text-gray-500">
-                        {entry.description || entry.details || `${entry.action} sur ${entry.targetType || '—'}`}
+                        {entry.description || (entry.details && typeof entry.details === 'object' ? JSON.stringify(entry.details) : entry.details) || `${entry.action} sur ${entry.targetType || '—'}`}
                       </p>
                       {entry.targetType && (
                         <p className="text-xs text-gray-400 mt-1">Cible : {entry.targetType}{entry.targetId ? ` (${entry.targetId.substring(0, 8)}...)` : ''}</p>
