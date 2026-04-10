@@ -273,7 +273,7 @@ export default function ScannerView() {
                       <span className="ml-3 text-gray-900">{h.runnerName}</span>
                     </div>
                     <span className="text-xs text-gray-400">
-                      {h.scannedAt ? new Date(h.scannedAt).toLocaleTimeString('fr-FR') : '—'}
+                      {h.scannedAt ? new Date(h.scannedAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
                     </span>
                   </li>
                 ))}
