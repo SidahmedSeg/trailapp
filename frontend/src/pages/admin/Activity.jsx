@@ -61,17 +61,19 @@ function ActionDropdown({ value, onChange }) {
 /* ─── Action Type Badge ─── */
 function ActionBadge({ action }) {
   const map = {
-    create: 'bg-emerald-50 text-emerald-700',
-    update: 'bg-blue-50 text-blue-700',
-    delete: 'bg-red-50 text-red-700',
-    login: 'bg-purple-50 text-purple-700',
-    distribute: 'bg-amber-50 text-amber-700',
-    invite: 'bg-cyan-50 text-cyan-700',
-    export: 'bg-indigo-50 text-indigo-700',
+    registration_created_manual: { cls: 'bg-emerald-50 text-emerald-700', label: 'Création coureur' },
+    registration_edited: { cls: 'bg-blue-50 text-blue-700', label: 'Modification coureur' },
+    bib_distributed: { cls: 'bg-amber-50 text-amber-700', label: 'Distribution dossard' },
+    settings_updated: { cls: 'bg-indigo-50 text-indigo-700', label: 'Paramètres' },
+    user_invited: { cls: 'bg-cyan-50 text-cyan-700', label: 'Invitation' },
+    user_reinvited: { cls: 'bg-teal-50 text-teal-700', label: 'Réinvitation' },
+    user_updated: { cls: 'bg-sky-50 text-sky-700', label: 'Modif. utilisateur' },
+    user_deleted: { cls: 'bg-red-50 text-red-700', label: 'Suppression' },
   };
+  const m = map[action] || { cls: 'bg-gray-100 text-gray-600', label: action };
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${map[action] || 'bg-gray-100 text-gray-500'}`}>
-      {action}
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${m.cls}`}>
+      {m.label}
     </span>
   );
 }
