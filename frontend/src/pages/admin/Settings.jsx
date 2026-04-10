@@ -66,8 +66,17 @@ export default function Settings() {
   const fetchSettings = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await get('/admin/settings');
-      const s = res.data || res;
+      const [settingsRes, bibStatsRes] = await Promise.all([
+        get('/admin/settings'),
+        get('/admin/settings/bib-stats').catch(() => null),
+      ]);
+      const s = settingsRes.data || settingsRes;
+      if (bibStatsRes) {
+        s.bibsAssigned = bibStatsRes.bibsAttribues ?? 0;
+        s.bibsRemaining = bibStatsRes.bibsRestants ?? 0;
+        s.bibsDistributed = bibStatsRes.tauxOccupation ?? 0;
+        s.prochainNumero = bibStatsRes.prochainNumero;
+      }
       setSettings(s);
       setSecForm((prev) => ({
         ...prev,
@@ -286,13 +295,13 @@ export default function Settings() {
                 <p className="text-xs text-gray-500 mb-1">Attribués</p>
                 <p className="text-lg font-bold text-emerald-700">{settings.bibsAssigned ?? '—'}</p>
               </div>
-              <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-center">
-                <p className="text-xs text-gray-500 mb-1">Distribués</p>
-                <p className="text-lg font-bold text-blue-700">{settings.bibsDistributed ?? '—'}</p>
-              </div>
               <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-center">
                 <p className="text-xs text-gray-500 mb-1">Restants</p>
                 <p className="text-lg font-bold text-amber-700">{settings.bibsRemaining ?? '—'}</p>
+              </div>
+              <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-center">
+                <p className="text-xs text-gray-500 mb-1">Occupation</p>
+                <p className="text-lg font-bold text-blue-700">{settings.bibsDistributed ?? 0}%</p>
               </div>
             </div>
 
