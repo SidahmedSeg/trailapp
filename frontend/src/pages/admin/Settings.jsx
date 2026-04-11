@@ -73,6 +73,7 @@ export default function Settings() {
       const s = settingsRes.data || settingsRes;
       if (bibStatsRes) {
         s.bibsAssigned = bibStatsRes.bibsAttribues ?? 0;
+        s.bibsAutoUsed = bibStatsRes.bibsAutoRange ?? 0;
         s.bibsRemaining = bibStatsRes.bibsRestants ?? 0;
         s.bibsOccupation = bibStatsRes.tauxOccupation ?? 0;
         s.bibsManualTotal = bibStatsRes.bibsManualTotal ?? 0;
@@ -180,7 +181,7 @@ export default function Settings() {
       <Sidebar />
 
       {/* Main */}
-      <main className="ml-60 p-8 max-w-3xl">
+      <main className="ml-60 p-8">
         <h2 className="text-2xl font-bold mb-1">Paramètres</h2>
         <p className="text-gray-500 text-sm mb-8">Configuration de l'application</p>
 
@@ -294,7 +295,7 @@ export default function Settings() {
 
             {/* Read-only stats */}
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide pt-2">Plage automatique ({settings.bibStart}–{settings.bibEnd})</p>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-4 gap-4">
               <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-center">
                 <p className="text-xs text-gray-500 mb-1">Attribués</p>
                 <p className="text-lg font-bold text-emerald-700">{settings.bibsAssigned ?? '—'}</p>
@@ -306,6 +307,10 @@ export default function Settings() {
               <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-center">
                 <p className="text-xs text-gray-500 mb-1">Occupation</p>
                 <p className="text-lg font-bold text-blue-700">{settings.bibsOccupation ?? 0}%</p>
+              </div>
+              <div className="rounded-lg bg-rose-50 border border-rose-200 p-3 text-center">
+                <p className="text-xs text-gray-500 mb-1">Utilisés</p>
+                <p className="text-lg font-bold text-rose-700">{settings.bibsAutoUsed ?? '—'}</p>
               </div>
             </div>
 
