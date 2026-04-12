@@ -295,10 +295,10 @@ export default function Settings() {
 
             {/* Read-only stats */}
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide pt-2">Plage automatique ({settings.bibStart}–{settings.bibEnd})</p>
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-center">
-                <p className="text-xs text-gray-500 mb-1">Attribués</p>
-                <p className="text-lg font-bold text-emerald-700">{settings.bibsAssigned ?? '—'}</p>
+                <p className="text-xs text-gray-500 mb-1">Utilisés</p>
+                <p className="text-lg font-bold text-emerald-700">{settings.bibsAutoUsed ?? '—'}</p>
               </div>
               <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-center">
                 <p className="text-xs text-gray-500 mb-1">Restants</p>
@@ -307,10 +307,6 @@ export default function Settings() {
               <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-center">
                 <p className="text-xs text-gray-500 mb-1">Occupation</p>
                 <p className="text-lg font-bold text-blue-700">{settings.bibsOccupation ?? 0}%</p>
-              </div>
-              <div className="rounded-lg bg-rose-50 border border-rose-200 p-3 text-center">
-                <p className="text-xs text-gray-500 mb-1">Utilisés</p>
-                <p className="text-lg font-bold text-rose-700">{settings.bibsAutoUsed ?? '—'}</p>
               </div>
             </div>
 
