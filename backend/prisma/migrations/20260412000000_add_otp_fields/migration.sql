@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "AdminUser" ADD COLUMN "otpCode" TEXT;
+ALTER TABLE "AdminUser" ADD COLUMN "otpExpiresAt" TIMESTAMP(3);
+ALTER TABLE "AdminUser" ADD COLUMN "otpAttempts" INTEGER NOT NULL DEFAULT 0;

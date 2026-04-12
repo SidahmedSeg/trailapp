@@ -3,13 +3,17 @@ const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const { signAccessToken, signRefreshToken, verifyToken } = require('../utils/jwt');
 const { authenticate, authorize } = require('../middleware/auth');
-const { sendInvitationEmail } = require('../services/sendgrid');
+const { sendInvitationEmail, sendOtpEmail } = require('../services/sendgrid');
 const { AppError } = require('../utils/errors');
+
+function generateOtp() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
 
 async function authRoutes(fastify) {
   const { prisma, redis } = fastify;
 
-  // POST /api/admin/login
+  // POST /api/admin/login — Step 1: verify credentials, send OTP
   fastify.post('/login', async (request, reply) => {
     const { username, password } = request.body || {};
 
@@ -27,13 +31,90 @@ async function authRoutes(fastify) {
       throw new AppError(401, 'Identifiants invalides', 'INVALID_CREDENTIALS');
     }
 
+    // Rate limit: 1 OTP per 60 seconds
+    const rateLimitKey = `otp:ratelimit:${user.id}`;
+    const recentOtp = await redis.get(rateLimitKey);
+    if (recentOtp) {
+      throw new AppError(429, 'Veuillez patienter avant de demander un nouveau code', 'OTP_RATE_LIMITED');
+    }
+
+    // Generate OTP
+    const otpCode = generateOtp();
+    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    await prisma.adminUser.update({
+      where: { id: user.id },
+      data: { otpCode, otpExpiresAt, otpAttempts: 0 },
+    });
+
+    // Rate limit: 60 seconds
+    await redis.set(rateLimitKey, '1', 'EX', 60);
+
+    // Send OTP email
+    await sendOtpEmail(user.email, user.username, otpCode);
+
+    return { otpRequired: true, userId: user.id };
+  });
+
+  // POST /api/admin/verify-otp — Step 2: verify OTP, issue tokens
+  fastify.post('/verify-otp', async (request, reply) => {
+    const { userId, otpCode } = request.body || {};
+
+    if (!userId || !otpCode) {
+      throw new AppError(400, 'userId et code requis', 'VALIDATION_ERROR');
+    }
+
+    const user = await prisma.adminUser.findUnique({ where: { id: userId } });
+    if (!user || !user.active) {
+      throw new AppError(401, 'Utilisateur invalide', 'INVALID_USER');
+    }
+
+    // Check if OTP exists
+    if (!user.otpCode || !user.otpExpiresAt) {
+      throw new AppError(400, 'Aucun code en attente. Veuillez vous reconnecter.', 'NO_OTP');
+    }
+
+    // Check expiry
+    if (new Date() > user.otpExpiresAt) {
+      await prisma.adminUser.update({
+        where: { id: userId },
+        data: { otpCode: null, otpExpiresAt: null, otpAttempts: 0 },
+      });
+      throw new AppError(400, 'Code expiré. Veuillez vous reconnecter.', 'OTP_EXPIRED');
+    }
+
+    // Check max attempts
+    if (user.otpAttempts >= 3) {
+      await prisma.adminUser.update({
+        where: { id: userId },
+        data: { otpCode: null, otpExpiresAt: null, otpAttempts: 0 },
+      });
+      throw new AppError(400, 'Trop de tentatives. Veuillez vous reconnecter.', 'OTP_MAX_ATTEMPTS');
+    }
+
+    // Verify OTP
+    if (user.otpCode !== otpCode.trim()) {
+      await prisma.adminUser.update({
+        where: { id: userId },
+        data: { otpAttempts: user.otpAttempts + 1 },
+      });
+      const remaining = 2 - user.otpAttempts;
+      throw new AppError(401, `Code incorrect. ${remaining > 0 ? remaining + ' tentative(s) restante(s).' : 'Dernière tentative.'}`, 'INVALID_OTP');
+    }
+
+    // OTP valid — clear it
+    await prisma.adminUser.update({
+      where: { id: userId },
+      data: { otpCode: null, otpExpiresAt: null, otpAttempts: 0 },
+    });
+
+    // Issue tokens
     const tokenId = uuidv4();
     const payload = { userId: user.id, username: user.username, role: user.role, tokenId };
 
     const accessToken = signAccessToken(payload);
     const refreshToken = signRefreshToken({ userId: user.id, tokenId });
 
-    // Store refresh token in Redis whitelist (TTL 7 days)
     await redis.set(`refresh:${user.id}:${tokenId}`, 'valid', 'EX', 7 * 24 * 3600);
 
     return { accessToken, refreshToken, role: user.role, username: user.username };

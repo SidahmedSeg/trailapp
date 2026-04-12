@@ -7,16 +7,20 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
 
-  // On mount, restore user from stored token
   useEffect(() => {
     const stored = getUserFromToken();
-    if (stored) {
-      setUser(stored);
-    }
+    if (stored) setUser(stored);
   }, []);
 
-  const login = useCallback(async (username, password) => {
+  // Step 1: verify credentials, request OTP
+  const loginRequest = useCallback(async (username, password) => {
     const data = await post('/admin/login', { username, password });
+    return data; // { otpRequired: true, userId }
+  }, []);
+
+  // Step 2: verify OTP, get tokens
+  const verifyOtp = useCallback(async (userId, otpCode) => {
+    const data = await post('/admin/verify-otp', { userId, otpCode });
     setTokens(data.accessToken, data.refreshToken);
     const decoded = getUserFromToken();
     setUser(decoded);
@@ -31,7 +35,7 @@ export function AuthProvider({ children }) {
   const isAuthenticated = user !== null;
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated }}>
+    <AuthContext.Provider value={{ user, loginRequest, verifyOtp, logout, isAuthenticated }}>
       {children}
     </AuthContext.Provider>
   );
@@ -39,8 +43,6 @@ export function AuthProvider({ children }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth doit être utilisé dans un AuthProvider.');
-  }
+  if (!context) throw new Error('useAuth doit être utilisé dans un AuthProvider.');
   return context;
 }
