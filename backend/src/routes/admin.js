@@ -17,7 +17,7 @@ async function adminRoutes(fastify) {
   fastify.get('/runners', async (request) => {
     const {
       page = '1', limit = '20',
-      status, search, paymentFilter = 'paid',
+      status, search, source, paymentFilter = 'paid',
       sortBy = 'createdAt', sortOrder = 'desc',
     } = request.query;
 
@@ -35,6 +35,11 @@ async function adminRoutes(fastify) {
     // Status filter
     if (status && status !== 'all') {
       where.status = status;
+    }
+
+    // Source filter
+    if (source && source !== 'all') {
+      where.source = source;
     }
 
     // Search

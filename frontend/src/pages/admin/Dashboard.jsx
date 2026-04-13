@@ -124,14 +124,13 @@ function StatusBadge({ status }) {
 /* ─── Source Badge ─── */
 function SourceBadge({ source }) {
   const map = {
-    public: 'bg-blue-50 text-blue-700',
-    admin: 'bg-purple-50 text-purple-700',
+    public: { cls: 'bg-blue-50 text-blue-700', label: 'En ligne' },
+    admin: { cls: 'bg-amber-50 text-amber-700 border border-amber-200', label: '⭐ VIP' },
   };
+  const s = map[source] || { cls: 'bg-gray-50 text-gray-500', label: source || '—' };
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${map[source] || 'bg-gray-50 text-gray-500'}`}
-    >
-      {source || '—'}
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${s.cls}`}>
+      {s.label}
     </span>
   );
 }
@@ -689,6 +688,7 @@ export default function Dashboard() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('');
   const [selectedRunner, setSelectedRunner] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -711,6 +711,7 @@ export default function Dashboard() {
       const params = new URLSearchParams({ page, limit });
       if (search) params.set('search', search);
       if (statusFilter) params.set('status', statusFilter);
+      if (sourceFilter) params.set('source', sourceFilter);
       const data = await get(`/admin/runners?${params}`);
       setRunners(data.data || []);
       setTotal(data.total || 0);
@@ -718,7 +719,7 @@ export default function Dashboard() {
       /* ignore */
     }
     setLoading(false);
-  }, [page, search, statusFilter]);
+  }, [page, search, statusFilter, sourceFilter]);
 
   useEffect(() => {
     fetchStats();
@@ -804,15 +805,21 @@ export default function Dashboard() {
           />
           <select
             value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
             className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 outline-none focus:border-[#C42826] transition cursor-pointer"
           >
             <option value="">Tous les statuts</option>
             <option value="en_attente">En attente</option>
             <option value="distribué">Distribué</option>
+          </select>
+          <select
+            value={sourceFilter}
+            onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}
+            className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 outline-none focus:border-[#C42826] transition cursor-pointer"
+          >
+            <option value="">Type d'inscription</option>
+            <option value="public">En ligne</option>
+            <option value="admin">VIP</option>
           </select>
         </div>
 
