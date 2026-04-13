@@ -93,7 +93,7 @@ export default function Bibs() {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <Sidebar />
-      <main className="ml-60 p-8">
+      <main className="lg:ml-60 pt-16 lg:pt-0 p-4 sm:p-6 lg:p-8">
         <h2 className="text-2xl font-bold mb-1">Dossards</h2>
         <p className="text-gray-500 text-sm mb-8">Configuration et suivi des dossards</p>
 

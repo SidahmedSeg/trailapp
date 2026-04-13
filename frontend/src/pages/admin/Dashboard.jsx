@@ -129,7 +129,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <Sidebar />
 
-      <main className="ml-60 p-8">
+      <main className="lg:ml-60 pt-16 lg:pt-0 p-4 sm:p-6 lg:p-8">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h2 className="text-2xl font-bold">Tableau de bord</h2>
