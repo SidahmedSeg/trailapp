@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import ReCAPTCHA from 'react-google-recaptcha';
+import { ShieldCheck, CreditCard, User, Shirt, Trophy, Lock } from 'lucide-react';
 import PublicLayout from '../../components/ui/PublicLayout';
 
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || '6LfGf38sAAAAABuBfyIXAxvsoNjVzU8EOmRfQ4rw';
@@ -80,7 +81,7 @@ export default function Recap() {
     return (
       <PublicLayout title={t('recap.title')}>
         <div className="flex items-center justify-center px-4 py-20">
-          <div className="bg-white rounded-2xl shadow-lg p-10 max-w-md text-center">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 max-w-md text-center">
             <p className="text-red-600 font-medium">{error}</p>
             <Link to="/" className="mt-4 inline-block text-[#C42826] hover:underline text-sm">{t('common.backHome')}</Link>
           </div>
@@ -95,96 +96,147 @@ export default function Recap() {
   return (
     <PublicLayout title={t('recap.title')}>
       <div className="py-10 px-4">
-      <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left panel — Summary */}
-          <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">{t('recap.summary')}</h2>
+            {/* Left panel — Summary */}
+            <div className="space-y-6">
+              {/* Registration summary card */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
+                <div className="flex items-center gap-3 pb-4 mb-5 border-b border-gray-100">
+                  <div className="w-9 h-9 rounded-lg bg-[#C42826]/10 flex items-center justify-center">
+                    <User size={18} className="text-[#C42826]" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-gray-900">{t('recap.summary')}</h2>
+                </div>
 
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-500">{t('recap.fields.fullName')}</span>
-                <span className="font-medium text-gray-800">{r.firstName} {r.lastName}</span>
+                <div className="space-y-4">
+                  <SummaryRow label={t('recap.fields.fullName')} value={`${r.firstName} ${r.lastName}`} />
+                  <SummaryRow label={t('recap.fields.email')} value={r.email} />
+                  <div className="grid grid-cols-2 gap-4">
+                    <SummaryItem icon={Shirt} label={t('recap.fields.tshirt')} value={r.tshirtSize} />
+                    <SummaryItem icon={Trophy} label={t('recap.fields.level')} value={r.runnerLevel} />
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">{t('recap.fields.email')}</span>
-                <span className="font-medium text-gray-800">{r.email}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">{t('recap.fields.tshirt')}</span>
-                <span className="font-medium text-gray-800">{r.tshirtSize}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">{t('recap.fields.level')}</span>
-                <span className="font-medium text-gray-800">{r.runnerLevel}</span>
-              </div>
-              <hr />
-              <div className="flex justify-between text-base font-bold">
-                <span className="text-gray-700">{t('recap.fields.amount')}</span>
-                <span className="text-[#C42826]">{r.paymentAmount ? `DZD ${(r.paymentAmount / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2 })}` : 'DZD 2 000,00'}</span>
-              </div>
-            </div>
-          </div>
 
-          {/* Right panel — Payment */}
-          <div className="bg-white rounded-2xl shadow-sm p-6 space-y-5">
-            <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">{t('recap.payment')}</h2>
-
-            <div className="border border-gray-200 rounded-xl p-4 flex items-center gap-3 bg-white">
-              <img src="/cib_dahabia.svg" alt="CIB / Dahabia" className="h-9 w-auto" />
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-gray-900">{t('recap.paymentMethod')}</p>
-                <p className="text-xs text-gray-500">{t('recap.paymentSecure')}</p>
-              </div>
-              <div className="w-8 h-8 bg-[#C42826]/10 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-[#C42826]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
+              {/* Amount card */}
+              <div className="bg-[#C42826] rounded-2xl p-6 text-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-white/70">{t('recap.fields.amount')}</p>
+                    <p className="text-3xl font-bold mt-1">
+                      {r.paymentAmount ? `${(r.paymentAmount / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2 })}` : '2 000,00'}
+                      <span className="text-lg font-normal text-white/80 ms-2">DZD</span>
+                    </p>
+                  </div>
+                  <div className="w-14 h-14 bg-white/15 rounded-xl flex items-center justify-center">
+                    <CreditCard size={28} className="text-white" />
+                  </div>
+                </div>
               </div>
             </div>
 
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                className="mt-1 h-4 w-4 rounded border-gray-300 text-[#C42826] accent-[#C42826]"
-                checked={acceptTerms}
-                onChange={(e) => setAcceptTerms(e.target.checked)}
-              />
-              <span className="text-sm text-gray-700">{t('recap.terms')}</span>
-            </label>
+            {/* Right panel — Payment */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8 space-y-6">
+              <div className="flex items-center gap-3 pb-4 mb-1 border-b border-gray-100">
+                <div className="w-9 h-9 rounded-lg bg-[#C42826]/10 flex items-center justify-center">
+                  <ShieldCheck size={18} className="text-[#C42826]" />
+                </div>
+                <h2 className="text-lg font-semibold text-gray-900">{t('recap.payment')}</h2>
+              </div>
 
-            <div className="flex justify-center">
-              <ReCAPTCHA
-                ref={recaptchaRef}
-                sitekey={RECAPTCHA_SITE_KEY}
-                onChange={(token) => setRecaptchaToken(token)}
-                onExpired={() => setRecaptchaToken(null)}
-                hl={recaptchaLang}
-              />
-            </div>
+              {/* Payment method card */}
+              <div className="border border-gray-200 rounded-xl p-4 flex items-center gap-3 bg-gray-50/50">
+                <img src="/cib_dahabia.svg" alt="CIB / Dahabia" className="h-9 w-auto" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-gray-900">{t('recap.paymentMethod')}</p>
+                  <p className="text-xs text-gray-500">{t('recap.paymentSecure')}</p>
+                </div>
+                <div className="w-8 h-8 bg-[#C42826]/10 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-[#C42826]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              </div>
 
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">{error}</div>
-            )}
+              {/* Secure redirect notice */}
+              <div className="flex items-start gap-3 bg-blue-50 rounded-xl px-4 py-3">
+                <Lock size={16} className="text-blue-500 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-blue-700 leading-relaxed">
+                  Vous serez dirigé vers un site de paiement en ligne sécurisé à l'étape suivante pour finaliser votre inscription et effectuer votre paiement.
+                </p>
+              </div>
 
-            <button
-              onClick={handlePay}
-              disabled={!acceptTerms || !recaptchaToken || paying}
-              className="w-full bg-[#C42826] hover:bg-[#a82220] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl text-base transition shadow-sm cursor-pointer"
-            >
-              {paying ? t('recap.paying') : t('recap.submit')}
-            </button>
+              {/* Terms checkbox */}
+              <label className="flex items-start gap-3 cursor-pointer bg-gray-50 rounded-xl px-4 py-3">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#C42826] accent-[#C42826]"
+                  checked={acceptTerms}
+                  onChange={(e) => setAcceptTerms(e.target.checked)}
+                />
+                <span className="text-sm text-gray-700">
+                  J'ai lu et accepté les{' '}
+                  <Link to="/terms-conditions" target="_blank" className="text-[#C42826] font-medium hover:underline">
+                    conditions générales
+                  </Link>
+                </span>
+              </label>
 
-            <div className="text-center">
-              <Link to="/" className="text-sm text-gray-500 hover:text-[#C42826] transition">
-                {t('common.back')}
-              </Link>
+              {/* reCAPTCHA */}
+              <div className="flex justify-center">
+                <ReCAPTCHA
+                  ref={recaptchaRef}
+                  sitekey={RECAPTCHA_SITE_KEY}
+                  onChange={(token) => setRecaptchaToken(token)}
+                  onExpired={() => setRecaptchaToken(null)}
+                  hl={recaptchaLang}
+                />
+              </div>
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">{error}</div>
+              )}
+
+              {/* Pay button */}
+              <button
+                onClick={handlePay}
+                disabled={!acceptTerms || !recaptchaToken || paying}
+                className="w-full bg-[#C42826] hover:bg-[#a82220] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl text-base transition shadow-md hover:shadow-lg cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Lock size={16} />
+                {paying ? t('recap.paying') : t('recap.submit')}
+              </button>
+
+              <div className="text-center">
+                <Link to="/register" className="text-sm text-gray-400 hover:text-[#C42826] transition">
+                  {t('common.back')}
+                </Link>
+              </div>
             </div>
           </div>
         </div>
       </div>
-      </div>
     </PublicLayout>
+  );
+}
+
+function SummaryRow({ label, value }) {
+  return (
+    <div className="flex items-center justify-between py-2 border-b border-gray-50">
+      <span className="text-sm text-gray-500">{label}</span>
+      <span className="text-sm font-medium text-gray-900">{value}</span>
+    </div>
+  );
+}
+
+function SummaryItem({ icon: Icon, label, value }) {
+  return (
+    <div className="bg-gray-50 rounded-xl px-4 py-3 text-center">
+      <Icon size={18} className="text-[#C42826] mx-auto mb-1" />
+      <p className="text-xs text-gray-500">{label}</p>
+      <p className="text-sm font-bold text-gray-900 mt-0.5">{value}</p>
+    </div>
   );
 }
