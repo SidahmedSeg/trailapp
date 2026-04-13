@@ -36,16 +36,7 @@ async function paymentRoutes(fastify) {
       throw new AppError(400, 'Paiement déjà en cours', 'PAYMENT_PROCESSING');
     }
 
-    // Get next bib number (new bib even on retry — old one becomes a gap)
-    const bibNumber = await getNextBib(redis, request.settings.bibEnd);
-
-    // Reserve bib in Redis (TTL 15 min)
-    await redis.set(
-      `bib:reservation:${registrationId}`,
-      bibNumber,
-      'EX',
-      env.BIB_RESERVATION_TTL_SECONDS
-    );
+    // Bib is NOT assigned here — assigned only on payment success (no gaps)
 
     // Update registration to processing
     await prisma.registration.update({
@@ -114,15 +105,9 @@ async function paymentRoutes(fastify) {
       const satimStatus = await getOrderStatus(orderId);
 
       if (satimStatus.orderStatus === 2 && satimStatus.actionCode === 0) {
-        // SUCCESS
-        const reservedBib = await redis.get(`bib:reservation:${registrationId}`);
-        const bibNumber = reservedBib ? parseInt(reservedBib, 10) : null;
-
-        if (!bibNumber) {
-          request.log.error(`No bib reservation found for ${registrationId}`);
-          return reply.redirect(`${env.APP_URL}/failed?id=${registrationId}&error=no_bib`);
-        }
-
+        // SUCCESS — assign bib NOW (only on success, no gaps)
+        const settings = await prisma.settings.findUnique({ where: { id: 'default' } });
+        const bibNumber = await getNextBib(redis, settings.bibEnd);
         const qrToken = uuidv4();
 
         // Transaction: update registration + lock bib range
@@ -147,11 +132,7 @@ async function paymentRoutes(fastify) {
           }),
         ]);
 
-        // Clean up reservation
-        await redis.del(`bib:reservation:${registrationId}`);
-
-        // Check auto-close on exhaustion
-        const settings = await prisma.settings.findUnique({ where: { id: 'default' } });
+        // Check auto-close on exhaustion (settings already fetched above)
         if (settings.autoCloseOnExhaustion) {
           const nextBib = await redis.get('bib:next');
           if (parseInt(nextBib, 10) > settings.bibEnd) {
@@ -169,9 +150,7 @@ async function paymentRoutes(fastify) {
 
         return reply.redirect(`${env.APP_URL}/success?id=${registrationId}`);
       } else {
-        // FAILURE
-        await redis.del(`bib:reservation:${registrationId}`);
-        // Do NOT DECR bib:next — accept the gap
+        // FAILURE — no bib was assigned, nothing to clean up
 
         await prisma.registration.update({
           where: { id: registrationId },
