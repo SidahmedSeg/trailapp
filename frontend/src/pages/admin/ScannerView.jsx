@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { get, post } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import Sidebar from '../../components/ui/Sidebar';
+import { Camera, StopCircle } from 'lucide-react';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 
 /* ─── Status Badge ─── */
 function StatusBadge({ status }) {
@@ -115,7 +116,6 @@ function InfoRow({ label, value }) {
 /* ─── Main Scanner View ─── */
 export default function ScannerView() {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
 
   const [bibInput, setBibInput] = useState('');
   const [selectedRunner, setSelectedRunner] = useState(null);
@@ -123,6 +123,11 @@ export default function ScannerView() {
   const [historySearch, setHistorySearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // QR Scanner state
+  const [scannerActive, setScannerActive] = useState(false);
+  const [scannerError, setScannerError] = useState('');
+  const scannerRef = useRef(null);
 
   // Fetch session history
   const fetchHistory = useCallback(async () => {
@@ -133,6 +138,84 @@ export default function ScannerView() {
   }, []);
 
   useEffect(() => { fetchHistory(); }, [fetchHistory]);
+
+  // QR Scanner setup & cleanup
+  useEffect(() => {
+    if (!scannerActive) return;
+
+    const scanner = new Html5QrcodeScanner(
+      'qr-reader',
+      {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        rememberLastUsedCamera: true,
+        showTorchButtonIfSupported: true,
+      },
+      /* verbose= */ false
+    );
+
+    scannerRef.current = scanner;
+
+    const onScanSuccess = async (decodedText) => {
+      // Extract qrToken from the URL (format: http://domain/api/scan/{qrToken})
+      let qrToken = decodedText;
+      try {
+        const url = new URL(decodedText);
+        const parts = url.pathname.split('/');
+        // Find "scan" in the path and take the next segment as the token
+        const scanIndex = parts.indexOf('scan');
+        if (scanIndex !== -1 && parts[scanIndex + 1]) {
+          qrToken = parts[scanIndex + 1];
+        }
+      } catch {
+        // If it's not a URL, treat the entire decoded text as the token
+        qrToken = decodedText;
+      }
+
+      // Stop scanner immediately after successful scan
+      try {
+        await scanner.clear();
+      } catch { /* ignore */ }
+      setScannerActive(false);
+      scannerRef.current = null;
+
+      // Fetch runner info
+      try {
+        const data = await get(`/scan/${qrToken}`);
+        setSelectedRunner(data.data || data);
+      } catch (err) {
+        setScannerError(err.message || 'Coureur introuvable pour ce QR code.');
+      }
+    };
+
+    const onScanFailure = () => {
+      // Silence continuous scan failures (expected while searching)
+    };
+
+    scanner.render(onScanSuccess, onScanFailure);
+
+    return () => {
+      try {
+        scanner.clear();
+      } catch { /* ignore cleanup errors */ }
+      scannerRef.current = null;
+    };
+  }, [scannerActive]);
+
+  const startScanner = () => {
+    setScannerError('');
+    setScannerActive(true);
+  };
+
+  const stopScanner = async () => {
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.clear();
+      } catch { /* ignore */ }
+      scannerRef.current = null;
+    }
+    setScannerActive(false);
+  };
 
   const handleManualSearch = async () => {
     if (!bibInput.trim()) return;
@@ -154,27 +237,57 @@ export default function ScannerView() {
   const handleModalClose = () => {
     setSelectedRunner(null);
     fetchHistory();
-    fetchRunners();
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate('/admin/login', { replace: true });
   };
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <Sidebar />
 
-      <main className="ml-60 p-8 space-y-8">
+      <main className="lg:ml-60 pt-16 lg:pt-0 p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8">
         <div>
           <h2 className="text-2xl font-bold">Scanner</h2>
           <p className="text-gray-500 text-sm mt-1">Distribution des dossards</p>
         </div>
+
+        {/* QR Camera Scanner */}
+        <section className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6">
+          <h2 className="text-lg font-semibold mb-4">Scanner QR</h2>
+
+          {!scannerActive ? (
+            <button
+              onClick={startScanner}
+              className="flex items-center gap-2 rounded-lg bg-[#C42826] px-6 py-2.5 text-sm font-medium text-white hover:bg-[#a82220] transition cursor-pointer"
+            >
+              <Camera className="w-4 h-4" />
+              Scanner QR
+            </button>
+          ) : (
+            <button
+              onClick={stopScanner}
+              className="flex items-center gap-2 rounded-lg bg-gray-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-gray-800 transition cursor-pointer"
+            >
+              <StopCircle className="w-4 h-4" />
+              Arrêter le scanner
+            </button>
+          )}
+
+          {scannerActive && (
+            <div className="mt-4 w-full max-w-lg mx-auto">
+              <div id="qr-reader" className="rounded-lg overflow-hidden" />
+            </div>
+          )}
+
+          {scannerError && (
+            <div className="mt-3 rounded-lg bg-red-50 border border-red-200 px-4 py-2.5 text-sm text-red-600">
+              {scannerError}
+            </div>
+          )}
+        </section>
+
         {/* Manual Bib Search */}
-        <section className="bg-white border border-gray-200 rounded-xl p-6">
+        <section className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6">
           <h2 className="text-lg font-semibold mb-4">Recherche manuelle par dossard</h2>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <input
               type="text"
               placeholder="Numéro de dossard..."
@@ -200,14 +313,14 @@ export default function ScannerView() {
 
         {/* Session History */}
         <section>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <h2 className="text-lg font-semibold">Historique de session</h2>
             <input
               type="text"
               placeholder="Rechercher par nom ou dossard..."
               value={historySearch}
               onChange={(e) => setHistorySearch(e.target.value)}
-              className="w-72 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-[#C42826] transition"
+              className="w-full sm:w-72 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-[#C42826] transition"
             />
           </div>
           <div className="rounded-xl border border-gray-200 overflow-hidden bg-white">

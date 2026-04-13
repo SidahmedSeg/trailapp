@@ -232,7 +232,7 @@ export default function UserManagement() {
       <Sidebar />
 
       {/* Main */}
-      <main className="ml-60 p-8">
+      <main className="lg:ml-60 pt-16 lg:pt-0 p-4 sm:p-6 lg:p-8">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h2 className="text-2xl font-bold">Gestion des utilisateurs</h2>

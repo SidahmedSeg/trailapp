@@ -737,7 +737,7 @@ export default function Runners() {
       <Sidebar />
 
       {/* Main */}
-      <main className="ml-60 p-8">
+      <main className="lg:ml-60 pt-16 lg:pt-0 p-4 sm:p-6 lg:p-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>

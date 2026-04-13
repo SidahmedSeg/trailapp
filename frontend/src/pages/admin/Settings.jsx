@@ -180,7 +180,7 @@ export default function Settings() {
       <Sidebar />
 
       {/* Main */}
-      <main className="ml-60 p-8">
+      <main className="lg:ml-60 pt-16 lg:pt-0 p-4 sm:p-6 lg:p-8">
         <h2 className="text-2xl font-bold mb-1">Paramètres</h2>
         <p className="text-gray-500 text-sm mb-8">Configuration de l'application</p>
 

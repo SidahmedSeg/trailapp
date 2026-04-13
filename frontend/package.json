@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "html5-qrcode": "^2.3.8",
     "i18next": "^26.0.4",
     "i18next-browser-languagedetector": "^8.2.1",
     "lucide-react": "^1.8.0",
