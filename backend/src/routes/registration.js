@@ -18,13 +18,24 @@ async function registrationRoutes(fastify) {
       throw new AppError(400, 'Erreurs de validation', 'VALIDATION_ERROR');
     }
 
-    // Check email uniqueness
-    const existingEmail = await prisma.registration.findUnique({
-      where: { email: body.email.toLowerCase().trim() },
+    // Check email uniqueness — only block if there's a successful/manual registration
+    const existingEmail = await prisma.registration.findFirst({
+      where: {
+        email: body.email.toLowerCase().trim(),
+        paymentStatus: { in: ['success', 'manual', 'processing'] },
+      },
     });
     if (existingEmail) {
       throw new AppError(409, 'Cet email est déjà utilisé', 'EMAIL_TAKEN');
     }
+
+    // Delete any previous failed/pending registrations with this email
+    await prisma.registration.deleteMany({
+      where: {
+        email: body.email.toLowerCase().trim(),
+        paymentStatus: { in: ['pending', 'failed'] },
+      },
+    });
 
     // Build E.164 phone numbers
     const phone = buildE164(body.phoneCountryCode, body.phoneNumber);
@@ -79,8 +90,11 @@ async function registrationRoutes(fastify) {
       throw new AppError(400, 'Email requis', 'VALIDATION_ERROR');
     }
 
-    const existing = await prisma.registration.findUnique({
-      where: { email: email.toLowerCase().trim() },
+    const existing = await prisma.registration.findFirst({
+      where: {
+        email: email.toLowerCase().trim(),
+        paymentStatus: { in: ['success', 'manual', 'processing'] },
+      },
     });
 
     return { available: !existing };
