@@ -101,16 +101,9 @@ async function scannerRoutes(fastify) {
     return { data: registration };
   });
 
-  // GET /api/scan/session/history — current operator's session today
+  // GET /api/scan/session/history — all distributions
   fastify.get('/scan/session/history', async (request) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
     const sessions = await prisma.scannerSession.findMany({
-      where: {
-        operatorId: request.user.userId,
-        scannedAt: { gte: today },
-      },
       orderBy: { scannedAt: 'desc' },
     });
 
