@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { CircleX } from 'lucide-react';
+import { XCircle, RefreshCw, ArrowLeft, ShieldAlert, Mail } from 'lucide-react';
 import PublicLayout from '../../components/ui/PublicLayout';
 
 export default function Failed() {
@@ -44,35 +44,66 @@ export default function Failed() {
 
   return (
     <PublicLayout title={t('failed.title')}>
-      <div className="flex items-center justify-center px-4 py-20">
-        <div className="max-w-md w-full space-y-6">
-          <div className="bg-red-600 text-white rounded-2xl p-6 text-center shadow-sm">
-            <CircleX size={48} className="mx-auto mb-2 text-red-300" />
-            <h1 className="text-2xl font-bold">{t('failed.banner')}</h1>
-          </div>
+      <div className="flex items-center justify-center px-4 py-16">
+        <div className="max-w-lg w-full">
+          {/* Main card */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            {/* Top icon section */}
+            <div className="bg-gradient-to-b from-red-50 to-white pt-10 pb-6 text-center">
+              <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <XCircle size={40} className="text-[#C42826]" />
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900">{t('failed.banner')}</h1>
+              <p className="text-sm text-gray-500 mt-2 px-8">
+                {message || t('failed.message')}
+              </p>
+            </div>
 
-          <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4 text-center">
-            <p className="text-gray-600 text-sm">
-              {message || t('failed.message')}
-            </p>
+            {/* Info section */}
+            <div className="px-8 pb-8 space-y-4">
+              {/* What happened hints */}
+              <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Causes possibles</p>
+                <div className="flex items-start gap-3">
+                  <ShieldAlert size={16} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-gray-600">Transaction refusée par votre banque ou carte expirée</p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <RefreshCw size={16} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-gray-600">Délai de connexion dépassé ou session expirée</p>
+                </div>
+              </div>
 
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">{error}</div>
-            )}
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">{error}</div>
+              )}
 
-            {id && (
-              <button
-                onClick={handleRetry}
-                disabled={retrying}
-                className="w-full bg-[#C42826] hover:bg-[#a82220] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl text-base transition shadow-sm cursor-pointer"
-              >
-                {retrying ? t('common.redirecting') : t('failed.retry')}
-              </button>
-            )}
+              {/* Retry button */}
+              {id && (
+                <button
+                  onClick={handleRetry}
+                  disabled={retrying}
+                  className="w-full bg-[#C42826] hover:bg-[#a82220] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl text-base transition shadow-md hover:shadow-lg cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <RefreshCw size={18} className={retrying ? 'animate-spin' : ''} />
+                  {retrying ? t('common.redirecting') : t('failed.retry')}
+                </button>
+              )}
 
-            <Link to="/" className="inline-block text-sm text-gray-500 hover:text-[#C42826] transition">
-              {t('common.backHome')}
-            </Link>
+              {/* Contact support */}
+              <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
+                <Mail size={12} />
+                <span>Besoin d'aide ? <a href="mailto:contact@lassm.dz" className="text-[#C42826] hover:underline">contact@lassm.dz</a></span>
+              </div>
+
+              {/* Back link */}
+              <div className="text-center pt-2">
+                <Link to="/register" className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-[#C42826] transition">
+                  <ArrowLeft size={14} />
+                  {t('common.backHome')}
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </div>
