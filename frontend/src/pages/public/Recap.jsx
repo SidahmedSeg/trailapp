@@ -138,8 +138,8 @@ export default function Recap() {
             </div>
 
             {/* Right panel — Payment */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8 space-y-6">
-              <div className="flex items-center gap-3 pb-4 mb-4 border-b border-gray-100">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8 space-y-4">
+              <div className="flex items-center gap-3 pb-3 border-b border-gray-100">
                 <div className="w-9 h-9 rounded-lg bg-[#C42826]/10 flex items-center justify-center">
                   <ShieldCheck size={18} className="text-[#C42826]" />
                 </div>
