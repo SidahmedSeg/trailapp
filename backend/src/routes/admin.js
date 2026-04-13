@@ -267,6 +267,85 @@ async function adminRoutes(fastify) {
       bibsAttribues: bibsAuto,
     };
   });
+  // GET /api/admin/stats/charts — all chart data in one call
+  fastify.get('/stats/charts', async () => {
+    const where = { paymentStatus: { in: ['success', 'manual'] } };
+
+    const [
+      genderGroups,
+      categoryGroups,
+      tshirtGroups,
+      wilayaGroups,
+      allRegistrations,
+    ] = await Promise.all([
+      prisma.registration.groupBy({ by: ['gender'], where, _count: true }),
+      prisma.registration.groupBy({ by: ['runnerLevel'], where, _count: true }),
+      prisma.registration.groupBy({ by: ['tshirtSize'], where, _count: true }),
+      prisma.registration.groupBy({ by: ['wilaya'], where, _count: true, orderBy: { _count: { wilaya: 'desc' } }, take: 15 }),
+      prisma.registration.findMany({ where, select: { birthDate: true, countryOfResidence: true, createdAt: true } }),
+    ]);
+
+    // Gender
+    const gender = {};
+    genderGroups.forEach((g) => { gender[g.gender || 'Autre'] = g._count; });
+
+    // Nationality: Local (Algérie) vs International
+    let local = 0, international = 0;
+    allRegistrations.forEach((r) => {
+      if (r.countryOfResidence === 'Algérie') local++;
+      else international++;
+    });
+    const nationality = { 'Local (DZ)': local, 'International': international };
+
+    // Age ranges
+    const now = new Date();
+    const ageRanges = { '18-25': 0, '26-35': 0, '36-45': 0, '46-55': 0, '56-65': 0, '65+': 0 };
+    allRegistrations.forEach((r) => {
+      if (!r.birthDate) return;
+      const age = Math.floor((now - new Date(r.birthDate)) / (365.25 * 24 * 3600 * 1000));
+      if (age <= 25) ageRanges['18-25']++;
+      else if (age <= 35) ageRanges['26-35']++;
+      else if (age <= 45) ageRanges['36-45']++;
+      else if (age <= 55) ageRanges['46-55']++;
+      else if (age <= 65) ageRanges['56-65']++;
+      else ageRanges['65+']++;
+    });
+
+    // Categories (runner level)
+    const categories = {};
+    categoryGroups.forEach((g) => { categories[g.runnerLevel || 'Autre'] = g._count; });
+
+    // T-shirt sizes
+    const tshirtSizes = {};
+    tshirtGroups.forEach((g) => { tshirtSizes[g.tshirtSize || 'Autre'] = g._count; });
+
+    // Daily growth (last 7 days)
+    const dailyGrowth = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+
+      const count = allRegistrations.filter((r) => {
+        const d = new Date(r.createdAt);
+        return d >= dayStart && d < dayEnd;
+      }).length;
+
+      dailyGrowth.push({
+        date: dayStart.toISOString().split('T')[0],
+        count,
+      });
+    }
+
+    // Top wilayas
+    const topWilayas = wilayaGroups
+      .filter((g) => g.wilaya)
+      .map((g) => ({ wilaya: g.wilaya, count: g._count }));
+
+    return { gender, nationality, ageRanges, categories, tshirtSizes, dailyGrowth, topWilayas };
+  });
 }
 
 module.exports = adminRoutes;
