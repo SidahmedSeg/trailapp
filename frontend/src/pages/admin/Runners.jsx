@@ -1,13 +1,47 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { get, post, put } from '../../lib/api';
 import { getAccessToken } from '../../lib/auth';
 import { useAuth } from '../../hooks/useAuth';
 import Sidebar from '../../components/ui/Sidebar';
 import Select from 'react-select';
+import { ChevronDown } from 'lucide-react';
 import {
   flagUrl, COUNTRIES_DATA, PHONE_CODES, WILAYAS, COMMUNES_MAP,
   TSHIRT_SIZES, selectStyles, phoneSelectStyles,
 } from '../../data/formData';
+
+/* ─── Filter Dropdown ─── */
+function FilterDropdown({ value, onChange, options, placeholder }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const current = options.find((o) => o.value === value);
+
+  useEffect(() => {
+    function handleClick(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button onClick={() => setOpen(!open)}
+        className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm hover:bg-gray-100 transition cursor-pointer whitespace-nowrap">
+        {current?.label || placeholder}
+        <ChevronDown size={14} className={`text-gray-400 transition ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute start-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 min-w-[180px]">
+          {options.map((opt) => (
+            <button key={opt.value} onClick={() => { onChange(opt.value); setOpen(false); }}
+              className={`w-full text-start px-4 py-2 text-sm transition cursor-pointer ${
+                opt.value === value ? 'bg-[#C42826]/5 text-[#C42826] font-medium' : 'text-gray-700 hover:bg-gray-50'
+              }`}>{opt.label}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 /* ─── Constants ─── */
 const INPUT_CLS =
@@ -748,24 +782,26 @@ export default function Runners() {
             }}
             className="flex-1 min-w-[240px] rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-[#C42826] transition"
           />
-          <select
+          <FilterDropdown
             value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 outline-none focus:border-[#C42826] transition cursor-pointer"
-          >
-            <option value="">Tous les statuts</option>
-            <option value="en_attente">En attente</option>
-            <option value="distribué">Distribué</option>
-          </select>
-          <select
+            onChange={(v) => { setStatusFilter(v); setPage(1); }}
+            placeholder="Tous les statuts"
+            options={[
+              { value: '', label: 'Tous les statuts' },
+              { value: 'en_attente', label: 'En attente' },
+              { value: 'distribué', label: 'Distribué' },
+            ]}
+          />
+          <FilterDropdown
             value={sourceFilter}
-            onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}
-            className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 outline-none focus:border-[#C42826] transition cursor-pointer"
-          >
-            <option value="">Type d'inscription</option>
-            <option value="public">En ligne</option>
-            <option value="admin">VIP</option>
-          </select>
+            onChange={(v) => { setSourceFilter(v); setPage(1); }}
+            placeholder="Type d'inscription"
+            options={[
+              { value: '', label: "Type d'inscription" },
+              { value: 'public', label: 'En ligne' },
+              { value: 'admin', label: 'VIP' },
+            ]}
+          />
         </div>
 
         {/* Table */}
