@@ -164,7 +164,6 @@ export default function Settings() {
 
   const tabs = [
     { key: 'general', label: 'Général' },
-    { key: 'bibs', label: 'Dossards' },
     { key: 'security', label: 'Sécurité' },
   ];
 
@@ -240,95 +239,6 @@ export default function Settings() {
             <div className="pt-2">
               <button
                 onClick={handleSaveGeneral}
-                disabled={saving}
-                className="rounded-lg bg-[#C42826] px-6 py-2.5 text-sm font-medium text-white hover:bg-[#a82220] disabled:opacity-50 transition cursor-pointer"
-              >
-                {saving ? 'Sauvegarde...' : 'Sauvegarder'}
-              </button>
-            </div>
-          </Section>
-        )}
-
-        {/* Dossards */}
-        {tab === 'bibs' && settings && (
-          <Section title="Configuration des dossards">
-            <div className="grid grid-cols-2 gap-4">
-              <FormField label="Début de la plage">
-                <input
-                  type="number"
-                  value={settings.bibStart || ''}
-                  onChange={(e) => updateSetting('bibStart', parseInt(e.target.value) || 0)}
-                  disabled={settings.bibRangeLocked}
-                  className={inputClass}
-                />
-              </FormField>
-              <FormField label="Fin de la plage">
-                <input
-                  type="number"
-                  value={settings.bibEnd || ''}
-                  onChange={(e) => updateSetting('bibEnd', parseInt(e.target.value) || 0)}
-                  disabled={settings.bibRangeLocked}
-                  className={inputClass}
-                />
-              </FormField>
-            </div>
-            {settings.bibRangeLocked && (
-              <p className="text-xs text-amber-600">
-                La plage de dossards est verrouillée car des dossards ont déjà été attribués.
-              </p>
-            )}
-            <FormField label="Préfixe dossard" hint="Ex: TR pour TR-001">
-              <input
-                type="text"
-                value={settings.bibPrefix || ''}
-                onChange={(e) => updateSetting('bibPrefix', e.target.value)}
-                className={inputClass}
-              />
-            </FormField>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-700">Fermeture automatique</p>
-                <p className="text-xs text-gray-400 mt-0.5">Fermer les inscriptions quand tous les dossards sont attribués</p>
-              </div>
-              <Toggle checked={settings.autoCloseOnExhaustion || false} onChange={(v) => updateSetting('autoCloseOnExhaustion', v)} />
-            </div>
-
-            {/* Read-only stats */}
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide pt-2">Plage automatique ({settings.bibStart}–{settings.bibEnd})</p>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-center">
-                <p className="text-xs text-gray-500 mb-1">Utilisés</p>
-                <p className="text-lg font-bold text-emerald-700">{settings.bibsAutoUsed ?? '—'}</p>
-              </div>
-              <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-center">
-                <p className="text-xs text-gray-500 mb-1">Restants</p>
-                <p className="text-lg font-bold text-amber-700">{settings.bibsRemaining ?? '—'}</p>
-              </div>
-              <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-center">
-                <p className="text-xs text-gray-500 mb-1">Occupation</p>
-                <p className="text-lg font-bold text-blue-700">{settings.bibsOccupation ?? 0}%</p>
-              </div>
-            </div>
-
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Plage manuelle (1–{(settings.bibStart || 101) - 1})</p>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="rounded-lg bg-purple-50 border border-purple-200 p-3 text-center">
-                <p className="text-xs text-gray-500 mb-1">Total</p>
-                <p className="text-lg font-bold text-purple-700">{settings.bibsManualTotal ?? '—'}</p>
-              </div>
-              <div className="rounded-lg bg-purple-50 border border-purple-200 p-3 text-center">
-                <p className="text-xs text-gray-500 mb-1">Utilisés</p>
-                <p className="text-lg font-bold text-purple-700">{settings.bibsManualUsed ?? '—'}</p>
-              </div>
-              <div className="rounded-lg bg-purple-50 border border-purple-200 p-3 text-center">
-                <p className="text-xs text-gray-500 mb-1">Restants</p>
-                <p className="text-lg font-bold text-purple-700">{settings.bibsManualRestants ?? '—'}</p>
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <button
-                onClick={handleSaveBibs}
                 disabled={saving}
                 className="rounded-lg bg-[#C42826] px-6 py-2.5 text-sm font-medium text-white hover:bg-[#a82220] disabled:opacity-50 transition cursor-pointer"
               >
