@@ -93,18 +93,18 @@ async function getOrderStatus(satimOrderId) {
   });
 
   return {
-    orderStatus: data.orderStatus,     // 0=registered, 1=pre-authorized, 2=deposited (success)
-    actionCode: data.actionCode,       // 0=success
+    orderStatus: data.OrderStatus ?? data.orderStatus,     // 0=registered, 1=pre-authorized, 2=deposited (success)
+    actionCode: data.actionCode,                           // 0=success
     actionCodeDescription: data.actionCodeDescription,
-    amount: data.amount,
-    pan: data.Pan,                     // masked card number
+    amount: data.Amount ?? data.amount,
+    pan: data.Pan,                                         // masked card number
     cardholderName: data.cardholderName,
     approvalCode: data.approvalCode,
-    errorCode: data.errorCode,
-    errorMessage: data.errorMessage,
-    orderNumber: data.orderNumber,     // our original order ID
+    errorCode: data.ErrorCode ?? data.errorCode,
+    errorMessage: data.ErrorMessage ?? data.errorMessage,
+    orderNumber: data.OrderNumber ?? data.orderNumber,     // our original order ID
     depositAmount: data.depositAmount,
-    params: data.params,               // contains force_terminal_id etc.
+    params: data.params,
   };
 }
 
