@@ -6,12 +6,14 @@ import {
   ClipboardList,
   Users,
   Settings,
+  Ticket,
   LogOut,
 } from 'lucide-react';
 
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Tableau de bord' },
   { to: '/admin/scan', icon: ScanLine, label: 'Scanner' },
+  { to: '/admin/bibs', icon: Ticket, label: 'Dossards' },
   { to: '/admin/activity', icon: ClipboardList, label: 'Activité' },
   { to: '/admin/users', icon: Users, label: 'Utilisateurs', superOnly: true },
   { to: '/admin/settings', icon: Settings, label: 'Paramètres' },

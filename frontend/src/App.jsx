@@ -25,6 +25,7 @@ const Login = lazy(() => import('./pages/admin/Login'));
 const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
 const ScannerView = lazy(() => import('./pages/admin/ScannerView'));
 const Settings = lazy(() => import('./pages/admin/Settings'));
+const Bibs = lazy(() => import('./pages/admin/Bibs'));
 const Activity = lazy(() => import('./pages/admin/Activity'));
 const UserManagement = lazy(() => import('./pages/admin/UserManagement'));
 
@@ -66,6 +67,7 @@ export default function App() {
           <Route path="/admin" element={<AdminRoute><Dashboard /></AdminRoute>} />
           <Route path="/admin/scan" element={<AdminRoute><ScannerView /></AdminRoute>} />
           <Route path="/admin/settings" element={<AdminRoute><Settings /></AdminRoute>} />
+          <Route path="/admin/bibs" element={<AdminRoute><Bibs /></AdminRoute>} />
           <Route path="/admin/activity" element={<AdminRoute><Activity /></AdminRoute>} />
           <Route path="/admin/users" element={<AdminRoute><UserManagement /></AdminRoute>} />
         </Routes>
