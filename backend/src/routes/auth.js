@@ -412,6 +412,56 @@ async function authRoutes(fastify) {
 
     return { success: true };
   });
+
+  // PUT /api/admin/settings/security — update own account (email, password)
+  fastify.put('/settings/security', {
+    preHandler: [authenticate],
+  }, async (request) => {
+    const { displayName, email, currentPassword, newPassword } = request.body || {};
+    const userId = request.user.userId;
+
+    const user = await prisma.adminUser.findUnique({ where: { id: userId } });
+    if (!user) throw new AppError(404, 'Utilisateur non trouvé', 'NOT_FOUND');
+
+    const updateData = {};
+
+    // Update email if provided and different
+    if (email && email !== user.email) {
+      const emailTaken = await prisma.adminUser.findUnique({ where: { email } });
+      if (emailTaken) throw new AppError(409, 'Cet email est déjà utilisé', 'EMAIL_TAKEN');
+      updateData.email = email;
+    }
+
+    // Update username/displayName if provided
+    if (displayName && displayName !== user.username) {
+      const usernameTaken = await prisma.adminUser.findUnique({ where: { username: displayName } });
+      if (usernameTaken) throw new AppError(409, 'Ce nom d\'utilisateur est déjà pris', 'USERNAME_TAKEN');
+      updateData.username = displayName;
+    }
+
+    // Update password if provided
+    if (newPassword) {
+      if (!currentPassword) {
+        throw new AppError(400, 'Le mot de passe actuel est requis', 'CURRENT_PASSWORD_REQUIRED');
+      }
+      const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!valid) {
+        throw new AppError(401, 'Mot de passe actuel incorrect', 'INVALID_PASSWORD');
+      }
+      if (newPassword.length < 8) {
+        throw new AppError(400, 'Le nouveau mot de passe doit contenir au moins 8 caractères', 'PASSWORD_TOO_SHORT');
+      }
+      updateData.passwordHash = await bcrypt.hash(newPassword, 12);
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return { success: true, message: 'Aucune modification' };
+    }
+
+    await prisma.adminUser.update({ where: { id: userId }, data: updateData });
+
+    return { success: true, message: 'Informations mises à jour' };
+  });
 }
 
 module.exports = authRoutes;

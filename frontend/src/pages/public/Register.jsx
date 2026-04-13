@@ -472,7 +472,7 @@ export default function Register() {
           <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
             <SectionHeader icon={Trophy} title={t('register.sections.level')} />
             <div>
-              <label className={labelCls}>{t('register.fields.runnerLevel') || t('register.sections.level')}<span className="text-[#C42826] ms-0.5">*</span></label>
+              <label className={labelCls}>{t('register.fields.level')}<span className="text-[#C42826] ms-0.5">*</span></label>
               <Select
                 styles={selectStyles}
                 options={levelOptions}
