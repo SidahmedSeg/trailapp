@@ -74,9 +74,10 @@ async function main() {
   // 4. Redis bib:next (SET NX — only if not exists)
   const redisUrl = process.env.REDIS_URL || 'redis://localhost:8823';
   const redis = new Redis(redisUrl);
-  const wasSet = await redis.set('bib:next', settings.bibStart, 'NX');
+  const initValue = settings.bibStart - 1; // INCR returns bibStart on first call
+  const wasSet = await redis.set('bib:next', initValue, 'NX');
   if (wasSet) {
-    console.log(`Redis bib:next initialized to ${settings.bibStart}`);
+    console.log(`Redis bib:next initialized to ${initValue} (first INCR gives ${settings.bibStart})`);
   } else {
     const current = await redis.get('bib:next');
     console.log(`Redis bib:next already exists: ${current}`);
