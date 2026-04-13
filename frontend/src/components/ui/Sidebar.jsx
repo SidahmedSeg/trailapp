@@ -5,6 +5,7 @@ import {
   ScanLine,
   ClipboardList,
   Users,
+  UserCheck,
   Settings,
   Ticket,
   LogOut,
@@ -12,6 +13,7 @@ import {
 
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Tableau de bord' },
+  { to: '/admin/runners', icon: UserCheck, label: 'Coureurs' },
   { to: '/admin/scan', icon: ScanLine, label: 'Scanner' },
   { to: '/admin/bibs', icon: Ticket, label: 'Dossards' },
   { to: '/admin/activity', icon: ClipboardList, label: 'Activité' },

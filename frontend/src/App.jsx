@@ -23,6 +23,7 @@ import LegalNotice from './pages/public/LegalNotice';
 // Admin pages (lazy loaded)
 const Login = lazy(() => import('./pages/admin/Login'));
 const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
+const Runners = lazy(() => import('./pages/admin/Runners'));
 const ScannerView = lazy(() => import('./pages/admin/ScannerView'));
 const Settings = lazy(() => import('./pages/admin/Settings'));
 const Bibs = lazy(() => import('./pages/admin/Bibs'));
@@ -65,6 +66,7 @@ export default function App() {
           {/* Admin routes */}
           <Route path="/admin/login" element={<Login />} />
           <Route path="/admin" element={<AdminRoute><Dashboard /></AdminRoute>} />
+          <Route path="/admin/runners" element={<AdminRoute><Runners /></AdminRoute>} />
           <Route path="/admin/scan" element={<AdminRoute><ScannerView /></AdminRoute>} />
           <Route path="/admin/settings" element={<AdminRoute><Settings /></AdminRoute>} />
           <Route path="/admin/bibs" element={<AdminRoute><Bibs /></AdminRoute>} />
