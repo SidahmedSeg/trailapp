@@ -178,7 +178,10 @@ async function paymentRoutes(fastify) {
           data: { paymentStatus: 'failed' },
         });
 
-        return reply.redirect(`${env.APP_URL}/failed?id=${registrationId}`);
+        const reason = encodeURIComponent(
+          satimStatus.actionCodeDescription || satimStatus.errorMessage || `Code erreur: ${satimStatus.actionCode || satimStatus.errorCode || 'inconnu'}`
+        );
+        return reply.redirect(`${env.APP_URL}/failed?id=${registrationId}&reason=${reason}`);
       }
     } catch (err) {
       request.log.error(err, 'Payment callback error');
