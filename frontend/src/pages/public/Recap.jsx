@@ -139,7 +139,7 @@ export default function Recap() {
 
             {/* Right panel — Payment */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8 space-y-6">
-              <div className="flex items-center gap-3 pb-4 mb-1 border-b border-gray-100">
+              <div className="flex items-center gap-3 pb-4 mb-4 border-b border-gray-100">
                 <div className="w-9 h-9 rounded-lg bg-[#C42826]/10 flex items-center justify-center">
                   <ShieldCheck size={18} className="text-[#C42826]" />
                 </div>
@@ -161,10 +161,10 @@ export default function Recap() {
               </div>
 
               {/* Secure redirect notice */}
-              <div className="flex items-start gap-3 bg-blue-50 rounded-xl px-4 py-3">
-                <Lock size={16} className="text-blue-500 mt-0.5 flex-shrink-0" />
-                <p className="text-xs text-blue-700 leading-relaxed">
-                  Vous serez dirigé vers un site de paiement en ligne sécurisé à l'étape suivante pour finaliser votre inscription et effectuer votre paiement.
+              <div className="flex items-center gap-2 bg-blue-50/70 rounded-lg px-3 py-2">
+                <Lock size={13} className="text-blue-400 flex-shrink-0" />
+                <p className="text-[11px] text-blue-600 leading-snug">
+                  Vous serez dirigé vers un site de paiement sécurisé pour finaliser votre paiement.
                 </p>
               </div>
 
