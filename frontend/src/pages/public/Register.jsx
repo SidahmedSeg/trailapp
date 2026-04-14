@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import Select from 'react-select';
 import { Check, X, Loader2, Ban, User, Mail, MapPin, Phone, Shirt, Trophy, FileCheck } from 'lucide-react';
 import PublicLayout from '../../components/ui/PublicLayout';
+import { COMMUNES_MAP } from '../../data/formData';
 
 // --- Data ---
 const flagUrl = (code) => `https://flagcdn.com/w40/${code.toLowerCase()}.png`;
@@ -53,19 +54,6 @@ const WILAYAS = [
   '57 - In Salah', '58 - In Guezzam',
 ].map((w) => ({ value: w, label: w }));
 
-const COMMUNES_MAP = {
-  '16 - Alger': ['Alger Centre', 'Bab El Oued', 'Bir Mourad Raïs', 'El Biar', 'Hussein Dey', 'Kouba', 'Bab Ezzouar', 'Dar El Beïda', 'Rouiba', 'Reghaia'],
-  '31 - Oran': ['Oran', 'Bir El Djir', 'Es Sénia', 'Aïn El Turk', 'Arzew'],
-  '25 - Constantine': ['Constantine', 'El Khroub', 'Aïn Smara', 'Hamma Bouziane'],
-  '09 - Blida': ['Blida', 'Boufarik', 'Bougara', 'Mouzaia'],
-  '06 - Béjaïa': ['Béjaïa', 'Akbou', 'Amizour', 'El Kseur'],
-  '15 - Tizi Ouzou': ['Tizi Ouzou', 'Azazga', 'Draâ El Mizan', 'Larbaâ Nath Irathen'],
-  '35 - Boumerdès': ['Boumerdès', 'Bordj Menaïel', 'Dellys', 'Khemis El Khechna'],
-  '42 - Tipaza': ['Tipaza', 'Cherchell', 'Koléa', 'Hadjout'],
-  '05 - Batna': ['Batna', 'Barika', 'Merouana', 'Aïn Touta'],
-  '19 - Sétif': ['Sétif', 'El Eulma', 'Aïn Oulmène', 'Bougaa'],
-  '23 - Annaba': ['Annaba', 'El Bouni', 'El Hadjar', 'Berrahal'],
-};
 
 const TSHIRT_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 
