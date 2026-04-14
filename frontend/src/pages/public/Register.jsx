@@ -383,6 +383,7 @@ export default function Register() {
                   placeholder={t('common.choose')}
                   isClearable
                 />
+                <FieldError name="gender" />
               </div>
               <div className="sm:col-span-2">
                 <label className={labelCls}>{t('register.fields.nationality')}<span className="text-[#C42826] ms-0.5">*</span></label>
@@ -394,6 +395,7 @@ export default function Register() {
                   placeholder={t('common.choose')}
                   filterOption={(option, input) => option.data.textLabel.toLowerCase().includes(input.toLowerCase())}
                 />
+                <FieldError name="nationality" />
               </div>
             </div>
           </section>
@@ -455,8 +457,10 @@ export default function Register() {
                   options={countryOptions}
                   value={countryOptions.find((c) => c.value === form.countryOfResidence) || null}
                   onChange={(opt) => update('countryOfResidence', opt?.value || '')}
+                  placeholder={t('common.choose')}
                   filterOption={(option, input) => option.data.textLabel.toLowerCase().includes(input.toLowerCase())}
                 />
+                <FieldError name="countryOfResidence" />
               </div>
               {isAlgeria && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -532,6 +536,7 @@ export default function Register() {
                   >{size}</button>
                 ))}
               </div>
+              <FieldError name="tshirtSize" />
             </div>
           </section>
 
@@ -547,6 +552,7 @@ export default function Register() {
                 onChange={(opt) => update('runnerLevel', opt?.value || '')}
                 placeholder={t('common.choose')}
               />
+              <FieldError name="runnerLevel" />
             </div>
           </section>
 
@@ -749,49 +755,67 @@ function Article({ title, children }) {
 }
 
 function BirthDatePicker({ value, onChange, error }) {
-  const [day, setDay] = useState('');
-  const [month, setMonth] = useState('');
-  const [year, setYear] = useState('');
+  const [day, setDay] = useState(null);
+  const [month, setMonth] = useState(null);
+  const [year, setYear] = useState(null);
 
   useEffect(() => {
     if (value) {
       const [y, m, d] = value.split('-');
-      setYear(y || ''); setMonth(m || ''); setDay(d || '');
+      if (y) setYear({ value: y, label: y });
+      if (m) setMonth(monthOptions.find((o) => o.value === m) || null);
+      if (d) setDay({ value: String(parseInt(d, 10)), label: String(parseInt(d, 10)) });
     }
   }, []);
 
   const updateDate = (d, m, y) => {
-    if (d && m && y && y.length === 4) {
-      onChange(`${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`);
+    if (d?.value && m?.value && y?.value) {
+      onChange(`${y.value}-${m.value.padStart(2, '0')}-${d.value.padStart(2, '0')}`);
     }
   };
 
-  const selCls = `rounded-xl border ${error ? 'border-red-300 bg-red-50/30' : 'border-gray-200 bg-gray-50/50'} px-3 py-3 text-sm text-gray-900 outline-none focus:border-[#C42826] focus:ring-2 focus:ring-[#C42826]/10 transition cursor-pointer appearance-none`;
-
-  const days = Array.from({ length: 31 }, (_, i) => i + 1);
-  const months = [
-    { v: '01', l: 'Janvier' }, { v: '02', l: 'Février' }, { v: '03', l: 'Mars' },
-    { v: '04', l: 'Avril' }, { v: '05', l: 'Mai' }, { v: '06', l: 'Juin' },
-    { v: '07', l: 'Juillet' }, { v: '08', l: 'Août' }, { v: '09', l: 'Septembre' },
-    { v: '10', l: 'Octobre' }, { v: '11', l: 'Novembre' }, { v: '12', l: 'Décembre' },
-  ];
+  const dayOptions = Array.from({ length: 31 }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }));
   const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 80 }, (_, i) => currentYear - 19 - i);
+  const yearOptions = Array.from({ length: 80 }, (_, i) => {
+    const y = currentYear - 19 - i;
+    return { value: String(y), label: String(y) };
+  });
+
+  const dateSelectStyles = {
+    control: (base, state) => ({
+      ...base,
+      borderRadius: '0.75rem',
+      borderColor: error ? '#fca5a5' : state.isFocused ? '#C42826' : '#e5e7eb',
+      backgroundColor: error ? 'rgba(254,242,242,0.3)' : '#fafafa',
+      boxShadow: state.isFocused ? '0 0 0 2px rgba(196,40,38,0.1)' : 'none',
+      padding: '4px 0',
+      '&:hover': { borderColor: '#C42826' },
+    }),
+    option: (base, state) => ({
+      ...base,
+      backgroundColor: state.isSelected ? '#C42826' : state.isFocused ? '#fde8e8' : 'white',
+      color: state.isSelected ? 'white' : '#1f2937',
+      fontSize: '0.875rem',
+    }),
+    singleValue: (base) => ({ ...base, fontSize: '0.875rem' }),
+    placeholder: (base) => ({ ...base, fontSize: '0.875rem', color: '#9ca3af' }),
+  };
 
   return (
     <div className="grid grid-cols-3 gap-2">
-      <select value={day} onChange={(e) => { setDay(e.target.value); updateDate(e.target.value, month, year); }} className={selCls}>
-        <option value="">Jour</option>
-        {days.map((d) => <option key={d} value={String(d)}>{d}</option>)}
-      </select>
-      <select value={month} onChange={(e) => { setMonth(e.target.value); updateDate(day, e.target.value, year); }} className={selCls}>
-        <option value="">Mois</option>
-        {months.map((m) => <option key={m.v} value={m.v}>{m.l}</option>)}
-      </select>
-      <select value={year} onChange={(e) => { setYear(e.target.value); updateDate(day, month, e.target.value); }} className={selCls}>
-        <option value="">Année</option>
-        {years.map((y) => <option key={y} value={String(y)}>{y}</option>)}
-      </select>
+      <Select styles={dateSelectStyles} options={dayOptions} value={day} placeholder="Jour"
+        onChange={(v) => { setDay(v); updateDate(v, month, year); }} />
+      <Select styles={dateSelectStyles} options={monthOptions} value={month} placeholder="Mois"
+        onChange={(v) => { setMonth(v); updateDate(day, v, year); }} />
+      <Select styles={dateSelectStyles} options={yearOptions} value={year} placeholder="Année"
+        onChange={(v) => { setYear(v); updateDate(day, month, v); }} isSearchable />
     </div>
   );
 }
+
+const monthOptions = [
+  { value: '01', label: 'Janvier' }, { value: '02', label: 'Février' }, { value: '03', label: 'Mars' },
+  { value: '04', label: 'Avril' }, { value: '05', label: 'Mai' }, { value: '06', label: 'Juin' },
+  { value: '07', label: 'Juillet' }, { value: '08', label: 'Août' }, { value: '09', label: 'Septembre' },
+  { value: '10', label: 'Octobre' }, { value: '11', label: 'Novembre' }, { value: '12', label: 'Décembre' },
+];
