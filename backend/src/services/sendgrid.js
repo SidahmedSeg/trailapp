@@ -70,6 +70,7 @@ async function sendInvitationEmail(user, inviteLink) {
 
   const body = template.body
     .replace(/\{\{prenom\}\}/g, user.username)
+    .replace(/\{\{username\}\}/g, user.username)
     .replace(/\{\{role\}\}/g, user.role)
     .replace(/\{\{lien\}\}/g, inviteLink);
 

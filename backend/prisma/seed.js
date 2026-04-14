@@ -64,6 +64,7 @@ async function main() {
       subject: 'Invitation - Trail des Mouflons d\'Or 2026',
       body: `<h1>Bienvenue {{prenom}} !</h1>
 <p>Vous avez été invité comme <strong>{{role}}</strong> sur la plateforme Trail des Mouflons d'Or 2026.</p>
+<p>Votre nom d'utilisateur : <strong>{{username}}</strong></p>
 <p>Cliquez sur le lien ci-dessous pour créer votre mot de passe :</p>
 <p><a href="{{lien}}">Créer mon mot de passe</a></p>
 <p>Ce lien expire dans 48 heures.</p>`,
