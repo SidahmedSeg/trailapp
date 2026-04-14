@@ -17,7 +17,7 @@ async function scannerRoutes(fastify) {
       where: { qrToken },
       select: {
         id: true, firstName: true, lastName: true,
-        email: true, phone: true, bibNumber: true,
+        email: true, phone: true, bibNumber: true, qrToken: true,
         status: true, tshirtSize: true, distributedAt: true,
       },
     });
