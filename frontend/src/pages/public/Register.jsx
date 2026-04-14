@@ -145,13 +145,14 @@ export default function Register() {
 
   const [form, setForm] = useState({
     lastName: '', firstName: '', birthDate: '', gender: '',
-    nationality: 'Algérie', phoneCountryCode: '+213', phoneNumber: '',
+    nationality: '', phoneCountryCode: '+213', phoneNumber: '',
     email: '', confirmEmail: '',
-    countryOfResidence: 'Algérie', wilaya: '', commune: '', ville: '',
+    countryOfResidence: '', wilaya: '', commune: '', ville: '',
     emergencyPhoneCountryCode: '+213', emergencyPhoneNumber: '',
     tshirtSize: '', runnerLevel: '',
     declarationFit: false, declarationRules: false, declarationImage: false,
   });
+  const [fieldErrors, setFieldErrors] = useState({});
 
   // Build translated options inside the component so t() is available
   const genderOptions = [
@@ -210,13 +211,75 @@ export default function Register() {
     }, 400);
   }
 
+  function validateForm() {
+    const errors = {};
+
+    // Phone format: if +213 and starts with 0, strip it; must be 9 digits starting with 5/6/7
+    if (form.phoneCountryCode === '+213') {
+      const num = form.phoneNumber.replace(/^0+/, '');
+      if (!/^[567]\d{8}$/.test(num)) {
+        errors.phoneNumber = 'Le numéro doit contenir 9 chiffres et commencer par 5, 6 ou 7 (sans le 0)';
+      }
+    } else if (!form.phoneNumber || !/^\d+$/.test(form.phoneNumber)) {
+      errors.phoneNumber = 'Numéro de téléphone invalide';
+    }
+
+    // Emergency phone format
+    if (form.emergencyPhoneCountryCode === '+213') {
+      const num = form.emergencyPhoneNumber.replace(/^0+/, '');
+      if (!/^[567]\d{8}$/.test(num)) {
+        errors.emergencyPhoneNumber = 'Le numéro doit contenir 9 chiffres et commencer par 5, 6 ou 7 (sans le 0)';
+      }
+    } else if (!form.emergencyPhoneNumber || !/^\d+$/.test(form.emergencyPhoneNumber)) {
+      errors.emergencyPhoneNumber = 'Numéro de téléphone invalide';
+    }
+
+    // Emergency phone != mobile phone
+    const fullPhone = form.phoneCountryCode + form.phoneNumber.replace(/^0+/, '');
+    const fullEmergency = form.emergencyPhoneCountryCode + form.emergencyPhoneNumber.replace(/^0+/, '');
+    if (fullPhone && fullEmergency && fullPhone === fullEmergency) {
+      errors.emergencyPhoneNumber = "Le numéro d'urgence ne peut pas être identique au numéro mobile";
+    }
+
+    // Age check
+    if (form.birthDate) {
+      const birth = new Date(form.birthDate);
+      const today = new Date();
+      let age = today.getFullYear() - birth.getFullYear();
+      const m = today.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+      if (age < 19) {
+        errors.birthDate = 'Vous devez avoir au moins 19 ans pour participer';
+      }
+    }
+
+    // Required dropdowns
+    if (!form.nationality) errors.nationality = 'Veuillez choisir votre nationalité';
+    if (!form.gender) errors.gender = 'Veuillez choisir votre genre';
+    if (!form.countryOfResidence) errors.countryOfResidence = 'Veuillez choisir votre pays de résidence';
+    if (!form.tshirtSize) errors.tshirtSize = 'Veuillez choisir une taille';
+    if (!form.runnerLevel) errors.runnerLevel = 'Veuillez choisir votre niveau';
+
+    if (form.email !== form.confirmEmail) {
+      errors.confirmEmail = t('register.errors.emailMismatch');
+    }
+
+    return errors;
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
+    setFieldErrors({});
 
-    if (form.email !== form.confirmEmail) {
-      setError(t('register.errors.emailMismatch')); return;
+    // Client-side validation
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setError('Veuillez corriger les erreurs ci-dessous');
+      return;
     }
+
     if (!form.declarationFit || !form.declarationRules || !form.declarationImage) {
       setError(t('register.errors.declarationsRequired')); return;
     }
@@ -224,12 +287,19 @@ export default function Register() {
       setError(t('register.errors.emailTaken')); return;
     }
 
+    // Strip leading 0 from phone numbers before submitting
+    const submitData = {
+      ...form,
+      phoneNumber: form.phoneNumber.replace(/^0+/, ''),
+      emergencyPhoneNumber: form.emergencyPhoneNumber.replace(/^0+/, ''),
+    };
+
     setSubmitting(true);
     try {
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(submitData),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -272,7 +342,9 @@ export default function Register() {
   const isAlgeria = form.countryOfResidence === 'Algérie';
 
   const inputCls = 'w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-[#C42826] focus:ring-2 focus:ring-[#C42826]/10 focus:bg-white transition';
+  const inputErrCls = 'w-full rounded-xl border border-red-300 bg-red-50/30 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/10 transition';
   const labelCls = 'block text-sm font-medium text-gray-700 mb-1.5';
+  const FieldError = ({ name }) => fieldErrors[name] ? <p className="text-xs text-red-500 mt-1">{fieldErrors[name]}</p> : null;
 
   return (
     <PublicLayout title={t('register.title')}>
@@ -294,7 +366,12 @@ export default function Register() {
               </div>
               <div>
                 <label className={labelCls}>{t('register.fields.birthDate')}<span className="text-[#C42826] ms-0.5">*</span></label>
-                <input type="date" className={inputCls} required value={form.birthDate} onChange={(e) => update('birthDate', e.target.value)} />
+                <BirthDatePicker
+                  value={form.birthDate}
+                  onChange={(v) => update('birthDate', v)}
+                  error={fieldErrors.birthDate}
+                />
+                <FieldError name="birthDate" />
               </div>
               <div>
                 <label className={labelCls}>{t('register.fields.gender')}<span className="text-[#C42826] ms-0.5">*</span></label>
@@ -338,7 +415,8 @@ export default function Register() {
                       isSearchable
                     />
                   </div>
-                  <input type="tel" className={inputCls} required placeholder={t('register.placeholders.phone')} value={form.phoneNumber} onChange={(e) => update('phoneNumber', e.target.value)} />
+                  <input type="tel" className={fieldErrors.phoneNumber ? inputErrCls : inputCls} required placeholder={t('register.placeholders.phone')} value={form.phoneNumber} onChange={(e) => update('phoneNumber', e.target.value)} />
+                  <FieldError name="phoneNumber" />
                 </div>
               </div>
               <div>
@@ -432,7 +510,8 @@ export default function Register() {
                     isSearchable
                   />
                 </div>
-                <input type="tel" className={inputCls} required placeholder={t('register.placeholders.emergencyPhone')} value={form.emergencyPhoneNumber} onChange={(e) => update('emergencyPhoneNumber', e.target.value)} />
+                <input type="tel" className={fieldErrors.emergencyPhoneNumber ? inputErrCls : inputCls} required placeholder={t('register.placeholders.emergencyPhone')} value={form.emergencyPhoneNumber} onChange={(e) => update('emergencyPhoneNumber', e.target.value)} />
+                <FieldError name="emergencyPhoneNumber" />
               </div>
             </div>
           </section>
@@ -665,6 +744,54 @@ function Article({ title, children }) {
     <div>
       <h4 className="font-bold text-gray-900 mb-2">{title}</h4>
       <div className="space-y-2">{children}</div>
+    </div>
+  );
+}
+
+function BirthDatePicker({ value, onChange, error }) {
+  const [day, setDay] = useState('');
+  const [month, setMonth] = useState('');
+  const [year, setYear] = useState('');
+
+  useEffect(() => {
+    if (value) {
+      const [y, m, d] = value.split('-');
+      setYear(y || ''); setMonth(m || ''); setDay(d || '');
+    }
+  }, []);
+
+  const updateDate = (d, m, y) => {
+    if (d && m && y && y.length === 4) {
+      onChange(`${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`);
+    }
+  };
+
+  const selCls = `rounded-xl border ${error ? 'border-red-300 bg-red-50/30' : 'border-gray-200 bg-gray-50/50'} px-3 py-3 text-sm text-gray-900 outline-none focus:border-[#C42826] focus:ring-2 focus:ring-[#C42826]/10 transition cursor-pointer appearance-none`;
+
+  const days = Array.from({ length: 31 }, (_, i) => i + 1);
+  const months = [
+    { v: '01', l: 'Janvier' }, { v: '02', l: 'Février' }, { v: '03', l: 'Mars' },
+    { v: '04', l: 'Avril' }, { v: '05', l: 'Mai' }, { v: '06', l: 'Juin' },
+    { v: '07', l: 'Juillet' }, { v: '08', l: 'Août' }, { v: '09', l: 'Septembre' },
+    { v: '10', l: 'Octobre' }, { v: '11', l: 'Novembre' }, { v: '12', l: 'Décembre' },
+  ];
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 80 }, (_, i) => currentYear - 19 - i);
+
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      <select value={day} onChange={(e) => { setDay(e.target.value); updateDate(e.target.value, month, year); }} className={selCls}>
+        <option value="">Jour</option>
+        {days.map((d) => <option key={d} value={String(d)}>{d}</option>)}
+      </select>
+      <select value={month} onChange={(e) => { setMonth(e.target.value); updateDate(day, e.target.value, year); }} className={selCls}>
+        <option value="">Mois</option>
+        {months.map((m) => <option key={m.v} value={m.v}>{m.l}</option>)}
+      </select>
+      <select value={year} onChange={(e) => { setYear(e.target.value); updateDate(day, month, e.target.value); }} className={selCls}>
+        <option value="">Année</option>
+        {years.map((y) => <option key={y} value={String(y)}>{y}</option>)}
+      </select>
     </div>
   );
 }
