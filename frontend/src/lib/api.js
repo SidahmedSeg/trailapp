@@ -23,7 +23,9 @@ async function api(path, options = {}) {
   });
 
   // On 401, attempt a silent token refresh and retry once
-  if (res.status === 401) {
+  // Skip refresh for auth endpoints (login, verify-otp, set-password)
+  const skipRefresh = path.includes('/login') || path.includes('/verify-otp') || path.includes('/set-password');
+  if (res.status === 401 && !skipRefresh) {
     try {
       const newToken = await refreshAccessToken();
       if (newToken) {
