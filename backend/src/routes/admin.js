@@ -3,6 +3,7 @@ const { logActivity } = require('../middleware/activityLogger');
 const { validateManualBib } = require('../services/bib');
 const { validateRegistration, buildE164 } = require('../schemas/registration');
 const { generateCSV } = require('../services/csv');
+const { sendConfirmationEmail } = require('../services/sendgrid');
 const { AppError } = require('../utils/errors');
 const { v4: uuidv4 } = require('uuid');
 
@@ -151,6 +152,9 @@ async function adminRoutes(fastify) {
       targetId: registration.id,
       details: { bibNumber, name: `${body.firstName} ${body.lastName}` },
     });
+
+    // Send confirmation email with PDF (async, don't block response)
+    sendConfirmationEmail(registration).catch(console.error);
 
     return { data: registration };
   });
