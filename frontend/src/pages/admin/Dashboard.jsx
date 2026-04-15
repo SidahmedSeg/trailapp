@@ -117,8 +117,11 @@ export default function Dashboard() {
   const genderData = charts?.gender ? Object.entries(charts.gender).map(([name, value]) => ({ name, value })) : [];
   const nationalityData = charts?.nationality ? Object.entries(charts.nationality).map(([name, value]) => ({ name, value })) : [];
   const ageData = charts?.ageRanges ? Object.entries(charts.ageRanges).map(([name, value]) => ({ name, value })) : [];
-  const categoryData = charts?.categories ? Object.entries(charts.categories).map(([name, value]) => ({ name, value })) : [];
-  const tshirtData = charts?.tshirtSizes ? Object.entries(charts.tshirtSizes).map(([name, value]) => ({ name, value })) : [];
+  const categoryData = charts?.categories ? Object.entries(charts.categories).map(([name, value]) => ({ name: name.trim(), value })) : [];
+  // Force T-shirt order: S, M, L, XL, XXL
+  const TSHIRT_ORDER = ['S', 'M', 'L', 'XL', 'XXL'];
+  const tshirtRaw = charts?.tshirtSizes || {};
+  const tshirtData = TSHIRT_ORDER.map((size) => ({ name: size, value: tshirtRaw[size] || 0 })).filter((d) => d.value > 0 || Object.keys(tshirtRaw).length > 0);
   const growthData = charts?.dailyGrowth || [];
   const wilayaData = charts?.topWilayas || [];
 

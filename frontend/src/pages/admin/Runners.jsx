@@ -43,6 +43,23 @@ function FilterDropdown({ value, onChange, options, placeholder }) {
   );
 }
 
+/* ─── Sortable Table Header ─── */
+function SortTh({ field, label, sortBy, sortOrder, onSort }) {
+  const active = sortBy === field;
+  return (
+    <th className="px-4 py-3 font-medium cursor-pointer select-none hover:text-gray-700 transition" onClick={() => onSort(field)}>
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {active ? (
+          <span className="text-[#C42826]">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+        ) : (
+          <span className="text-gray-300">↕</span>
+        )}
+      </span>
+    </th>
+  );
+}
+
 /* ─── Constants ─── */
 const INPUT_CLS =
   'w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-[#C42826] transition';
@@ -312,8 +329,8 @@ function RunnerCreateModal({ open, onClose, onCreated }) {
 
   const levelOptions = [
     { value: 'Débutant', label: 'Débutant' },
-    { value: 'Intermediaire', label: 'Intermediaire' },
-    { value: 'Avance', label: 'Avance' },
+    { value: 'Confirmé', label: 'Confirmé' },
+    { value: 'Elite', label: 'Elite' },
   ];
 
   const handleSubmit = async (e) => {
@@ -647,7 +664,7 @@ function DetailPanel({ runner, onClose, onUpdated }) {
               {renderField('Commune', 'commune')}
               {renderField('Ville', 'ville')}
               {renderField('Taille t-shirt', 'tshirtSize', { select: ['S', 'M', 'L', 'XL', 'XXL'] })}
-              {renderField('Niveau', 'runnerLevel', { select: ['Débutant', 'Intermediaire', 'Avance'] })}
+              {renderField('Niveau', 'runnerLevel', { select: ['Débutant', 'Confirmé', 'Elite'] })}
               {renderField('Statut', 'status', editing ? { select: ['en_attente', 'distribué'] } : { badge: (v) => <StatusBadge status={v} /> })}
               {renderField('Source', 'source', { readOnly: true })}
               {!editing && (
@@ -699,6 +716,8 @@ export default function Runners() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState('desc');
   const [selectedRunner, setSelectedRunner] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -706,10 +725,20 @@ export default function Runners() {
 
   const limit = 20;
 
+  const toggleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
+    }
+    setPage(1);
+  };
+
   const fetchRunners = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page, limit });
+      const params = new URLSearchParams({ page, limit, sortBy, sortOrder });
       if (search) params.set('search', search);
       if (statusFilter) params.set('status', statusFilter);
       if (sourceFilter) params.set('source', sourceFilter);
@@ -720,7 +749,7 @@ export default function Runners() {
       /* ignore */
     }
     setLoading(false);
-  }, [page, search, statusFilter, sourceFilter]);
+  }, [page, search, statusFilter, sourceFilter, sortBy, sortOrder]);
 
   useEffect(() => {
     fetchRunners();
@@ -810,13 +839,13 @@ export default function Runners() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 text-left text-gray-500">
-                  <th className="px-4 py-3 font-medium">Dossard</th>
-                  <th className="px-4 py-3 font-medium">Nom</th>
-                  <th className="px-4 py-3 font-medium">Email</th>
-                  <th className="px-4 py-3 font-medium">Tel</th>
-                  <th className="px-4 py-3 font-medium">Statut</th>
+                  <SortTh field="bibNumber" label="Dossard" sortBy={sortBy} sortOrder={sortOrder} onSort={toggleSort} />
+                  <SortTh field="lastName" label="Nom" sortBy={sortBy} sortOrder={sortOrder} onSort={toggleSort} />
+                  <SortTh field="email" label="Email" sortBy={sortBy} sortOrder={sortOrder} onSort={toggleSort} />
+                  <th className="px-4 py-3 font-medium">Tél</th>
+                  <SortTh field="status" label="Statut" sortBy={sortBy} sortOrder={sortOrder} onSort={toggleSort} />
                   <th className="px-4 py-3 font-medium">Type</th>
-                  <th className="px-4 py-3 font-medium">Date</th>
+                  <SortTh field="createdAt" label="Date" sortBy={sortBy} sortOrder={sortOrder} onSort={toggleSort} />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">

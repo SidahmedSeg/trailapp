@@ -317,7 +317,10 @@ async function adminRoutes(fastify) {
 
     // Categories (runner level)
     const categories = {};
-    categoryGroups.forEach((g) => { categories[g.runnerLevel || 'Autre'] = g._count; });
+    categoryGroups.forEach((g) => {
+      const key = (g.runnerLevel || 'Autre').trim();
+      categories[key] = (categories[key] || 0) + g._count;
+    });
 
     // T-shirt sizes
     const tshirtSizes = {};
