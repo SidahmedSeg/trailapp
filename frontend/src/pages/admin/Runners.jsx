@@ -4,7 +4,7 @@ import { getAccessToken } from '../../lib/auth';
 import { useAuth } from '../../hooks/useAuth';
 import Sidebar from '../../components/ui/Sidebar';
 import Select from 'react-select';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import {
   flagUrl, COUNTRIES_DATA, PHONE_CODES, WILAYAS, COMMUNES_MAP,
   TSHIRT_SIZES, selectStyles, phoneSelectStyles,
@@ -51,9 +51,11 @@ function SortTh({ field, label, sortBy, sortOrder, onSort }) {
       <span className="inline-flex items-center gap-1">
         {label}
         {active ? (
-          <span className="text-[#C42826]">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+          sortOrder === 'asc'
+            ? <ArrowUp size={14} className="text-[#C42826]" />
+            : <ArrowDown size={14} className="text-[#C42826]" />
         ) : (
-          <span className="text-gray-300">↕</span>
+          <ArrowUpDown size={14} className="text-gray-300" />
         )}
       </span>
     </th>

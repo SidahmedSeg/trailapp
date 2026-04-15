@@ -315,10 +315,17 @@ async function adminRoutes(fastify) {
       else ageRanges['65+']++;
     });
 
-    // Categories (runner level)
+    // Categories (runner level) — normalize old values to new
+    const levelMap = {
+      'Intermédiaire': 'Confirmé',
+      'Intermediaire': 'Confirmé',
+      'Avancé': 'Elite',
+      'Avance': 'Elite',
+    };
     const categories = {};
     categoryGroups.forEach((g) => {
-      const key = (g.runnerLevel || 'Autre').trim();
+      const raw = (g.runnerLevel || 'Autre').trim();
+      const key = levelMap[raw] || raw;
       categories[key] = (categories[key] || 0) + g._count;
     });
 
