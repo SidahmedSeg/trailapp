@@ -161,9 +161,9 @@ export default function Register() {
   ];
 
   const levelOptions = [
-    { value: 'Débutant', label: t('register.levels.beginner') },
-    { value: 'Intermédiaire', label: t('register.levels.intermediate') },
-    { value: 'Avancé', label: t('register.levels.advanced') },
+    { value: 'Débutant', label: 'Débutant' },
+    { value: 'Confirmé', label: 'Confirmé' },
+    { value: 'Elite', label: 'Elite' },
   ];
 
   const countryOptions = COUNTRIES_DATA.map((c) => ({
@@ -188,7 +188,20 @@ export default function Register() {
       .finally(() => setLoading(false));
   }, []);
 
+  const LATIN_REGEX = /^[a-zA-ZÀ-ÿ\s\-']*$/;
+  const UPPERCASE_FIELDS = ['lastName', 'firstName', 'ville'];
+
   function update(field, value) {
+    // Auto-uppercase + Latin-only for name/city fields
+    if (UPPERCASE_FIELDS.includes(field)) {
+      value = value.toUpperCase();
+      if (value && !LATIN_REGEX.test(value)) {
+        setFieldErrors((prev) => ({ ...prev, [field]: 'Lettres latines uniquement (pas d\'arabe ni de caractères spéciaux)' }));
+        return;
+      } else {
+        setFieldErrors((prev) => { const next = { ...prev }; delete next[field]; return next; });
+      }
+    }
     setForm((prev) => {
       const next = { ...prev, [field]: value };
       if (field === 'countryOfResidence' && value !== 'Algérie') {
@@ -241,8 +254,10 @@ export default function Register() {
       errors.emergencyPhoneNumber = "Le numéro d'urgence ne peut pas être identique au numéro mobile";
     }
 
-    // Age check
-    if (form.birthDate) {
+    // Birthdate check
+    if (!form.birthDate) {
+      errors.birthDate = 'Date de naissance requise';
+    } else {
       const birth = new Date(form.birthDate);
       const today = new Date();
       let age = today.getFullYear() - birth.getFullYear();
@@ -252,6 +267,10 @@ export default function Register() {
         errors.birthDate = 'Vous devez avoir au moins 19 ans pour participer';
       }
     }
+
+    // Required fields
+    if (!form.lastName) errors.lastName = 'Nom requis';
+    if (!form.firstName) errors.firstName = 'Prénom requis';
 
     // Required dropdowns
     if (!form.nationality) errors.nationality = 'Veuillez choisir votre nationalité';
@@ -358,11 +377,13 @@ export default function Register() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>{t('register.fields.lastName')}<span className="text-[#C42826] ms-0.5">*</span></label>
-                <input className={inputCls} required value={form.lastName} onChange={(e) => update('lastName', e.target.value)} />
+                <input className={fieldErrors.lastName ? inputErrCls : inputCls} required value={form.lastName} onChange={(e) => update('lastName', e.target.value)} />
+                <FieldError name="lastName" />
               </div>
               <div>
                 <label className={labelCls}>{t('register.fields.firstName')}<span className="text-[#C42826] ms-0.5">*</span></label>
-                <input className={inputCls} required value={form.firstName} onChange={(e) => update('firstName', e.target.value)} />
+                <input className={fieldErrors.firstName ? inputErrCls : inputCls} required value={form.firstName} onChange={(e) => update('firstName', e.target.value)} />
+                <FieldError name="firstName" />
               </div>
               <div>
                 <label className={labelCls}>{t('register.fields.birthDate')}<span className="text-[#C42826] ms-0.5">*</span></label>
@@ -492,7 +513,8 @@ export default function Register() {
               {!isAlgeria && (
                 <div>
                   <label className={labelCls}>{t('register.fields.city')}<span className="text-[#C42826] ms-0.5">*</span></label>
-                  <input className={inputCls} required={!isAlgeria} value={form.ville} onChange={(e) => update('ville', e.target.value)} placeholder={t('register.placeholders.city')} />
+                  <input className={fieldErrors.ville ? inputErrCls : inputCls} required={!isAlgeria} value={form.ville} onChange={(e) => update('ville', e.target.value)} placeholder={t('register.placeholders.city')} />
+                  <FieldError name="ville" />
                 </div>
               )}
             </div>

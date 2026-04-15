@@ -3,7 +3,7 @@ const PHONE_DZ_REGEX = /^[567]\d{8}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const GENDERS = ['Homme', 'Femme'];
 const TSHIRT_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
-const RUNNER_LEVELS = ['Débutant', 'Intermédiaire', 'Avancé'];
+const RUNNER_LEVELS = ['Débutant', 'Confirmé', 'Elite'];
 
 function validateRegistration(body) {
   const errors = [];
