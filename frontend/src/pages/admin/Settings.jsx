@@ -1,27 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { get, put } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import Sidebar from '../../components/ui/Sidebar';
 
 /* ─── Toggle Switch ─── */
-function Toggle({ checked, onChange, disabled }) {
+function Toggle({ checked, onChange }) {
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-        checked ? 'bg-[#C42826]' : 'bg-gray-300'
-      }`}
-    >
-      <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-          checked ? 'translate-x-6' : 'translate-x-1'
-        }`}
-      />
+    <button type="button" role="switch" aria-checked={checked} onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition cursor-pointer ${checked ? 'bg-[#C42826]' : 'bg-gray-300'}`}>
+      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
     </button>
   );
 }
@@ -47,12 +34,11 @@ function FormField({ label, children, hint }) {
   );
 }
 
-const inputClass = 'w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-[#C42826] focus:ring-1 focus:ring-[#C42826] transition disabled:opacity-50 disabled:cursor-not-allowed';
+const inputClass = 'w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-[#C42826] focus:ring-1 focus:ring-[#C42826] transition';
 
 /* ─── Main Settings ─── */
 export default function Settings() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [tab, setTab] = useState('general');
   const [settings, setSettings] = useState(null);
@@ -66,27 +52,10 @@ export default function Settings() {
   const fetchSettings = useCallback(async () => {
     setLoading(true);
     try {
-      const [settingsRes, bibStatsRes] = await Promise.all([
-        get('/admin/settings'),
-        get('/admin/settings/bib-stats').catch(() => null),
-      ]);
-      const s = settingsRes.data || settingsRes;
-      if (bibStatsRes) {
-        s.bibsAssigned = bibStatsRes.bibsAttribues ?? 0;
-        s.bibsAutoUsed = bibStatsRes.bibsAutoRange ?? 0;
-        s.bibsRemaining = bibStatsRes.bibsRestants ?? 0;
-        s.bibsOccupation = bibStatsRes.tauxOccupation ?? 0;
-        s.bibsManualTotal = bibStatsRes.bibsManualTotal ?? 0;
-        s.bibsManualUsed = bibStatsRes.bibsManualUsed ?? 0;
-        s.bibsManualRestants = bibStatsRes.bibsManualRestants ?? 0;
-        s.prochainNumero = bibStatsRes.prochainNumero;
-      }
+      const res = await get('/admin/settings');
+      const s = res.data || res;
       setSettings(s);
-      setSecForm((prev) => ({
-        ...prev,
-        displayName: user?.username || '',
-        email: '',
-      }));
+      setSecForm((prev) => ({ ...prev, displayName: user?.username || '', email: '' }));
     } catch { /* ignore */ }
     setLoading(false);
   }, []);
@@ -106,23 +75,7 @@ export default function Settings() {
         registrationDeadline: settings.registrationDeadline || null,
         maxCapacity: settings.maxCapacity || null,
       });
-      showMessage('success', 'Paramètres généraux sauvegardés.');
-    } catch (err) {
-      showMessage('error', err.message || 'Erreur lors de la sauvegarde.');
-    }
-    setSaving(false);
-  };
-
-  const handleSaveBibs = async () => {
-    setSaving(true);
-    try {
-      await put('/admin/settings', {
-        bibStart: settings.bibStart,
-        bibEnd: settings.bibEnd,
-        bibPrefix: settings.bibPrefix || null,
-        autoCloseOnExhaustion: settings.autoCloseOnExhaustion,
-      });
-      showMessage('success', 'Paramètres dossards sauvegardés.');
+      showMessage('success', 'Paramètres sauvegardés.');
     } catch (err) {
       showMessage('error', err.message || 'Erreur lors de la sauvegarde.');
     }
@@ -136,30 +89,18 @@ export default function Settings() {
     }
     setSaving(true);
     try {
-      const body = {
-        displayName: secForm.displayName,
-        email: secForm.email,
-      };
+      const body = { displayName: secForm.displayName, email: secForm.email };
       if (secForm.newPassword) {
         body.currentPassword = secForm.currentPassword;
         body.newPassword = secForm.newPassword;
       }
       await put('/admin/settings/security', body);
-      showMessage('success', 'Informations de sécurité mises à jour.');
+      showMessage('success', 'Informations mises à jour.');
       setSecForm((prev) => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
     } catch (err) {
       showMessage('error', err.message || 'Erreur lors de la sauvegarde.');
     }
     setSaving(false);
-  };
-
-  const updateSetting = (key, value) => {
-    setSettings((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate('/admin/login', { replace: true });
   };
 
   const tabs = [
@@ -179,69 +120,51 @@ export default function Settings() {
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <Sidebar />
 
-      {/* Main */}
       <main className="lg:ml-60 pt-16 lg:pt-0 p-4 sm:p-6 lg:p-8">
         <h2 className="text-2xl font-bold mb-1">Paramètres</h2>
         <p className="text-gray-500 text-sm mb-8">Configuration de l'application</p>
 
-        {/* Message */}
         {message.text && (
           <div className={`mb-6 rounded-lg px-4 py-3 text-sm border ${
-            message.type === 'success'
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-              : 'bg-red-50 border-red-200 text-red-700'
-          }`}>
-            {message.text}
-          </div>
+            message.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'
+          }`}>{message.text}</div>
         )}
 
         {/* Tabs */}
         <div className="flex gap-1 bg-gray-100 rounded-lg p-1 mb-8">
           {tabs.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
+            <button key={t.key} onClick={() => setTab(t.key)}
               className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition cursor-pointer ${
                 tab === t.key ? 'bg-[#C42826] text-white' : 'text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              {t.label}
-            </button>
+              }`}>{t.label}</button>
           ))}
         </div>
 
         {/* Général */}
         {tab === 'general' && settings && (
-          <Section title="Paramètres généraux">
+          <Section title="Inscriptions">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-700">Inscriptions ouvertes</p>
                 <p className="text-xs text-gray-400 mt-0.5">Autoriser les nouvelles inscriptions</p>
               </div>
-              <Toggle checked={settings.registrationOpen} onChange={(v) => updateSetting('registrationOpen', v)} />
+              <Toggle checked={settings.registrationOpen} onChange={(v) => setSettings((s) => ({ ...s, registrationOpen: v }))} />
             </div>
             <FormField label="Date limite d'inscription">
-              <input
-                type="date"
+              <input type="date"
                 value={settings.registrationDeadline ? settings.registrationDeadline.substring(0, 10) : ''}
-                onChange={(e) => updateSetting('registrationDeadline', e.target.value)}
-                className={inputClass}
-              />
+                onChange={(e) => setSettings((s) => ({ ...s, registrationDeadline: e.target.value }))}
+                className={inputClass} />
             </FormField>
-            <FormField label="Capacité maximale">
-              <input
-                type="number"
+            <FormField label="Capacité maximale" hint="Laisser vide pour illimité">
+              <input type="number"
                 value={settings.maxCapacity || ''}
-                onChange={(e) => updateSetting('maxCapacity', parseInt(e.target.value) || 0)}
-                className={inputClass}
-              />
+                onChange={(e) => setSettings((s) => ({ ...s, maxCapacity: parseInt(e.target.value) || null }))}
+                className={inputClass} />
             </FormField>
             <div className="pt-2">
-              <button
-                onClick={handleSaveGeneral}
-                disabled={saving}
-                className="rounded-lg bg-[#C42826] px-6 py-2.5 text-sm font-medium text-white hover:bg-[#a82220] disabled:opacity-50 transition cursor-pointer"
-              >
+              <button onClick={handleSaveGeneral} disabled={saving}
+                className="rounded-lg bg-[#C42826] px-6 py-2.5 text-sm font-medium text-white hover:bg-[#a82220] disabled:opacity-50 transition cursor-pointer">
                 {saving ? 'Sauvegarde...' : 'Sauvegarder'}
               </button>
             </div>
@@ -250,55 +173,37 @@ export default function Settings() {
 
         {/* Sécurité */}
         {tab === 'security' && (
-          <Section title="Sécurité du compte">
-            <FormField label="Nom d'affichage">
-              <input
-                type="text"
-                value={secForm.displayName}
+          <Section title="Mon compte">
+            <FormField label="Nom d'utilisateur">
+              <input type="text" value={secForm.displayName}
                 onChange={(e) => setSecForm((p) => ({ ...p, displayName: e.target.value }))}
-                className={inputClass}
-              />
+                className={inputClass} />
             </FormField>
             <FormField label="Adresse email">
-              <input
-                type="email"
-                value={secForm.email}
+              <input type="email" value={secForm.email}
                 onChange={(e) => setSecForm((p) => ({ ...p, email: e.target.value }))}
-                className={inputClass}
-              />
+                className={inputClass} />
             </FormField>
             <hr className="border-gray-200" />
             <p className="text-sm text-gray-500">Changer le mot de passe (laisser vide pour ne pas modifier)</p>
             <FormField label="Mot de passe actuel">
-              <input
-                type="password"
-                value={secForm.currentPassword}
+              <input type="password" value={secForm.currentPassword}
                 onChange={(e) => setSecForm((p) => ({ ...p, currentPassword: e.target.value }))}
-                className={inputClass}
-              />
+                className={inputClass} />
             </FormField>
             <FormField label="Nouveau mot de passe">
-              <input
-                type="password"
-                value={secForm.newPassword}
+              <input type="password" value={secForm.newPassword}
                 onChange={(e) => setSecForm((p) => ({ ...p, newPassword: e.target.value }))}
-                className={inputClass}
-              />
+                className={inputClass} />
             </FormField>
             <FormField label="Confirmer le mot de passe">
-              <input
-                type="password"
-                value={secForm.confirmPassword}
+              <input type="password" value={secForm.confirmPassword}
                 onChange={(e) => setSecForm((p) => ({ ...p, confirmPassword: e.target.value }))}
-                className={inputClass}
-              />
+                className={inputClass} />
             </FormField>
             <div className="pt-2">
-              <button
-                onClick={handleSaveSecurity}
-                disabled={saving}
-                className="rounded-lg bg-[#C42826] px-6 py-2.5 text-sm font-medium text-white hover:bg-[#a82220] disabled:opacity-50 transition cursor-pointer"
-              >
+              <button onClick={handleSaveSecurity} disabled={saving}
+                className="rounded-lg bg-[#C42826] px-6 py-2.5 text-sm font-medium text-white hover:bg-[#a82220] disabled:opacity-50 transition cursor-pointer">
                 {saving ? 'Sauvegarde...' : 'Mettre à jour'}
               </button>
             </div>
