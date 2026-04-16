@@ -62,6 +62,11 @@ async function settingsRoutes(fastify) {
       data: updateData,
     });
 
+    // Sync Redis bib counter when bibStart changes
+    if (updateData.bibStart !== undefined && updateData.bibStart !== current.bibStart) {
+      await redis.set('bib:next', updateData.bibStart - 1);
+    }
+
     await logActivity({
       action: 'settings_updated',
       adminUsername: request.user.username,
