@@ -9,13 +9,13 @@ export default function Footer() {
       <div className="py-12 flex flex-col items-center gap-6">
         <img src="/logo_mouflon_white.svg" alt="Trail des Mouflons d'Or" className="h-24" />
         <div className="flex items-center gap-5">
-          <a href="#" className="hover:opacity-80 transition" aria-label="Facebook">
+          <a href="https://www.facebook.com/p/Ligue-Algeroise-de-ski-et-des-sports-de-montagne-LASSM-100081974797044/" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition" aria-label="Facebook">
             <img src="/facebook.svg" alt="Facebook" className="h-7 w-7 brightness-0 invert" />
           </a>
-          <a href="#" className="hover:opacity-80 transition" aria-label="Instagram">
+          <a href="https://www.instagram.com/lassm.dz/" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition" aria-label="Instagram">
             <img src="/insta.svg" alt="Instagram" className="h-7 w-7 brightness-0 invert" />
           </a>
-          <a href="#" className="hover:opacity-80 transition" aria-label="Site web">
+          <a href="https://lassm.dz/" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition" aria-label="Site web">
             <img src="/web.svg" alt="Site web" className="h-7 w-7 brightness-0 invert" />
           </a>
         </div>
