@@ -4,56 +4,10 @@ import { useTranslation } from 'react-i18next';
 import Select from 'react-select';
 import { Check, X, Loader2, Ban, User, Mail, MapPin, Phone, Shirt, Trophy, FileCheck } from 'lucide-react';
 import PublicLayout from '../../components/ui/PublicLayout';
-import { COMMUNES_MAP } from '../../data/formData';
+import { COUNTRIES_DATA, PHONE_CODES, WILAYAS, COMMUNES_MAP } from '../../data/formData';
 
 // --- Data ---
 const flagUrl = (code) => `https://flagcdn.com/w40/${code.toLowerCase()}.png`;
-
-const COUNTRIES_DATA = [
-  { value: 'Algérie', code: 'dz', i18nKey: 'countries.DZ' },
-  { value: 'France', code: 'fr', i18nKey: 'countries.FR' },
-  { value: 'Tunisie', code: 'tn', i18nKey: 'countries.TN' },
-  { value: 'Maroc', code: 'ma', i18nKey: 'countries.MA' },
-  { value: 'Libye', code: 'ly', i18nKey: 'countries.LY' },
-  { value: 'Égypte', code: 'eg', i18nKey: 'countries.EG' },
-  { value: 'Espagne', code: 'es', i18nKey: 'countries.ES' },
-  { value: 'Allemagne', code: 'de', i18nKey: 'countries.DE' },
-  { value: 'Royaume-Uni', code: 'gb', i18nKey: 'countries.GB' },
-  { value: 'États-Unis', code: 'us', i18nKey: 'countries.US' },
-  { value: 'Canada', code: 'ca', i18nKey: 'countries.CA' },
-  { value: 'Italie', code: 'it', i18nKey: 'countries.IT' },
-  { value: 'Turquie', code: 'tr', i18nKey: 'countries.TR' },
-];
-
-const PHONE_CODES = [
-  { value: '+213', code: 'dz', i18nKey: 'countries.DZ' },
-  { value: '+33', code: 'fr', i18nKey: 'countries.FR' },
-  { value: '+216', code: 'tn', i18nKey: 'countries.TN' },
-  { value: '+212', code: 'ma', i18nKey: 'countries.MA' },
-  { value: '+44', code: 'gb', i18nKey: 'countries.GB' },
-  { value: '+1', code: 'us', i18nKey: 'countries.US' },
-  { value: '+49', code: 'de', i18nKey: 'countries.DE' },
-  { value: '+34', code: 'es', i18nKey: 'countries.ES' },
-  { value: '+39', code: 'it', i18nKey: 'countries.IT' },
-  { value: '+90', code: 'tr', i18nKey: 'countries.TR' },
-];
-
-const WILAYAS = [
-  '01 - Adrar', '02 - Chlef', '03 - Laghouat', '04 - Oum El Bouaghi', '05 - Batna',
-  '06 - Béjaïa', '07 - Biskra', '08 - Béchar', '09 - Blida', '10 - Bouira',
-  '11 - Tamanrasset', '12 - Tébessa', '13 - Tlemcen', '14 - Tiaret', '15 - Tizi Ouzou',
-  '16 - Alger', '17 - Djelfa', '18 - Jijel', '19 - Sétif', '20 - Saïda',
-  '21 - Skikda', '22 - Sidi Bel Abbès', '23 - Annaba', '24 - Guelma', '25 - Constantine',
-  '26 - Médéa', '27 - Mostaganem', '28 - M\'Sila', '29 - Mascara', '30 - Ouargla',
-  '31 - Oran', '32 - El Bayadh', '33 - Illizi', '34 - BBA', '35 - Boumerdès',
-  '36 - El Tarf', '37 - Tindouf', '38 - Tissemsilt', '39 - El Oued', '40 - Khenchela',
-  '41 - Souk Ahras', '42 - Tipaza', '43 - Mila', '44 - Aïn Defla', '45 - Naâma',
-  '46 - Aïn Témouchent', '47 - Ghardaïa', '48 - Relizane',
-  '49 - El M\'Ghair', '50 - El Meniaa', '51 - Ouled Djellal', '52 - Bordj Baji Mokhtar',
-  '53 - Béni Abbès', '54 - Timimoun', '55 - Touggourt', '56 - Djanet',
-  '57 - In Salah', '58 - In Guezzam',
-].map((w) => ({ value: w, label: w }));
-
 
 const TSHIRT_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 
