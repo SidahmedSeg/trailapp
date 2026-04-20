@@ -1,29 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
-import { get, put } from '../../lib/api';
+import { useState } from 'react';
+import { put } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import Sidebar from '../../components/ui/Sidebar';
 
-/* ─── Toggle Switch ─── */
-function Toggle({ checked, onChange }) {
-  return (
-    <button type="button" role="switch" aria-checked={checked} onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition cursor-pointer ${checked ? 'bg-[#C42826]' : 'bg-gray-300'}`}>
-      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
-    </button>
-  );
-}
+const inputClass = 'w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-[#C42826] focus:ring-1 focus:ring-[#C42826] transition';
 
-/* ─── Section Card ─── */
-function Section({ title, children }) {
-  return (
-    <div className="bg-white border border-gray-200 rounded-xl p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-5">{title}</h3>
-      <div className="space-y-5">{children}</div>
-    </div>
-  );
-}
-
-/* ─── Form Field ─── */
 function FormField({ label, children, hint }) {
   return (
     <div>
@@ -34,52 +15,21 @@ function FormField({ label, children, hint }) {
   );
 }
 
-const inputClass = 'w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-[#C42826] focus:ring-1 focus:ring-[#C42826] transition';
-
-/* ─── Main Settings ─── */
 export default function Settings() {
   const { user } = useAuth();
-
-  const [tab, setTab] = useState('general');
-  const [settings, setSettings] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
-
-  // Security form
-  const [secForm, setSecForm] = useState({ displayName: '', email: '', currentPassword: '', newPassword: '', confirmPassword: '' });
-
-  const fetchSettings = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await get('/admin/settings');
-      const s = res.data || res;
-      setSettings(s);
-      setSecForm((prev) => ({ ...prev, displayName: user?.username || '', email: '' }));
-    } catch { /* ignore */ }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { fetchSettings(); }, [fetchSettings]);
+  const [secForm, setSecForm] = useState({
+    displayName: user?.username || '',
+    email: '',
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
 
   const showMessage = (type, text) => {
     setMessage({ type, text });
     setTimeout(() => setMessage({ type: '', text: '' }), 4000);
-  };
-
-  const handleSaveGeneral = async () => {
-    setSaving(true);
-    try {
-      await put('/admin/settings', {
-        registrationOpen: settings.registrationOpen,
-        registrationDeadline: settings.registrationDeadline || null,
-        maxCapacity: settings.maxCapacity || null,
-      });
-      showMessage('success', 'Paramètres sauvegardés.');
-    } catch (err) {
-      showMessage('error', err.message || 'Erreur lors de la sauvegarde.');
-    }
-    setSaving(false);
   };
 
   const handleSaveSecurity = async () => {
@@ -103,26 +53,13 @@ export default function Settings() {
     setSaving(false);
   };
 
-  const tabs = [
-    { key: 'general', label: 'Général' },
-    { key: 'security', label: 'Sécurité' },
-  ];
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#C42826]" />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <Sidebar />
 
       <main className="lg:ml-60 pt-16 lg:pt-0 p-4 sm:p-6 lg:p-8">
-        <h2 className="text-2xl font-bold mb-1">Paramètres</h2>
-        <p className="text-gray-500 text-sm mb-8">Configuration de l'application</p>
+        <h2 className="text-2xl font-bold mb-1">Mon compte</h2>
+        <p className="text-gray-500 text-sm mb-8">Gérer vos informations personnelles</p>
 
         {message.text && (
           <div className={`mb-6 rounded-lg px-4 py-3 text-sm border ${
@@ -130,50 +67,9 @@ export default function Settings() {
           }`}>{message.text}</div>
         )}
 
-        {/* Tabs */}
-        <div className="flex gap-1 bg-gray-100 rounded-lg p-1 mb-8">
-          {tabs.map((t) => (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition cursor-pointer ${
-                tab === t.key ? 'bg-[#C42826] text-white' : 'text-gray-500 hover:text-gray-900'
-              }`}>{t.label}</button>
-          ))}
-        </div>
-
-        {/* Général */}
-        {tab === 'general' && settings && (
-          <Section title="Inscriptions">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-700">Inscriptions ouvertes</p>
-                <p className="text-xs text-gray-400 mt-0.5">Autoriser les nouvelles inscriptions</p>
-              </div>
-              <Toggle checked={settings.registrationOpen} onChange={(v) => setSettings((s) => ({ ...s, registrationOpen: v }))} />
-            </div>
-            <FormField label="Date limite d'inscription">
-              <input type="date"
-                value={settings.registrationDeadline ? settings.registrationDeadline.substring(0, 10) : ''}
-                onChange={(e) => setSettings((s) => ({ ...s, registrationDeadline: e.target.value }))}
-                className={inputClass} />
-            </FormField>
-            <FormField label="Capacité maximale" hint="Laisser vide pour illimité">
-              <input type="number"
-                value={settings.maxCapacity || ''}
-                onChange={(e) => setSettings((s) => ({ ...s, maxCapacity: parseInt(e.target.value) || null }))}
-                className={inputClass} />
-            </FormField>
-            <div className="pt-2">
-              <button onClick={handleSaveGeneral} disabled={saving}
-                className="rounded-lg bg-[#C42826] px-6 py-2.5 text-sm font-medium text-white hover:bg-[#a82220] disabled:opacity-50 transition cursor-pointer">
-                {saving ? 'Sauvegarde...' : 'Sauvegarder'}
-              </button>
-            </div>
-          </Section>
-        )}
-
-        {/* Sécurité */}
-        {tab === 'security' && (
-          <Section title="Mon compte">
+        <div className="bg-white border border-gray-200 rounded-xl p-6 max-w-xl">
+          <h3 className="text-lg font-semibold text-gray-900 mb-5">Sécurité</h3>
+          <div className="space-y-5">
             <FormField label="Nom d'utilisateur">
               <input type="text" value={secForm.displayName}
                 onChange={(e) => setSecForm((p) => ({ ...p, displayName: e.target.value }))}
@@ -207,8 +103,8 @@ export default function Settings() {
                 {saving ? 'Sauvegarde...' : 'Mettre à jour'}
               </button>
             </div>
-          </Section>
-        )}
+          </div>
+        </div>
       </main>
     </div>
   );

@@ -7,21 +7,29 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Seeding database...');
 
-  // 1. Settings (upsert — idempotent)
-  const settings = await prisma.settings.upsert({
-    where: { id: 'default' },
+  // 1. Default Event (upsert by slug — idempotent)
+  const event = await prisma.event.upsert({
+    where: { slug: 'trail-mouflons-2026' },
     update: {},
     create: {
-      id: 'default',
+      slug: 'trail-mouflons-2026',
+      name: 'Trail des Mouflons d\'Or 2026',
+      type: 'trail',
+      location: 'Alger',
+      facebookUrl: 'https://www.facebook.com/p/Ligue-Algeroise-de-ski-et-des-sports-de-montagne-LASSM-100081974797044/',
+      instagramUrl: 'https://www.instagram.com/lassm.dz/',
+      websiteUrl: 'https://lassm.dz/',
       registrationOpen: true,
       bibStart: 101,
       bibEnd: 1500,
       autoCloseOnExhaustion: true,
-      eventName: 'Trail des Mouflons d\'Or 2026',
-      eventCity: 'Alger',
+      priceInCentimes: 200000,
+      optionalFields: {},
+      active: true,
+      status: 'active',
     },
   });
-  console.log('Settings seeded:', settings.id);
+  console.log('Event seeded:', event.slug);
 
   // 2. Super admin (upsert — idempotent)
   const passwordHash = await bcrypt.hash('admin123', 12);
@@ -45,12 +53,12 @@ async function main() {
     update: {},
     create: {
       name: 'confirmation',
-      subject: 'Confirmation d\'inscription - Trail des Mouflons d\'Or 2026',
+      subject: 'Confirmation d\'inscription - {{eventName}}',
       body: `<h1>Félicitations {{prenom}} !</h1>
-<p>Votre inscription au Trail des Mouflons d'Or 2026 est confirmée.</p>
+<p>Votre inscription au {{eventName}} est confirmée.</p>
 <p><strong>Numéro de dossard :</strong> #{{dossard}}</p>
-<p><strong>Date :</strong> 1 Mai 2026</p>
-<p><strong>Ville :</strong> Alger</p>
+<p><strong>Date :</strong> {{eventDate}}</p>
+<p><strong>Lieu :</strong> {{eventLocation}}</p>
 <p>Votre QR code et votre ticket sont en pièce jointe.</p>
 <p>À bientôt sur la ligne de départ !</p>`,
     },
@@ -61,9 +69,9 @@ async function main() {
     update: {},
     create: {
       name: 'invitation',
-      subject: 'Invitation - Trail des Mouflons d\'Or 2026',
+      subject: 'Invitation - Plateforme d\'inscription',
       body: `<h1>Bienvenue {{prenom}} !</h1>
-<p>Vous avez été invité comme <strong>{{role}}</strong> sur la plateforme Trail des Mouflons d'Or 2026.</p>
+<p>Vous avez été invité comme <strong>{{role}}</strong> sur la plateforme d'inscription.</p>
 <p>Votre nom d'utilisateur : <strong>{{username}}</strong></p>
 <p>Cliquez sur le lien ci-dessous pour créer votre mot de passe :</p>
 <p><a href="{{lien}}">Créer mon mot de passe</a></p>
@@ -72,15 +80,16 @@ async function main() {
   });
   console.log('Email templates seeded');
 
-  // 4. Redis bib:next (SET NX — only if not exists)
+  // 4. Redis bib:next:{eventId} (SET NX — only if not exists)
   const redisUrl = process.env.REDIS_URL || 'redis://localhost:8823';
   const redis = new Redis(redisUrl);
-  const wasSet = await redis.set('bib:next', settings.bibStart, 'NX');
+  const bibKey = `bib:next:${event.id}`;
+  const wasSet = await redis.set(bibKey, event.bibStart - 1, 'NX');
   if (wasSet) {
-    console.log(`Redis bib:next initialized to ${settings.bibStart}`);
+    console.log(`Redis ${bibKey} initialized to ${event.bibStart - 1}`);
   } else {
-    const current = await redis.get('bib:next');
-    console.log(`Redis bib:next already exists: ${current}`);
+    const current = await redis.get(bibKey);
+    console.log(`Redis ${bibKey} already exists: ${current}`);
   }
   redis.disconnect();
 

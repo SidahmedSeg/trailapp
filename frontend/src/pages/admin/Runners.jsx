@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { get, post, put } from '../../lib/api';
 import { getAccessToken } from '../../lib/auth';
 import { useAuth } from '../../hooks/useAuth';
+import { useEvent } from '../../hooks/useEvent';
 import Sidebar from '../../components/ui/Sidebar';
 import Select from 'react-select';
 import { ChevronDown, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
@@ -202,7 +203,7 @@ function ExportCSVModal({ open, onClose }) {
     try {
       const fields = [...selected].join(',');
       const token = getAccessToken();
-      const res = await fetch(`/api/admin/runners/export/csv?fields=${fields}`, {
+      const res = await fetch(`/api/admin/runners/export/csv?fields=${fields}&eventId=${selectedEventId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const blob = await res.blob();
@@ -525,6 +526,34 @@ function RunnerCreateModal({ open, onClose, onCreated }) {
 }
 
 /* ─── Detail Panel (with edit mode) ─── */
+function ResendEmailButton({ registrationId }) {
+  const [sending, setSending] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  const handleResend = async () => {
+    setSending(true);
+    setMsg(null);
+    try {
+      await post(`/registration/${registrationId}/send-pdf`);
+      setMsg({ type: 'success', text: 'Email envoyé' });
+    } catch (err) {
+      setMsg({ type: 'error', text: err.message });
+    }
+    setSending(false);
+    setTimeout(() => setMsg(null), 3000);
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <button onClick={handleResend} disabled={sending}
+        className="rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-600 hover:bg-gray-50 transition cursor-pointer disabled:opacity-50">
+        {sending ? 'Envoi...' : 'Renvoyer email'}
+      </button>
+      {msg && <span className={`text-xs ${msg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>{msg.text}</span>}
+    </div>
+  );
+}
+
 function DetailPanel({ runner, onClose, onUpdated }) {
   const [tab, setTab] = useState('profil');
   const [editing, setEditing] = useState(false);
@@ -679,9 +708,14 @@ function DetailPanel({ runner, onClose, onUpdated }) {
               {/* Edit buttons */}
               <div className="pt-4 flex gap-3">
                 {!editing ? (
-                  <button onClick={startEdit} className={BTN_PRIMARY}>
-                    Modifier
-                  </button>
+                  <>
+                    <button onClick={startEdit} className={BTN_PRIMARY}>
+                      Modifier
+                    </button>
+                    {display.bibNumber && (
+                      <ResendEmailButton registrationId={runner.id} />
+                    )}
+                  </>
                 ) : (
                   <>
                     <button onClick={saveEdit} disabled={saving} className={BTN_PRIMARY + ' disabled:opacity-50'}>
@@ -699,6 +733,8 @@ function DetailPanel({ runner, onClose, onUpdated }) {
               <Field label="Statut paiement" value={<StatusBadge status={display.paymentStatus} />} />
               <Field label="Montant" value={display.paymentAmount != null ? `${(display.paymentAmount / 100).toLocaleString('fr-FR')} DZD` : '—'} />
               <Field label="Methode" value={display.paymentMethod} />
+              <Field label="Carte (4 derniers)" value={display.cardPan || '—'} />
+              <Field label="Transaction SATIM" value={display.transactionNumber || '—'} />
               <Field label="Date paiement" value={display.paymentDate ? new Date(display.paymentDate).toLocaleString('fr-FR') : '—'} />
             </>
           )}
@@ -711,6 +747,7 @@ function DetailPanel({ runner, onClose, onUpdated }) {
 /* ─── Main Runners Page ─── */
 export default function Runners() {
   const { user } = useAuth();
+  const { selectedEventId } = useEvent();
 
   const [runners, setRunners] = useState([]);
   const [total, setTotal] = useState(0);
@@ -738,9 +775,10 @@ export default function Runners() {
   };
 
   const fetchRunners = useCallback(async () => {
+    if (!selectedEventId) return;
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page, limit, sortBy, sortOrder });
+      const params = new URLSearchParams({ page, limit, sortBy, sortOrder, eventId: selectedEventId });
       if (search) params.set('search', search);
       if (statusFilter) params.set('status', statusFilter);
       if (sourceFilter) params.set('source', sourceFilter);
@@ -751,7 +789,7 @@ export default function Runners() {
       /* ignore */
     }
     setLoading(false);
-  }, [page, search, statusFilter, sourceFilter, sortBy, sortOrder]);
+  }, [page, search, statusFilter, sourceFilter, sortBy, sortOrder, selectedEventId]);
 
   useEffect(() => {
     fetchRunners();

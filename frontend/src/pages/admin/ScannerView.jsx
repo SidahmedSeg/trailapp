@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { get, post } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
+import { useEvent } from '../../hooks/useEvent';
 import Sidebar from '../../components/ui/Sidebar';
 import { Camera, StopCircle } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
@@ -38,7 +39,7 @@ function RunnerModal({ runner, onClose, onDistribute }) {
     setDistributing(true);
     setError('');
     try {
-      await post(`/scan/${runner.qrToken}/distribute`);
+      await post(`/scan/${runner.qrToken}/distribute`, { eventId: runner.eventId });
       setSuccess(true);
     } catch (err) {
       setError(err.message || 'Erreur lors de la distribution.');
@@ -116,6 +117,7 @@ function InfoRow({ label, value }) {
 /* ─── Main Scanner View ─── */
 export default function ScannerView() {
   const { user, logout } = useAuth();
+  const { events, selectedEventId, switchEvent, selectedEvent } = useEvent();
 
   const [bibInput, setBibInput] = useState('');
   const [selectedRunner, setSelectedRunner] = useState(null);
@@ -132,10 +134,11 @@ export default function ScannerView() {
   // Fetch session history
   const fetchHistory = useCallback(async () => {
     try {
-      const data = await get('/scan/session/history');
+      const q = selectedEventId ? `?eventId=${selectedEventId}` : '';
+      const data = await get(`/scan/session/history${q}`);
       setHistory(data.data || []);
     } catch { /* ignore */ }
-  }, []);
+  }, [selectedEventId]);
 
   useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
@@ -222,7 +225,8 @@ export default function ScannerView() {
     setLoading(true);
     setError('');
     try {
-      const data = await get(`/scan/manual/${bibInput.trim()}`);
+      const q = selectedEventId ? `?eventId=${selectedEventId}` : '';
+      const data = await get(`/scan/manual/${bibInput.trim()}${q}`);
       setSelectedRunner(data.data || data);
     } catch (err) {
       setError(err.message || 'Coureur introuvable.');
@@ -244,9 +248,22 @@ export default function ScannerView() {
       <Sidebar />
 
       <main className="lg:ml-60 pt-16 lg:pt-0 p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8">
-        <div>
-          <h2 className="text-2xl font-bold">Scanner</h2>
-          <p className="text-gray-500 text-sm mt-1">Distribution des dossards</p>
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h2 className="text-2xl font-bold">Scanner</h2>
+            <p className="text-gray-500 text-sm mt-1">Distribution des dossards</p>
+          </div>
+          {events.length > 1 && (
+            <select
+              value={selectedEventId || ''}
+              onChange={(e) => switchEvent(e.target.value)}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-[#C42826] focus:ring-1 focus:ring-[#C42826] outline-none"
+            >
+              {events.map((evt) => (
+                <option key={evt.id} value={evt.id}>{evt.name}{evt.active ? ' (actif)' : ''}</option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* QR Camera Scanner */}

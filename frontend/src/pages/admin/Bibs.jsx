@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { get, put } from '../../lib/api';
-import { useAuth } from '../../hooks/useAuth';
+import { useEvent } from '../../hooks/useEvent';
 import Sidebar from '../../components/ui/Sidebar';
 
 function Toggle({ checked, onChange, disabled }) {
@@ -26,34 +26,35 @@ function FormField({ label, children, hint }) {
 const inputClass = 'w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-[#C42826] focus:ring-1 focus:ring-[#C42826] transition disabled:opacity-50 disabled:cursor-not-allowed';
 
 export default function Bibs() {
-  const { user } = useAuth();
-  const [settings, setSettings] = useState(null);
+  const { selectedEventId } = useEvent();
+  const [eventData, setEventData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
   const fetchData = useCallback(async () => {
+    if (!selectedEventId) return;
     setLoading(true);
     try {
-      const [settingsRes, bibStatsRes] = await Promise.all([
-        get('/admin/settings'),
-        get('/admin/settings/bib-stats').catch(() => null),
+      const [eventRes, bibStatsRes] = await Promise.all([
+        get(`/admin/events/${selectedEventId}`),
+        get(`/admin/events/${selectedEventId}/bib-stats`).catch(() => null),
       ]);
-      const s = settingsRes.data || settingsRes;
+      const e = eventRes.data || eventRes;
       if (bibStatsRes) {
-        s.bibsAssigned = bibStatsRes.bibsAttribues ?? 0;
-        s.bibsAutoUsed = bibStatsRes.bibsAutoRange ?? 0;
-        s.bibsRemaining = bibStatsRes.bibsRestants ?? 0;
-        s.bibsOccupation = bibStatsRes.tauxOccupation ?? 0;
-        s.bibsManualTotal = bibStatsRes.bibsManualTotal ?? 0;
-        s.bibsManualUsed = bibStatsRes.bibsManualUsed ?? 0;
-        s.bibsManualRestants = bibStatsRes.bibsManualRestants ?? 0;
-        s.prochainNumero = bibStatsRes.prochainNumero;
+        e.bibsAssigned = bibStatsRes.bibsAttribues ?? 0;
+        e.bibsAutoUsed = bibStatsRes.bibsAutoRange ?? 0;
+        e.bibsRemaining = bibStatsRes.bibsRestants ?? 0;
+        e.bibsOccupation = bibStatsRes.tauxOccupation ?? 0;
+        e.bibsManualTotal = bibStatsRes.bibsManualTotal ?? 0;
+        e.bibsManualUsed = bibStatsRes.bibsManualUsed ?? 0;
+        e.bibsManualRestants = bibStatsRes.bibsManualRestants ?? 0;
+        e.prochainNumero = bibStatsRes.prochainNumero;
       }
-      setSettings(s);
+      setEventData(e);
     } catch { /* ignore */ }
     setLoading(false);
-  }, []);
+  }, [selectedEventId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -62,18 +63,18 @@ export default function Bibs() {
     setTimeout(() => setMessage({ type: '', text: '' }), 4000);
   };
 
-  const updateSetting = (key, value) => {
-    setSettings((prev) => ({ ...prev, [key]: value }));
+  const updateField = (key, value) => {
+    setEventData((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await put('/admin/settings', {
-        bibStart: settings.bibStart,
-        bibEnd: settings.bibEnd,
-        bibPrefix: settings.bibPrefix || null,
-        autoCloseOnExhaustion: settings.autoCloseOnExhaustion,
+      await put(`/admin/events/${selectedEventId}`, {
+        bibStart: eventData.bibStart,
+        bibEnd: eventData.bibEnd,
+        bibPrefix: eventData.bibPrefix || null,
+        autoCloseOnExhaustion: eventData.autoCloseOnExhaustion,
       });
       showMessage('success', 'Configuration des dossards sauvegardée.');
     } catch (err) {
@@ -105,7 +106,7 @@ export default function Bibs() {
           }`}>{message.text}</div>
         )}
 
-        {settings && (
+        {eventData && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left — Configuration */}
             <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
@@ -113,22 +114,22 @@ export default function Bibs() {
 
               <div className="grid grid-cols-2 gap-4">
                 <FormField label="Début de la plage">
-                  <input type="number" value={settings.bibStart || ''} disabled={settings.bibRangeLocked}
-                    onChange={(e) => updateSetting('bibStart', parseInt(e.target.value) || 0)} className={inputClass} />
+                  <input type="number" value={eventData.bibStart || ''} disabled={eventData.bibRangeLocked}
+                    onChange={(e) => updateField('bibStart', parseInt(e.target.value) || 0)} className={inputClass} />
                 </FormField>
                 <FormField label="Fin de la plage">
-                  <input type="number" value={settings.bibEnd || ''} disabled={settings.bibRangeLocked}
-                    onChange={(e) => updateSetting('bibEnd', parseInt(e.target.value) || 0)} className={inputClass} />
+                  <input type="number" value={eventData.bibEnd || ''}
+                    onChange={(e) => updateField('bibEnd', parseInt(e.target.value) || 0)} className={inputClass} />
                 </FormField>
               </div>
 
-              {settings.bibRangeLocked && (
-                <p className="text-xs text-amber-600">La plage est verrouillée (des dossards ont été attribués).</p>
+              {eventData.bibRangeLocked && (
+                <p className="text-xs text-amber-600">Le début de plage est verrouillé. Vous pouvez augmenter la fin de plage.</p>
               )}
 
               <FormField label="Préfixe dossard" hint="Ex: TR pour TR-001">
-                <input type="text" value={settings.bibPrefix || ''}
-                  onChange={(e) => updateSetting('bibPrefix', e.target.value)} className={inputClass} />
+                <input type="text" value={eventData.bibPrefix || ''}
+                  onChange={(e) => updateField('bibPrefix', e.target.value)} className={inputClass} />
               </FormField>
 
               <div className="flex items-center justify-between">
@@ -136,7 +137,7 @@ export default function Bibs() {
                   <p className="text-sm font-medium text-gray-700">Fermeture automatique</p>
                   <p className="text-xs text-gray-400 mt-0.5">Fermer les inscriptions à épuisement des dossards</p>
                 </div>
-                <Toggle checked={settings.autoCloseOnExhaustion || false} onChange={(v) => updateSetting('autoCloseOnExhaustion', v)} />
+                <Toggle checked={eventData.autoCloseOnExhaustion || false} onChange={(v) => updateField('autoCloseOnExhaustion', v)} />
               </div>
 
               <div className="pt-2">
@@ -149,29 +150,27 @@ export default function Bibs() {
 
             {/* Right — Stats */}
             <div className="space-y-6">
-              {/* Auto range */}
               <div className="bg-white border border-gray-200 rounded-xl p-6">
                 <h3 className="text-lg font-semibold text-gray-900 pb-3 mb-4 border-b border-gray-100">
                   Plage automatique
-                  <span className="text-sm font-normal text-gray-400 ms-2">({settings.bibStart}–{settings.bibEnd})</span>
+                  <span className="text-sm font-normal text-gray-400 ms-2">({eventData.bibStart}–{eventData.bibEnd})</span>
                 </h3>
                 <div className="grid grid-cols-3 gap-4">
-                  <StatCard label="Utilisés" value={settings.bibsAutoUsed ?? '—'} color="emerald" />
-                  <StatCard label="Restants" value={settings.bibsRemaining ?? '—'} color="amber" />
-                  <StatCard label="Occupation" value={`${settings.bibsOccupation ?? 0}%`} color="blue" />
+                  <BibStatCard label="Utilisés" value={eventData.bibsAutoUsed ?? '—'} color="emerald" />
+                  <BibStatCard label="Restants" value={eventData.bibsRemaining ?? '—'} color="amber" />
+                  <BibStatCard label="Occupation" value={`${eventData.bibsOccupation ?? 0}%`} color="blue" />
                 </div>
               </div>
 
-              {/* Manual range */}
               <div className="bg-white border border-gray-200 rounded-xl p-6">
                 <h3 className="text-lg font-semibold text-gray-900 pb-3 mb-4 border-b border-gray-100">
                   Plage manuelle
-                  <span className="text-sm font-normal text-gray-400 ms-2">(1–{(settings.bibStart || 101) - 1})</span>
+                  <span className="text-sm font-normal text-gray-400 ms-2">(1–{(eventData.bibStart || 101) - 1})</span>
                 </h3>
                 <div className="grid grid-cols-3 gap-4">
-                  <StatCard label="Total" value={settings.bibsManualTotal ?? '—'} color="purple" />
-                  <StatCard label="Utilisés" value={settings.bibsManualUsed ?? '—'} color="purple" />
-                  <StatCard label="Restants" value={settings.bibsManualRestants ?? '—'} color="purple" />
+                  <BibStatCard label="Total" value={eventData.bibsManualTotal ?? '—'} color="purple" />
+                  <BibStatCard label="Utilisés" value={eventData.bibsManualUsed ?? '—'} color="purple" />
+                  <BibStatCard label="Restants" value={eventData.bibsManualRestants ?? '—'} color="purple" />
                 </div>
               </div>
             </div>
@@ -182,7 +181,7 @@ export default function Bibs() {
   );
 }
 
-function StatCard({ label, value, color }) {
+function BibStatCard({ label, value, color }) {
   const colors = {
     emerald: 'bg-emerald-50 border-emerald-200 text-emerald-700',
     amber: 'bg-amber-50 border-amber-200 text-amber-700',

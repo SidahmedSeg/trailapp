@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { lazy, Suspense, useEffect } from 'react';
 import { AuthProvider } from './hooks/useAuth.jsx';
+import { EventProvider } from './hooks/useEvent.jsx';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -29,11 +30,12 @@ const Settings = lazy(() => import('./pages/admin/Settings'));
 const Bibs = lazy(() => import('./pages/admin/Bibs'));
 const Activity = lazy(() => import('./pages/admin/Activity'));
 const UserManagement = lazy(() => import('./pages/admin/UserManagement'));
+const Events = lazy(() => import('./pages/admin/Events'));
 
 function AdminRoute({ children }) {
   const token = localStorage.getItem('access_token');
   if (!token) return <Navigate to="/admin/login" replace />;
-  return children;
+  return <EventProvider>{children}</EventProvider>;
 }
 
 function LoadingFallback() {
@@ -72,6 +74,7 @@ export default function App() {
           <Route path="/admin/bibs" element={<AdminRoute><Bibs /></AdminRoute>} />
           <Route path="/admin/activity" element={<AdminRoute><Activity /></AdminRoute>} />
           <Route path="/admin/users" element={<AdminRoute><UserManagement /></AdminRoute>} />
+          <Route path="/admin/events" element={<AdminRoute><Events /></AdminRoute>} />
         </Routes>
       </Suspense>
     </AuthProvider>

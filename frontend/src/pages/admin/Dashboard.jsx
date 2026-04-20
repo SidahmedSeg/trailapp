@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { get } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
+import { useEvent } from '../../hooks/useEvent';
 import Sidebar from '../../components/ui/Sidebar';
 import { Users, Clock, CheckCircle, Ticket, DollarSign } from 'lucide-react';
 import {
@@ -94,19 +95,22 @@ function RankingCard({ data }) {
 /* ─── Main Dashboard ─── */
 export default function Dashboard() {
   const { user } = useAuth();
+  const { selectedEventId } = useEvent();
   const [stats, setStats] = useState(null);
   const [charts, setCharts] = useState(null);
 
   const fetchData = useCallback(async () => {
+    if (!selectedEventId) return;
     try {
+      const q = `?eventId=${selectedEventId}`;
       const [statsData, chartsData] = await Promise.all([
-        get('/admin/stats'),
-        get('/admin/stats/charts'),
+        get(`/admin/stats${q}`),
+        get(`/admin/stats/charts${q}`),
       ]);
       setStats(statsData);
       setCharts(chartsData);
     } catch { /* ignore */ }
-  }, []);
+  }, [selectedEventId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 

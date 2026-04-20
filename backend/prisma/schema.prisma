@@ -7,8 +7,77 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Event {
+  id                    String    @id @default(uuid())
+  slug                  String    @unique
+
+  // Identity
+  name                  String
+  type                  String    @default("trail") // trail | route | marathon
+  description           String?   @db.Text
+  date                  DateTime?
+  location              String    @default("Alger")
+
+  // Branding
+  primaryColor          String    @default("#C42826")
+  logoPath              String?
+  coverImagePath        String?
+
+  // Social links
+  facebookUrl           String?
+  instagramUrl          String?
+  websiteUrl            String?
+
+  // Contact CTA
+  contactEmail          String?
+  contactPhone          String?
+  contactLabel          String?
+
+  // Distances — JSON array of {name, elevation?, timeLimit?}
+  distances             Json      @default("[]")
+
+  // Registration control
+  registrationOpen      Boolean   @default(true)
+  registrationDeadline  DateTime?
+  maxCapacity           Int?
+  autoCloseOnExhaustion Boolean   @default(true)
+
+  // Bib config
+  bibStart              Int       @default(101)
+  bibEnd                Int       @default(1500)
+  bibPrefix             String?
+  bibRangeLocked        Boolean   @default(false)
+
+  // Pricing
+  priceInCentimes       Int       @default(200000)
+  photoPackPrice        Int?
+
+  // Activatable optional fields — "off" | "optional" | "required"
+  optionalFields        Json      @default("{}")
+
+  // Terms/rules text
+  termsText             String?   @db.Text
+
+  // Status
+  active                Boolean   @default(false)
+  status                String    @default("upcoming") // upcoming | active | archived
+
+  // Relations
+  registrations         Registration[]
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([active])
+  @@index([status])
+}
+
 model Registration {
   id                        String    @id @default(uuid())
+
+  // Event
+  eventId                   String
+  event                     Event     @relation(fields: [eventId], references: [id])
 
   // Informations personnelles
   lastName                  String
@@ -16,12 +85,12 @@ model Registration {
   birthDate                 DateTime
   gender                    String    // "Homme" | "Femme"
   nationality               String
-  phoneCountryCode          String    // Ex: "+213" (UI)
-  phoneNumber               String    // Ex: "770585909" (UI)
-  phone                     String    // E.164: "+213770585909"
-  email                     String    @unique
+  phoneCountryCode          String
+  phoneNumber               String
+  phone                     String    // E.164
+  email                     String
 
-  // Résidence
+  // Residence
   countryOfResidence        String
   wilaya                    String?
   commune                   String?
@@ -32,11 +101,11 @@ model Registration {
   emergencyPhoneNumber      String
   emergencyPhone            String    // E.164
 
-  // Préférences
+  // Preferences
   tshirtSize                String    // S | M | L | XL | XXL
-  runnerLevel               String    // Débutant | Intermédiaire | Avancé
+  runnerLevel               String    // Debutant | Confirme | Elite
 
-  // Déclarations
+  // Declarations
   declarationFit            Boolean   @default(false)
   declarationRules          Boolean   @default(false)
   declarationImage          Boolean   @default(false)
@@ -54,9 +123,10 @@ model Registration {
   approvalCode              String?
   paymentAmount             Int       @default(200000) // centimes
   paymentDate               DateTime?
+  cardPan                   String?   // last 4 digits from SATIM
 
   // Statut
-  status                    String    @default("en_attente") // en_attente | distribué
+  status                    String    @default("en_attente") // en_attente | distribue
   distributedAt             DateTime?
   distributedBy             String?
 
@@ -64,16 +134,28 @@ model Registration {
   source                    String    @default("public") // public | admin
   createdBy                 String?
 
+  // Optional fields (activated per event)
+  selectedDistance          String?
+  medicalCertificatePath   String?
+  club                     String?
+  licenseNumber            String?
+  bestPerformance          String?   // H:MM:SS
+  previousParticipations   Int?
+  shuttle                  Boolean?
+  bloodType                String?   // A+ | A- | B+ | B- | AB+ | AB- | O+ | O-
+  photoPack                Boolean?
+
   // Relations
   emailsSent                EmailLog[]
 
   createdAt                 DateTime  @default(now())
   updatedAt                 DateTime  @updatedAt
 
+  @@unique([email, eventId])
+  @@index([eventId])
   @@index([status])
   @@index([paymentStatus])
   @@index([lastName, firstName])
-  @@index([email])
   @@index([bibNumber])
 }
 
@@ -104,29 +186,6 @@ model ScannerSession {
   method         String   @default("qr") // qr | manual
 }
 
-model Settings {
-  id                    String    @id @default("default")
-
-  // Contrôle inscriptions
-  registrationOpen      Boolean   @default(true)
-  registrationDeadline  DateTime?
-  maxCapacity           Int?
-
-  // Configuration dossards
-  bibStart              Int       @default(101)
-  bibEnd                Int       @default(1500)
-  bibPrefix             String?
-  bibRangeLocked        Boolean   @default(false)
-  autoCloseOnExhaustion Boolean   @default(true)
-
-  // Infos événement
-  eventName             String    @default("Trail des Mouflons d'Or 2026")
-  eventDate             DateTime?
-  eventCity             String    @default("Alger")
-
-  updatedAt             DateTime  @updatedAt
-}
-
 model EmailLog {
   id             String       @id @default(uuid())
   registrationId String
@@ -147,7 +206,7 @@ model ActivityLog {
   id            String   @id @default(uuid())
   action        String
   adminUsername String
-  targetType    String?  // registration | settings | admin_user
+  targetType    String?  // registration | event | admin_user
   targetId      String?
   details       Json?
   createdAt     DateTime @default(now())
