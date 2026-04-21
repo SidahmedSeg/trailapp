@@ -43,8 +43,9 @@ async function paymentRoutes(fastify) {
       data: { paymentStatus: 'processing', termsAccepted: true },
     });
 
-    // Register payment with SATIM
-    const orderId = `TM-${Date.now()}-${registrationId.substring(0, 8)}`;
+    // Register payment with SATIM — 8-char alphanumeric order ID
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I confusion
+    const orderId = Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
     const returnUrl = `${env.SATIM_CALLBACK_URL}?registrationId=${registrationId}`;
     const failUrl = `${env.APP_URL}/failed?id=${registrationId}`;
 
