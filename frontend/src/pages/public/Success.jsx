@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { QRCodeSVG } from 'qrcode.react';
-import { CircleCheck, Download, Send, User, Shirt, Trophy, Phone, Mail, Calendar, MapPin, CreditCard, ArrowLeft, CheckCircle } from 'lucide-react';
+import { CircleCheck, Download, Send, User, Shirt, Trophy, Phone, Mail, Calendar, MapPin, CreditCard, ArrowLeft, CheckCircle, Printer, PhoneCall } from 'lucide-react';
 import PublicLayout from '../../components/ui/PublicLayout';
 
 export default function Success() {
@@ -104,7 +104,7 @@ export default function Success() {
               <div className="relative">
                 <p className="text-sm text-white/70 uppercase tracking-wider mb-2">{t('success.bib')}</p>
                 <div className="text-7xl font-black">{r.bibNumber || '—'}</div>
-                <p className="text-sm text-white/60 mt-2">Trail des Mouflons d'Or 2026</p>
+                <p className="text-sm text-white/60 mt-2">{r.event?.name || 'Trail des Mouflons d\'Or 2026'}</p>
               </div>
             </div>
 
@@ -144,8 +144,8 @@ export default function Success() {
               <h2 className="text-lg font-semibold text-gray-900">{t('success.event')}</h2>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <EventCard icon={Calendar} label={t('success.fields.date')} value="1 Mai 2026" />
-              <EventCard icon={MapPin} label={t('success.fields.location')} value="Alger" />
+              <EventCard icon={Calendar} label={t('success.fields.date')} value={r.event?.date ? new Date(r.event.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'} />
+              <EventCard icon={MapPin} label={t('success.fields.location')} value={r.event?.location || '—'} />
               <EventCard icon={CreditCard} label={t('success.fields.amountPaid')} value={r.paymentAmount ? `${(r.paymentAmount / 100).toLocaleString('fr-FR')} DZD` : '2 000 DZD'} />
             </div>
           </div>
@@ -175,14 +175,45 @@ export default function Success() {
             </div>
           )}
 
+          {/* Approval number */}
+          {r.approvalCode && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-emerald-600 font-medium uppercase tracking-wider">Numéro d'approbation</p>
+                <p className="text-2xl font-bold text-emerald-800 font-mono mt-1">{r.approvalCode}</p>
+              </div>
+              <CheckCircle size={32} className="text-emerald-400" />
+            </div>
+          )}
+
+          {/* SATIM support section */}
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-4 flex items-center gap-4">
+            <div className="flex-shrink-0 bg-emerald-500 text-white rounded-full w-12 h-12 flex items-center justify-center">
+              <PhoneCall size={20} />
+            </div>
+            <div>
+              <p className="text-xs text-emerald-600 uppercase tracking-wider font-medium">Appel gratuit</p>
+              <p className="text-sm font-bold text-emerald-900">
+                EN CAS DE PROBLEME DE PAIEMENT, CONTACTEZ NOTRE SERVICE CLIENT : <span className="text-lg">3020</span>
+              </p>
+            </div>
+          </div>
+
           {/* Action buttons */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <button
               onClick={handleDownloadPdf}
               className="bg-[#C42826] hover:bg-[#a82220] text-white font-bold py-3.5 rounded-xl text-sm transition shadow-md hover:shadow-lg cursor-pointer flex items-center justify-center gap-2"
             >
               <Download size={18} />
               {t('success.downloadPdf')}
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-bold py-3.5 rounded-xl text-sm transition shadow-sm cursor-pointer flex items-center justify-center gap-2"
+            >
+              <Printer size={18} />
+              Imprimer
             </button>
             <button
               onClick={handleSendPdf}
