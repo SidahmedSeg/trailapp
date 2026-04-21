@@ -104,7 +104,7 @@ async function adminRoutes(fastify) {
       throw new AppError(400, 'Numéro de dossard requis', 'VALIDATION_ERROR');
     }
 
-    const errors = validateRegistration(body);
+    const errors = validateRegistration(body, event?.runnerLevels);
     if (errors.length > 0) {
       throw new AppError(400, errors[0].message, 'VALIDATION_ERROR');
     }

@@ -119,11 +119,8 @@ export default function Register() {
     { value: 'Femme', label: t('register.genders.female') },
   ];
 
-  const levelOptions = [
-    { value: 'Débutant', label: 'Débutant' },
-    { value: 'Confirmé', label: 'Confirmé' },
-    { value: 'Elite', label: 'Elite' },
-  ];
+  const eventLevels = eventConfig?.runnerLevels || ['Débutant', 'Confirmé', 'Elite'];
+  const levelOptions = eventLevels.map(l => ({ value: l, label: l }));
 
   const countryOptions = COUNTRIES_DATA.map((c) => ({
     value: c.value,

@@ -3,11 +3,12 @@ const PHONE_DZ_REGEX = /^[567]\d{8}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const GENDERS = ['Homme', 'Femme'];
 const TSHIRT_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
-const RUNNER_LEVELS = ['Débutant', 'Confirmé', 'Elite'];
+const DEFAULT_RUNNER_LEVELS = ['Débutant', 'Confirmé', 'Elite'];
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const PERFORMANCE_REGEX = /^\d{1,2}:\d{2}:\d{2}$/;
 
-function validateRegistration(body) {
+function validateRegistration(body, eventRunnerLevels) {
+  const RUNNER_LEVELS = (eventRunnerLevels && eventRunnerLevels.length > 0) ? eventRunnerLevels : DEFAULT_RUNNER_LEVELS;
   const errors = [];
 
   // Required fields

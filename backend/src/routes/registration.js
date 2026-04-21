@@ -17,7 +17,7 @@ async function registrationRoutes(fastify) {
     const event = request.event; // set by registrationGuard
 
     // Validate base fields
-    const errors = validateRegistration(body);
+    const errors = validateRegistration(body, event.runnerLevels);
     if (errors.length > 0) {
       throw new AppError(400, 'Erreurs de validation', 'VALIDATION_ERROR');
     }
@@ -238,6 +238,7 @@ async function registrationRoutes(fastify) {
       contactPhone: event.contactPhone,
       contactLabel: event.contactLabel,
       distances: event.distances,
+      runnerLevels: event.runnerLevels,
       optionalFields: event.optionalFields,
       priceInCentimes: event.priceInCentimes,
       photoPackPrice: event.photoPackPrice,

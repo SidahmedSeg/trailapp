@@ -37,6 +37,9 @@ model Event {
   // Distances — JSON array of {name, elevation?, timeLimit?}
   distances             Json      @default("[]")
 
+  // Runner levels — JSON array of strings, e.g. ["Débutant", "Confirmé", "Elite"]
+  runnerLevels          Json      @default("[\"Débutant\", \"Confirmé\", \"Elite\"]")
+
   // Registration control
   registrationOpen      Boolean   @default(true)
   registrationDeadline  DateTime?

@@ -46,6 +46,7 @@ const initialForm = {
   priceInCentimes: 200000, photoPackPrice: '',
   termsText: '',
   distances: [],
+  runnerLevels: ['Débutant', 'Confirmé', 'Elite'],
   optionalFields: {},
 };
 
@@ -118,6 +119,7 @@ export default function Events() {
         photoPackPrice: e.photoPackPrice ?? '',
         termsText: e.termsText || '',
         distances: e.distances || [],
+        runnerLevels: e.runnerLevels || ['Débutant', 'Confirmé', 'Elite'],
         optionalFields: e.optionalFields || {},
         bibRangeLocked: e.bibRangeLocked,
       });
@@ -650,6 +652,45 @@ export default function Events() {
                       ))}
                     </div>
                   )}
+                </div>
+
+                  {/* Runner Levels */}
+                  <hr className="border-gray-100 my-6" />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-700">Niveaux coureur</h4>
+                      <p className="text-xs text-gray-400 mt-0.5">Le coureur choisira parmi ces niveaux</p>
+                    </div>
+                    <button onClick={() => setForm(f => ({ ...f, runnerLevels: [...f.runnerLevels, ''] }))}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-[#C42826] text-[#C42826] px-3 py-1.5 text-xs font-medium hover:bg-[#C42826]/5 transition cursor-pointer">
+                      <Plus size={14} /> Ajouter
+                    </button>
+                  </div>
+                  <div className="space-y-2 mt-3">
+                    {form.runnerLevels.map((level, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs font-bold text-gray-500">{i + 1}</span>
+                        </div>
+                        <input
+                          className={`${input} flex-1`}
+                          placeholder="Nom du niveau (ex: Elite)"
+                          value={level}
+                          onChange={e => {
+                            const updated = [...form.runnerLevels];
+                            updated[i] = e.target.value;
+                            setForm(f => ({ ...f, runnerLevels: updated }));
+                          }}
+                        />
+                        {form.runnerLevels.length > 1 && (
+                          <button onClick={() => setForm(f => ({ ...f, runnerLevels: f.runnerLevels.filter((_, idx) => idx !== i) }))}
+                            className="text-gray-300 hover:text-red-500 cursor-pointer">
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
