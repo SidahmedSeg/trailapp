@@ -3,7 +3,7 @@ import { get, post, put } from '../../lib/api';
 import { useEvent } from '../../hooks/useEvent';
 import Sidebar from '../../components/ui/Sidebar';
 import {
-  Plus, Calendar, MapPin, Edit2, Check, Archive, X,
+  Plus, Calendar, MapPin, Edit2, Check, Archive, ArchiveRestore, X,
   Trash2, Globe, Link2, ChevronLeft, ChevronRight,
   Ticket, DollarSign, Settings, FileText, Route,
 } from 'lucide-react';
@@ -201,9 +201,22 @@ export default function Events() {
   }
 
   async function handleArchive(id) {
+    const evt = events.find(e => e.id === id);
+    if (!window.confirm(`Archiver "${evt?.name || 'cet événement'}" ?\n\nLes inscriptions seront fermées et l'événement ne sera plus modifiable.`)) return;
     try {
       await post(`/admin/events/${id}/archive`);
       setMsg({ type: 'success', text: 'Événement archivé' });
+      fetchEvents();
+      refreshEvents();
+    } catch (err) {
+      setMsg({ type: 'error', text: err.message });
+    }
+  }
+
+  async function handleUnarchive(id) {
+    try {
+      await post(`/admin/events/${id}/unarchive`);
+      setMsg({ type: 'success', text: 'Événement désarchivé' });
       fetchEvents();
       refreshEvents();
     } catch (err) {
@@ -349,10 +362,17 @@ export default function Events() {
                         <Check size={13} /> Activer
                       </button>
                     )}
-                    {evt.status !== 'archived' && (
+                    {evt.status !== 'archived' ? (
                       <button onClick={() => handleArchive(evt.id)}
-                        className="flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-500 hover:bg-gray-50 transition cursor-pointer">
+                        className="flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-500 hover:bg-gray-50 transition cursor-pointer"
+                        title="Archiver">
                         <Archive size={13} />
+                      </button>
+                    ) : (
+                      <button onClick={() => handleUnarchive(evt.id)}
+                        className="flex items-center justify-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 hover:bg-amber-100 transition cursor-pointer"
+                        title="Désarchiver">
+                        <ArchiveRestore size={13} />
                       </button>
                     )}
                   </div>

@@ -262,6 +262,30 @@ async function eventsRoutes(fastify) {
     return { data: updated };
   });
 
+  // POST /api/admin/events/:id/unarchive
+  fastify.post('/events/:id/unarchive', async (request) => {
+    const event = await prisma.event.findUnique({ where: { id: request.params.id } });
+    if (!event) throw new AppError(404, 'Événement non trouvé', 'NOT_FOUND');
+    if (event.status !== 'archived') {
+      throw new AppError(400, 'Cet événement n\'est pas archivé', 'NOT_ARCHIVED');
+    }
+
+    const updated = await prisma.event.update({
+      where: { id: event.id },
+      data: { status: 'upcoming' },
+    });
+
+    await logActivity({
+      action: 'event_unarchived',
+      adminUsername: request.user.username,
+      targetType: 'event',
+      targetId: event.id,
+      details: { name: event.name },
+    });
+
+    return { data: updated };
+  });
+
   // GET /api/admin/events/:id/bib-stats
   fastify.get('/events/:id/bib-stats', async (request) => {
     const event = await prisma.event.findUnique({ where: { id: request.params.id } });
