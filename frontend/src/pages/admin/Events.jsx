@@ -652,7 +652,6 @@ export default function Events() {
                       ))}
                     </div>
                   )}
-                </div>
 
                   {/* Runner Levels */}
                   <hr className="border-gray-100 my-6" />
