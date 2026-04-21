@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { QRCodeSVG } from 'qrcode.react';
-import { CircleCheck, Download, Send, User, Shirt, Trophy, Phone, Mail, Calendar, MapPin, CreditCard, ArrowLeft, CheckCircle, Printer, PhoneCall } from 'lucide-react';
+import { CircleCheck, Download, Send, User, Shirt, Trophy, Phone, Mail, Calendar, MapPin, CreditCard, ArrowLeft, CheckCircle, Printer } from 'lucide-react';
 import PublicLayout from '../../components/ui/PublicLayout';
 
 export default function Success() {
@@ -121,33 +121,33 @@ export default function Success() {
           {/* Participant info */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
             <div className="flex items-center gap-3 pb-4 mb-5 border-b border-gray-100">
-              <div className="w-9 h-9 rounded-lg bg-[#C42826]/10 flex items-center justify-center">
-                <User size={18} className="text-[#C42826]" />
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${brand}15` }}>
+                <User size={18} style={{ color: brand }} />
               </div>
               <h2 className="text-lg font-semibold text-gray-900">{t('success.participant')}</h2>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <InfoField icon={User} label={t('success.fields.fullName')} value={`${r.firstName} ${r.lastName}`} />
-              <InfoField icon={Mail} label={t('success.fields.email')} value={r.email} />
-              <InfoField icon={Phone} label={t('success.fields.phone')} value={r.phone} />
-              <InfoField icon={Shirt} label={t('success.fields.tshirt')} value={r.tshirtSize} />
-              <InfoField icon={Trophy} label={t('success.fields.level')} value={r.runnerLevel} />
-              <InfoField icon={User} label={t('success.fields.gender')} value={r.gender} />
+              <InfoField icon={User} label={t('success.fields.fullName')} value={`${r.firstName} ${r.lastName}`} color={brand} />
+              <InfoField icon={Mail} label={t('success.fields.email')} value={r.email} color={brand} />
+              <InfoField icon={Phone} label={t('success.fields.phone')} value={r.phone} color={brand} />
+              <InfoField icon={Shirt} label={t('success.fields.tshirt')} value={r.tshirtSize} color={brand} />
+              <InfoField icon={Trophy} label={t('success.fields.level')} value={r.runnerLevel} color={brand} />
+              <InfoField icon={User} label={t('success.fields.gender')} value={r.gender} color={brand} />
             </div>
           </div>
 
           {/* Event info */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
             <div className="flex items-center gap-3 pb-4 mb-5 border-b border-gray-100">
-              <div className="w-9 h-9 rounded-lg bg-[#C42826]/10 flex items-center justify-center">
-                <Calendar size={18} className="text-[#C42826]" />
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${brand}15` }}>
+                <Calendar size={18} style={{ color: brand }} />
               </div>
               <h2 className="text-lg font-semibold text-gray-900">{t('success.event')}</h2>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <EventCard icon={Calendar} label={t('success.fields.date')} value={r.event?.date ? new Date(r.event.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'} />
-              <EventCard icon={MapPin} label={t('success.fields.location')} value={r.event?.location || '—'} />
-              <EventCard icon={CreditCard} label={t('success.fields.amountPaid')} value={r.paymentAmount ? `${(r.paymentAmount / 100).toLocaleString('fr-FR')} DZD` : '2 000 DZD'} />
+              <EventCard icon={Calendar} label={t('success.fields.date')} value={r.event?.date ? new Date(r.event.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'} color={brand} />
+              <EventCard icon={MapPin} label={t('success.fields.location')} value={r.event?.location || '—'} color={brand} />
+              <EventCard icon={CreditCard} label={t('success.fields.amountPaid')} value={r.paymentAmount ? `${(r.paymentAmount / 100).toLocaleString('fr-FR')} DZD` : '—'} color={brand} />
             </div>
           </div>
 
@@ -155,14 +155,15 @@ export default function Success() {
           {(r.transactionId || r.paymentStatus) && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
               <div className="flex items-center gap-3 pb-4 mb-5 border-b border-gray-100">
-                <div className="w-9 h-9 rounded-lg bg-[#C42826]/10 flex items-center justify-center">
-                  <CreditCard size={18} className="text-[#C42826]" />
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${brand}15` }}>
+                  <CreditCard size={18} style={{ color: brand }} />
                 </div>
                 <h2 className="text-lg font-semibold text-gray-900">{t('success.transaction')}</h2>
               </div>
               <div className="space-y-3">
                 {r.transactionId && <TransactionRow label={t('success.fields.transactionId')} value={r.transactionId} mono />}
                 {r.transactionNumber && <TransactionRow label={t('success.fields.orderId')} value={r.transactionNumber} mono />}
+                {r.approvalCode && <TransactionRow label="N° d'approbation" value={r.approvalCode} mono />}
                 {r.paymentMethod && <TransactionRow label={t('success.fields.method')} value={r.paymentMethod} />}
                 {r.paymentDate && <TransactionRow label={t('success.fields.paymentDate')} value={new Date(r.paymentDate).toLocaleString('fr-FR')} />}
                 <div className="flex items-center justify-between pt-2 border-t border-gray-100">
@@ -176,28 +177,12 @@ export default function Success() {
             </div>
           )}
 
-          {/* Approval number */}
-          {r.approvalCode && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex items-center justify-between">
-              <div>
-                <p className="text-xs text-emerald-600 font-medium uppercase tracking-wider">Numéro d'approbation</p>
-                <p className="text-2xl font-bold text-emerald-800 font-mono mt-1">{r.approvalCode}</p>
-              </div>
-              <CheckCircle size={32} className="text-emerald-400" />
-            </div>
-          )}
-
-          {/* SATIM support section */}
-          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-4 flex items-center gap-4">
-            <div className="flex-shrink-0 bg-emerald-500 text-white rounded-full w-12 h-12 flex items-center justify-center">
-              <PhoneCall size={20} />
-            </div>
-            <div>
-              <p className="text-xs text-emerald-600 uppercase tracking-wider font-medium">Appel gratuit</p>
-              <p className="text-sm font-bold text-emerald-900">
-                EN CAS DE PROBLEME DE PAIEMENT, CONTACTEZ NOTRE SERVICE CLIENT : <span className="text-lg">3020</span>
-              </p>
-            </div>
+          {/* SATIM 3020 support — compact */}
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 flex items-center gap-3">
+            <img src="/3020.svg" alt="3020" className="h-10 flex-shrink-0" />
+            <p className="text-xs font-bold text-emerald-900">
+              EN CAS DE PROBLEME DE PAIEMENT, CONTACTEZ NOTRE SERVICE CLIENT : 3020
+            </p>
           </div>
 
           {/* Action buttons */}
@@ -240,10 +225,10 @@ export default function Success() {
   );
 }
 
-function InfoField({ icon: Icon, label, value }) {
+function InfoField({ icon: Icon, label, value, color }) {
   return (
     <div className="flex items-start gap-3 bg-gray-50/70 rounded-xl px-4 py-3">
-      <Icon size={16} className="text-gray-400 mt-0.5 flex-shrink-0" />
+      <Icon size={16} style={color ? { color } : undefined} className={color ? 'mt-0.5 flex-shrink-0' : 'text-gray-400 mt-0.5 flex-shrink-0'} />
       <div className="min-w-0">
         <p className="text-xs text-gray-400">{label}</p>
         <p className="text-sm font-medium text-gray-900 truncate">{value || '—'}</p>
@@ -252,10 +237,10 @@ function InfoField({ icon: Icon, label, value }) {
   );
 }
 
-function EventCard({ icon: Icon, label, value }) {
+function EventCard({ icon: Icon, label, value, color }) {
   return (
     <div className="bg-gray-50 rounded-xl px-4 py-4 text-center">
-      <Icon size={20} className="text-[#C42826] mx-auto mb-2" />
+      <Icon size={20} style={{ color: color || '#C42826' }} className="mx-auto mb-2" />
       <p className="text-xs text-gray-500">{label}</p>
       <p className="text-sm font-bold text-gray-900 mt-0.5">{value}</p>
     </div>
