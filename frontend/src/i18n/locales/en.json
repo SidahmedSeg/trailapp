@@ -54,8 +54,8 @@
       "level": "Level"
     },
     "placeholders": {
-      "phone": "e.g. +213 555 123 456",
-      "emergencyPhone": "e.g. +213 555 123 456",
+      "phone": "6XX XXX XXX",
+      "emergencyPhone": "5XX XXX XXX",
       "city": "Enter your city",
       "selectWilaya": "Select a wilaya",
       "enterName": "Enter your name"

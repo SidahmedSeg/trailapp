@@ -58,6 +58,7 @@ async function eventsRoutes(fastify) {
         coverImagePath: body.coverImagePath || null,
         facebookUrl: body.facebookUrl || null,
         instagramUrl: body.instagramUrl || null,
+        tiktokUrl: body.tiktokUrl || null,
         websiteUrl: body.websiteUrl || null,
         contactEmail: body.contactEmail || null,
         contactPhone: body.contactPhone || null,
@@ -130,7 +131,7 @@ async function eventsRoutes(fastify) {
     const allowedFields = [
       'name', 'type', 'description', 'date', 'location',
       'primaryColor', 'logoPath', 'coverImagePath',
-      'facebookUrl', 'instagramUrl', 'websiteUrl',
+      'facebookUrl', 'instagramUrl', 'tiktokUrl', 'websiteUrl',
       'contactEmail', 'contactPhone', 'contactLabel',
       'distances',
       'registrationOpen', 'registrationDeadline', 'maxCapacity', 'autoCloseOnExhaustion',

@@ -54,8 +54,8 @@
       "level": "Votre niveau en trail"
     },
     "placeholders": {
-      "phone": "770 585 909",
-      "emergencyPhone": "661 234 567",
+      "phone": "6XX XXX XXX",
+      "emergencyPhone": "5XX XXX XXX",
       "city": "Ville de résidence",
       "selectWilaya": "Choisir une wilaya",
       "enterName": "Saisissez le nom"

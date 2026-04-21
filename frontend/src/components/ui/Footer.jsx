@@ -6,6 +6,7 @@ export default function Footer({ event }) {
 
   const facebookUrl = event?.facebookUrl || 'https://www.facebook.com/p/Ligue-Algeroise-de-ski-et-des-sports-de-montagne-LASSM-100081974797044/';
   const instagramUrl = event?.instagramUrl || 'https://www.instagram.com/lassm.dz/';
+  const tiktokUrl = event?.tiktokUrl || '';
   const websiteUrl = event?.websiteUrl || 'https://lassm.dz/';
   const logoSrc = event?.logoPath
     ? event.logoPath  // Event-specific logo
@@ -26,6 +27,11 @@ export default function Footer({ event }) {
           {instagramUrl && (
             <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition" aria-label="Instagram">
               <img src="/insta.svg" alt="Instagram" className="h-7 w-7 brightness-0 invert" />
+            </a>
+          )}
+          {tiktokUrl && (
+            <a href={tiktokUrl} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition" aria-label="TikTok">
+              <img src="/tiktok.svg" alt="TikTok" className="h-7 w-7 brightness-0 invert" />
             </a>
           )}
           {websiteUrl && (

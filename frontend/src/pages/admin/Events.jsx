@@ -38,7 +38,7 @@ const STEPS = [
 
 const initialForm = {
   name: '', type: 'trail', description: '', date: '', location: 'Alger', primaryColor: '#C42826',
-  facebookUrl: '', instagramUrl: '', websiteUrl: '',
+  facebookUrl: '', instagramUrl: '', tiktokUrl: '', websiteUrl: '',
   contactEmail: '', contactPhone: '', contactLabel: '',
   registrationOpen: true, registrationDeadline: '', maxCapacity: '',
   autoCloseOnExhaustion: true,
@@ -102,6 +102,7 @@ export default function Events() {
         primaryColor: e.primaryColor || '#C42826',
         facebookUrl: e.facebookUrl || '',
         instagramUrl: e.instagramUrl || '',
+        tiktokUrl: e.tiktokUrl || '',
         websiteUrl: e.websiteUrl || '',
         contactEmail: e.contactEmail || '',
         contactPhone: e.contactPhone || '',
@@ -529,6 +530,10 @@ export default function Events() {
                     <div>
                       <label className={label}><Link2 size={12} className="inline mr-1" />Instagram</label>
                       <input className={input} value={form.instagramUrl} onChange={e => u('instagramUrl', e.target.value)} placeholder="https://..." />
+                    </div>
+                    <div>
+                      <label className={label}><Link2 size={12} className="inline mr-1" />TikTok</label>
+                      <input className={input} value={form.tiktokUrl} onChange={e => u('tiktokUrl', e.target.value)} placeholder="https://..." />
                     </div>
                     <div>
                       <label className={label}><Globe size={12} className="inline mr-1" />Site web</label>

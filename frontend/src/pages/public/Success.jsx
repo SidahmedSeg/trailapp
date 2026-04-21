@@ -77,6 +77,7 @@ export default function Success() {
   }
 
   const r = registration;
+  const brand = r.event?.primaryColor || '#C42826';
   const scanUrl = `${window.location.origin}/api/scan/${r.qrToken}`;
 
   return (
@@ -98,7 +99,7 @@ export default function Success() {
           {/* Bib number + QR */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Bib card */}
-            <div className="bg-[#C42826] rounded-2xl p-8 text-white text-center relative overflow-hidden">
+            <div className="rounded-2xl p-8 text-white text-center relative overflow-hidden" style={{ backgroundColor: brand }}>
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-8 translate-x-8" />
               <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-6 -translate-x-6" />
               <div className="relative">
@@ -203,7 +204,8 @@ export default function Success() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <button
               onClick={handleDownloadPdf}
-              className="bg-[#C42826] hover:bg-[#a82220] text-white font-bold py-3.5 rounded-xl text-sm transition shadow-md hover:shadow-lg cursor-pointer flex items-center justify-center gap-2"
+              style={{ backgroundColor: brand }}
+              className="hover:opacity-90 text-white font-bold py-3.5 rounded-xl text-sm transition shadow-md hover:shadow-lg cursor-pointer flex items-center justify-center gap-2"
             >
               <Download size={18} />
               {t('success.downloadPdf')}

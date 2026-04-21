@@ -26,6 +26,7 @@ model Event {
   // Social links
   facebookUrl           String?
   instagramUrl          String?
+  tiktokUrl             String?
   websiteUrl            String?
 
   // Contact CTA

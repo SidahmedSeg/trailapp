@@ -2,7 +2,7 @@ const PDFDocument = require('pdfkit');
 const { generateQRBuffer } = require('./qrcode');
 const env = require('../config/env');
 
-const BRAND_RED = '#C42826';
+const DEFAULT_BRAND = '#C42826';
 const GRAY_900 = '#111827';
 const GRAY_600 = '#4B5563';
 const GRAY_400 = '#9CA3AF';
@@ -10,7 +10,7 @@ const GRAY_200 = '#E5E7EB';
 const GRAY_50 = '#F9FAFB';
 
 /**
- * Generate PDF ticket as a Buffer — modern design matching Success page
+ * Generate PDF ticket as a Buffer — uses event name and color
  */
 async function generateTicketPDF(registration) {
   return new Promise(async (resolve, reject) => {
@@ -24,14 +24,24 @@ async function generateTicketPDF(registration) {
       const mx = 50;               // margin x
       const cw = pw - mx * 2;      // content width
 
+      // Event info from registration (included via Prisma)
+      const eventName = registration.event?.name || 'Trail des Mouflons d\'Or 2026';
+      const eventDate = registration.event?.date
+        ? new Date(registration.event.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+        : '';
+      const eventLocation = registration.event?.location || 'Alger';
+      const brandColor = registration.event?.primaryColor || DEFAULT_BRAND;
+
       // ═══════════════════════════════════════
-      // RED HEADER BAR
+      // HEADER BAR (event color)
       // ═══════════════════════════════════════
-      doc.rect(0, 0, pw, 100).fill(BRAND_RED);
+      doc.rect(0, 0, pw, 100).fill(brandColor);
       doc.fontSize(22).font('Helvetica-Bold').fillColor('#FFFFFF')
-        .text('TRAIL DES MOUFLONS D\'OR', 0, 30, { align: 'center' });
-      doc.fontSize(11).font('Helvetica').fillColor('rgba(255,255,255,0.8)')
-        .text('3ème Édition — 1 Mai 2026 — Alger', 0, 58, { align: 'center' });
+        .text(eventName.toUpperCase(), 0, 30, { align: 'center' });
+      if (eventDate || eventLocation) {
+        doc.fontSize(11).font('Helvetica').fillColor('rgba(255,255,255,0.8)')
+          .text([eventDate, eventLocation].filter(Boolean).join(' — '), 0, 58, { align: 'center' });
+      }
 
       // ═══════════════════════════════════════
       // SUCCESS BADGE
@@ -45,16 +55,16 @@ async function generateTicketPDF(registration) {
       // ═══════════════════════════════════════
       const bibQrY = 155;
 
-      // Bib box (left)
+      // Bib box (left, event color)
       const bibBoxW = 250;
       const bibBoxH = 140;
-      doc.roundedRect(mx, bibQrY, bibBoxW, bibBoxH, 12).fill(BRAND_RED);
+      doc.roundedRect(mx, bibQrY, bibBoxW, bibBoxH, 12).fill(brandColor);
       doc.fontSize(10).font('Helvetica').fillColor('rgba(255,255,255,0.7)')
         .text('NUMÉRO DE DOSSARD', mx, bibQrY + 20, { width: bibBoxW, align: 'center' });
       doc.fontSize(56).font('Helvetica-Bold').fillColor('#FFFFFF')
         .text(`${registration.bibNumber || '—'}`, mx, bibQrY + 45, { width: bibBoxW, align: 'center' });
       doc.fontSize(9).font('Helvetica').fillColor('rgba(255,255,255,0.6)')
-        .text('Trail des Mouflons d\'Or 2026', mx, bibQrY + 110, { width: bibBoxW, align: 'center' });
+        .text(eventName, mx, bibQrY + 110, { width: bibBoxW, align: 'center' });
 
       // QR code (right)
       const qrX = mx + bibBoxW + 20;
@@ -72,7 +82,7 @@ async function generateTicketPDF(registration) {
       // ═══════════════════════════════════════
       let y = bibQrY + bibBoxH + 30;
 
-      y = drawSectionHeader(doc, mx, y, 'INFORMATIONS DU PARTICIPANT');
+      y = drawSectionHeader(doc, mx, y, 'INFORMATIONS DU PARTICIPANT', brandColor);
       y += 5;
 
       const colW = cw / 2;
@@ -89,16 +99,15 @@ async function generateTicketPDF(registration) {
       // EVENT INFO
       // ═══════════════════════════════════════
       y += 15;
-      y = drawSectionHeader(doc, mx, y, 'INFORMATIONS DE L\'ÉVÉNEMENT');
+      y = drawSectionHeader(doc, mx, y, 'INFORMATIONS DE L\'ÉVÉNEMENT', brandColor);
       y += 5;
 
-      // 3 mini cards
       const cardW = (cw - 20) / 3;
       const cardH = 55;
       const cards = [
-        { label: 'Date', value: '1 Mai 2026' },
-        { label: 'Lieu', value: 'Ben Aknoun, Alger' },
-        { label: 'Distance', value: '16,57 km' },
+        { label: 'Date', value: eventDate || '—' },
+        { label: 'Lieu', value: eventLocation },
+        { label: 'Montant', value: `${(registration.paymentAmount / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DZD` },
       ];
       cards.forEach((card, i) => {
         const cx = mx + i * (cardW + 10);
@@ -114,11 +123,14 @@ async function generateTicketPDF(registration) {
       // PAYMENT INFO
       // ═══════════════════════════════════════
       if (registration.paymentStatus === 'success' || registration.paymentStatus === 'manual') {
-        y = drawSectionHeader(doc, mx, y, 'DÉTAILS DU PAIEMENT');
+        y = drawSectionHeader(doc, mx, y, 'DÉTAILS DU PAIEMENT', brandColor);
         y += 5;
 
         if (registration.transactionId) {
           y = drawPaymentRow(doc, mx, y, cw, 'N° de transaction', registration.transactionId);
+        }
+        if (registration.approvalCode) {
+          y = drawPaymentRow(doc, mx, y, cw, 'N° d\'approbation', registration.approvalCode);
         }
         if (registration.paymentMethod) {
           y = drawPaymentRow(doc, mx, y, cw, 'Méthode', registration.paymentMethod);
@@ -140,9 +152,6 @@ async function generateTicketPDF(registration) {
         .text('Ce document fait office de confirmation d\'inscription.', mx, y, { width: cw, align: 'center' });
       y += 12;
       doc.text('Présentez le QR code le jour de la course pour le retrait de votre dossard.', mx, y, { width: cw, align: 'center' });
-      y += 20;
-      doc.fontSize(7).fillColor(GRAY_400)
-        .text('Ligue Algéroise de Ski et des Sports de Montagne (LASSM) — contact@lassm.dz', mx, y, { width: cw, align: 'center' });
 
       doc.end();
     } catch (err) {
@@ -151,8 +160,8 @@ async function generateTicketPDF(registration) {
   });
 }
 
-function drawSectionHeader(doc, x, y, title) {
-  doc.roundedRect(x, y, 4, 16, 2).fill(BRAND_RED);
+function drawSectionHeader(doc, x, y, title, color) {
+  doc.roundedRect(x, y, 4, 16, 2).fill(color || DEFAULT_BRAND);
   doc.fontSize(10).font('Helvetica-Bold').fillColor(GRAY_900)
     .text(title, x + 12, y + 2);
   return y + 25;

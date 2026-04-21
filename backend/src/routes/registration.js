@@ -190,7 +190,7 @@ async function registrationRoutes(fastify) {
 
     const registration = await prisma.registration.findUnique({
       where: { id },
-      include: { event: { select: { name: true, date: true, location: true, slug: true } } },
+      include: { event: { select: { name: true, date: true, location: true, slug: true, primaryColor: true } } },
     });
     if (!registration) {
       throw new AppError(404, 'Inscription non trouvée', 'NOT_FOUND');
@@ -232,6 +232,7 @@ async function registrationRoutes(fastify) {
       coverImagePath: event.coverImagePath,
       facebookUrl: event.facebookUrl,
       instagramUrl: event.instagramUrl,
+      tiktokUrl: event.tiktokUrl,
       websiteUrl: event.websiteUrl,
       contactEmail: event.contactEmail,
       contactPhone: event.contactPhone,
