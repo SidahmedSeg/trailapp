@@ -63,6 +63,7 @@ export default function Events() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
   const [archiveConfirm, setArchiveConfirm] = useState(null); // { id, name } or null
+  const [activateConfirm, setActivateConfirm] = useState(null); // { id, name } or null
   const [logoFile, setLogoFile] = useState(null);
   const [coverFile, setCoverFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
@@ -193,15 +194,22 @@ export default function Events() {
     }
   }
 
-  async function handleActivate(id) {
+  function handleActivate(id) {
+    const evt = events.find(e => e.id === id);
+    setActivateConfirm({ id, name: evt?.name || 'cet événement' });
+  }
+
+  async function confirmActivate() {
+    if (!activateConfirm) return;
     try {
-      await post(`/admin/events/${id}/activate`);
+      await post(`/admin/events/${activateConfirm.id}/activate`);
       setMsg({ type: 'success', text: 'Événement activé' });
       fetchEvents();
       refreshEvents();
     } catch (err) {
       setMsg({ type: 'error', text: err.message });
     }
+    setActivateConfirm(null);
   }
 
   function handleArchive(id) {
@@ -820,6 +828,37 @@ export default function Events() {
               <button onClick={confirmArchive}
                 className="rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-amber-600 transition cursor-pointer">
                 Archiver
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Activate Confirmation Modal */}
+      {activateConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setActivateConfirm(null)} />
+          <div className="relative bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                <Check size={20} className="text-green-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Activer l'événement</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-2">
+              Voulez-vous activer <strong>{activateConfirm.name}</strong> ?
+            </p>
+            <p className="text-xs text-gray-400 mb-6">
+              Cet événement deviendra l'événement actif. Les inscriptions publiques seront dirigées vers celui-ci. Tout autre événement actif sera désactivé.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setActivateConfirm(null)}
+                className="rounded-lg border border-gray-200 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition cursor-pointer">
+                Annuler
+              </button>
+              <button onClick={confirmActivate}
+                className="rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-green-700 transition cursor-pointer">
+                Activer
               </button>
             </div>
           </div>
