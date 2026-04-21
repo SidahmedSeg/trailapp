@@ -61,6 +61,7 @@ export default function Events() {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
+  const [archiveConfirm, setArchiveConfirm] = useState(null); // { id, name } or null
   const [logoFile, setLogoFile] = useState(null);
   const [coverFile, setCoverFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
@@ -200,17 +201,22 @@ export default function Events() {
     }
   }
 
-  async function handleArchive(id) {
+  function handleArchive(id) {
     const evt = events.find(e => e.id === id);
-    if (!window.confirm(`Archiver "${evt?.name || 'cet événement'}" ?\n\nLes inscriptions seront fermées et l'événement ne sera plus modifiable.`)) return;
+    setArchiveConfirm({ id, name: evt?.name || 'cet événement' });
+  }
+
+  async function confirmArchive() {
+    if (!archiveConfirm) return;
     try {
-      await post(`/admin/events/${id}/archive`);
+      await post(`/admin/events/${archiveConfirm.id}/archive`);
       setMsg({ type: 'success', text: 'Événement archivé' });
       fetchEvents();
       refreshEvents();
     } catch (err) {
       setMsg({ type: 'error', text: err.message });
     }
+    setArchiveConfirm(null);
   }
 
   async function handleUnarchive(id) {
@@ -743,6 +749,37 @@ export default function Events() {
           </div>
         )}
       </main>
+
+      {/* Archive Confirmation Modal */}
+      {archiveConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setArchiveConfirm(null)} />
+          <div className="relative bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <Archive size={20} className="text-amber-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Archiver l'événement</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-2">
+              Voulez-vous archiver <strong>{archiveConfirm.name}</strong> ?
+            </p>
+            <p className="text-xs text-gray-400 mb-6">
+              Les inscriptions seront fermées. Vous pourrez désarchiver l'événement plus tard.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setArchiveConfirm(null)}
+                className="rounded-lg border border-gray-200 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition cursor-pointer">
+                Annuler
+              </button>
+              <button onClick={confirmArchive}
+                className="rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-amber-600 transition cursor-pointer">
+                Archiver
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
