@@ -50,17 +50,26 @@ async function main() {
   // 3. Email templates (upsert — idempotent)
   await prisma.emailTemplate.upsert({
     where: { name: 'confirmation' },
-    update: {},
+    update: {
+      subject: 'Confirmation d\'inscription - {{eventName}}',
+      body: `<p>Bonjour {{prenom}},</p>
+<p>Nous vous remercions pour votre inscription à {{eventName}}.</p>
+<p>Votre numéro de dossard est le <strong>#{{dossard}}</strong>.</p>
+<p>Vous trouverez en pièce jointe votre ticket de confirmation incluant votre QR code personnel.</p>
+<p>Merci de le présenter lors de la remise des dossards (sur téléphone ou imprimé).</p>
+<p>Bonne préparation et à très bientôt sur la ligne de départ !</p>
+<p>Sportivement,<br/>L'équipe {{eventName}}</p>`,
+    },
     create: {
       name: 'confirmation',
       subject: 'Confirmation d\'inscription - {{eventName}}',
-      body: `<h1>Félicitations {{prenom}} !</h1>
-<p>Votre inscription au {{eventName}} est confirmée.</p>
-<p><strong>Numéro de dossard :</strong> #{{dossard}}</p>
-<p><strong>Date :</strong> {{eventDate}}</p>
-<p><strong>Lieu :</strong> {{eventLocation}}</p>
-<p>Votre QR code et votre ticket sont en pièce jointe.</p>
-<p>À bientôt sur la ligne de départ !</p>`,
+      body: `<p>Bonjour {{prenom}},</p>
+<p>Nous vous remercions pour votre inscription à {{eventName}}.</p>
+<p>Votre numéro de dossard est le <strong>#{{dossard}}</strong>.</p>
+<p>Vous trouverez en pièce jointe votre ticket de confirmation incluant votre QR code personnel.</p>
+<p>Merci de le présenter lors de la remise des dossards (sur téléphone ou imprimé).</p>
+<p>Bonne préparation et à très bientôt sur la ligne de départ !</p>
+<p>Sportivement,<br/>L'équipe {{eventName}}</p>`,
     },
   });
 
