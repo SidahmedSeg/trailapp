@@ -57,10 +57,13 @@ async function paymentRoutes(fastify) {
         failUrl,
       });
 
-      // Store SATIM order ID
+      // Store our order number + SATIM's order ID
       await prisma.registration.update({
         where: { id: registrationId },
-        data: { transactionId: satimResult.orderId },
+        data: {
+          transactionId: satimResult.orderId,
+          orderNumber: orderId,
+        },
       });
 
       return { satimRedirectUrl: satimResult.formUrl };

@@ -122,6 +122,7 @@ model Registration {
   // Paiement
   paymentStatus             String    @default("pending") // pending | processing | success | failed | manual
   paymentMethod             String?   // CIB / EDAHABIA / null
+  orderNumber               String?   // our 8-char order ID
   transactionId             String?   @unique
   transactionNumber         String?
   approvalCode              String?

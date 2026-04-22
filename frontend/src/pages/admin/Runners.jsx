@@ -733,6 +733,7 @@ function DetailPanel({ runner, onClose, onUpdated }) {
               <Field label="Statut paiement" value={<StatusBadge status={display.paymentStatus} />} />
               <Field label="Montant" value={display.paymentAmount != null ? `${(display.paymentAmount / 100).toLocaleString('fr-FR')} DZD` : '—'} />
               <Field label="Methode" value={display.paymentMethod} />
+              <Field label="N° de commande" value={display.orderNumber || '—'} />
               <Field label="Carte (4 derniers)" value={display.cardPan || '—'} />
               <Field label="Transaction SATIM" value={display.transactionNumber || '—'} />
               <Field label="Date paiement" value={display.paymentDate ? new Date(display.paymentDate).toLocaleString('fr-FR') : '—'} />

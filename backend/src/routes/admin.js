@@ -12,7 +12,7 @@ async function adminRoutes(fastify) {
   const { prisma } = fastify;
 
   fastify.addHook('preHandler', authenticate);
-  fastify.addHook('preHandler', authorize('admin', 'super_admin'));
+  fastify.addHook('preHandler', authorize('scanner', 'admin', 'super_admin'));
 
   /**
    * Helper: resolve eventId from query param or default to active event
@@ -95,8 +95,8 @@ async function adminRoutes(fastify) {
     return { data: reg };
   });
 
-  // POST /api/admin/runners (manual creation)
-  fastify.post('/runners', async (request) => {
+  // POST /api/admin/runners (manual creation) — admin only
+  fastify.post('/runners', { preHandler: authorize('admin', 'super_admin') }, async (request) => {
     const body = request.body || {};
     const { bibNumber } = body;
 
@@ -187,8 +187,8 @@ async function adminRoutes(fastify) {
     return { data: registration };
   });
 
-  // PUT /api/admin/runners/:id
-  fastify.put('/runners/:id', async (request) => {
+  // PUT /api/admin/runners/:id — admin only
+  fastify.put('/runners/:id', { preHandler: authorize('admin', 'super_admin') }, async (request) => {
     const { id } = request.params;
     const body = request.body || {};
 
@@ -259,8 +259,8 @@ async function adminRoutes(fastify) {
     return { data: updated };
   });
 
-  // GET /api/admin/runners/export/csv
-  fastify.get('/runners/export/csv', async (request, reply) => {
+  // GET /api/admin/runners/export/csv — admin only
+  fastify.get('/runners/export/csv', { preHandler: authorize('admin', 'super_admin') }, async (request, reply) => {
     const { fields } = request.query;
     if (!fields) throw new AppError(400, 'Champs requis', 'VALIDATION_ERROR');
 

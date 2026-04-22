@@ -6,9 +6,9 @@ async function eventsRoutes(fastify) {
   const { prisma, redis } = fastify;
 
   fastify.addHook('preHandler', authenticate);
-  fastify.addHook('preHandler', authorize('admin', 'super_admin'));
+  fastify.addHook('preHandler', authorize('scanner', 'admin', 'super_admin'));
 
-  // GET /api/admin/events
+  // GET /api/admin/events — readable by all roles
   fastify.get('/events', async () => {
     const events = await prisma.event.findMany({
       orderBy: { createdAt: 'desc' },
@@ -29,7 +29,7 @@ async function eventsRoutes(fastify) {
   });
 
   // POST /api/admin/events
-  fastify.post('/events', async (request) => {
+  fastify.post('/events', { preHandler: authorize('admin', 'super_admin') }, async (request) => {
     const body = request.body || {};
 
     if (!body.name) throw new AppError(400, 'Nom requis', 'VALIDATION_ERROR');
@@ -93,7 +93,7 @@ async function eventsRoutes(fastify) {
   });
 
   // PUT /api/admin/events/:id
-  fastify.put('/events/:id', async (request) => {
+  fastify.put('/events/:id', { preHandler: authorize('admin', 'super_admin') }, async (request) => {
     const body = request.body || {};
     const event = await prisma.event.findUnique({ where: { id: request.params.id } });
     if (!event) throw new AppError(404, 'Événement non trouvé', 'NOT_FOUND');
@@ -174,7 +174,7 @@ async function eventsRoutes(fastify) {
   });
 
   // POST /api/admin/events/:id/upload — upload logo or cover image
-  fastify.post('/events/:id/upload', async (request, reply) => {
+  fastify.post('/events/:id/upload', { preHandler: authorize('admin', 'super_admin') }, async (request, reply) => {
     const event = await prisma.event.findUnique({ where: { id: request.params.id } });
     if (!event) throw new AppError(404, 'Événement non trouvé', 'NOT_FOUND');
 
@@ -209,7 +209,7 @@ async function eventsRoutes(fastify) {
   });
 
   // POST /api/admin/events/:id/activate
-  fastify.post('/events/:id/activate', async (request) => {
+  fastify.post('/events/:id/activate', { preHandler: authorize('admin', 'super_admin') }, async (request) => {
     const event = await prisma.event.findUnique({ where: { id: request.params.id } });
     if (!event) throw new AppError(404, 'Événement non trouvé', 'NOT_FOUND');
 
@@ -244,7 +244,7 @@ async function eventsRoutes(fastify) {
   });
 
   // POST /api/admin/events/:id/archive
-  fastify.post('/events/:id/archive', async (request) => {
+  fastify.post('/events/:id/archive', { preHandler: authorize('admin', 'super_admin') }, async (request) => {
     const event = await prisma.event.findUnique({ where: { id: request.params.id } });
     if (!event) throw new AppError(404, 'Événement non trouvé', 'NOT_FOUND');
 
@@ -265,7 +265,7 @@ async function eventsRoutes(fastify) {
   });
 
   // POST /api/admin/events/:id/unarchive
-  fastify.post('/events/:id/unarchive', async (request) => {
+  fastify.post('/events/:id/unarchive', { preHandler: authorize('admin', 'super_admin') }, async (request) => {
     const event = await prisma.event.findUnique({ where: { id: request.params.id } });
     if (!event) throw new AppError(404, 'Événement non trouvé', 'NOT_FOUND');
     if (event.status !== 'archived') {
