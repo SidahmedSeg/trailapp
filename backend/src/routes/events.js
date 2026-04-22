@@ -288,6 +288,42 @@ async function eventsRoutes(fastify) {
     return { data: updated };
   });
 
+  // DELETE /api/admin/events/:id — super_admin only
+  fastify.delete('/events/:id', {
+    preHandler: [authenticate, authorize('super_admin')],
+  }, async (request) => {
+    const event = await prisma.event.findUnique({ where: { id: request.params.id } });
+    if (!event) throw new AppError(404, 'Événement non trouvé', 'NOT_FOUND');
+    if (event.active) {
+      throw new AppError(400, 'Impossible de supprimer l\'événement actif', 'CANNOT_DELETE_ACTIVE');
+    }
+
+    // Check if event has registrations
+    const regCount = await prisma.registration.count({ where: { eventId: event.id } });
+    if (regCount > 0) {
+      // Delete related email logs first, then registrations
+      await prisma.emailLog.deleteMany({
+        where: { registration: { eventId: event.id } },
+      });
+      await prisma.registration.deleteMany({ where: { eventId: event.id } });
+    }
+
+    await prisma.event.delete({ where: { id: event.id } });
+
+    // Clean up Redis key
+    await redis.del(`bib:next:${event.id}`);
+
+    await logActivity({
+      action: 'event_deleted',
+      adminUsername: request.user.username,
+      targetType: 'event',
+      targetId: event.id,
+      details: { name: event.name, registrationsDeleted: regCount },
+    });
+
+    return { success: true };
+  });
+
   // GET /api/admin/events/:id/bib-stats
   fastify.get('/events/:id/bib-stats', async (request) => {
     const event = await prisma.event.findUnique({ where: { id: request.params.id } });

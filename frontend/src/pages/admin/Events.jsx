@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
-import { get, post, put } from '../../lib/api';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { get, post, put, del } from '../../lib/api';
 import { useEvent } from '../../hooks/useEvent';
+import { useAuth } from '../../hooks/useAuth';
 import Sidebar from '../../components/ui/Sidebar';
 import {
   Plus, Calendar, MapPin, Edit2, Check, Archive, ArchiveRestore, X,
@@ -55,6 +56,8 @@ const label = 'block text-sm font-medium text-gray-700 mb-1.5';
 
 export default function Events() {
   const { refreshEvents } = useEvent();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'super_admin';
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
@@ -64,6 +67,7 @@ export default function Events() {
   const [msg, setMsg] = useState(null);
   const [archiveConfirm, setArchiveConfirm] = useState(null); // { id, name } or null
   const [activateConfirm, setActivateConfirm] = useState(null); // { id, name } or null
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // { id, name } or null
   const [logoFile, setLogoFile] = useState(null);
   const [coverFile, setCoverFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
@@ -241,6 +245,19 @@ export default function Events() {
     }
   }
 
+  async function confirmDelete() {
+    if (!deleteConfirm) return;
+    try {
+      await del(`/admin/events/${deleteConfirm.id}`);
+      setMsg({ type: 'success', text: 'Événement supprimé' });
+      fetchEvents();
+      refreshEvents();
+    } catch (err) {
+      setMsg({ type: 'error', text: err.message });
+    }
+    setDeleteConfirm(null);
+  }
+
   // Distance helpers
   function addDistance() {
     setForm(f => ({ ...f, distances: [...f.distances, { name: '', elevation: '', timeLimit: '' }] }));
@@ -390,6 +407,13 @@ export default function Events() {
                         className="flex items-center justify-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 hover:bg-amber-100 transition cursor-pointer"
                         title="Désarchiver">
                         <ArchiveRestore size={13} />
+                      </button>
+                    )}
+                    {isSuperAdmin && !evt.active && (
+                      <button onClick={() => setDeleteConfirm({ id: evt.id, name: evt.name })}
+                        className="flex items-center justify-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-xs text-red-500 hover:bg-red-50 transition cursor-pointer"
+                        title="Supprimer">
+                        <Trash2 size={13} />
                       </button>
                     )}
                   </div>
@@ -862,6 +886,121 @@ export default function Events() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal with Slide to Confirm */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setDeleteConfirm(null)} />
+          <div className="relative bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <Trash2 size={20} className="text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Supprimer l'événement</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-2">
+              Voulez-vous supprimer <strong>{deleteConfirm.name}</strong> ?
+            </p>
+            <p className="text-xs text-red-500 mb-6">
+              Cette action est irréversible. Toutes les inscriptions et données associées seront supprimées définitivement.
+            </p>
+            <SlideToConfirm onConfirm={confirmDelete} />
+            <button onClick={() => setDeleteConfirm(null)}
+              className="w-full mt-3 rounded-lg border border-gray-200 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition cursor-pointer text-center">
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Slide to Confirm Component ─── */
+function SlideToConfirm({ onConfirm }) {
+  const trackRef = useRef(null);
+  const [dragging, setDragging] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const [confirmed, setConfirmed] = useState(false);
+  const thumbWidth = 48;
+
+  const getMaxOffset = useCallback(() => {
+    if (!trackRef.current) return 200;
+    return trackRef.current.offsetWidth - thumbWidth - 8;
+  }, []);
+
+  const handleStart = (clientX) => {
+    if (confirmed) return;
+    setDragging(true);
+  };
+
+  const handleMove = useCallback((clientX) => {
+    if (!dragging || confirmed || !trackRef.current) return;
+    const rect = trackRef.current.getBoundingClientRect();
+    const newOffset = Math.max(0, Math.min(clientX - rect.left - thumbWidth / 2 - 4, getMaxOffset()));
+    setOffset(newOffset);
+  }, [dragging, confirmed, getMaxOffset]);
+
+  const handleEnd = useCallback(() => {
+    if (!dragging) return;
+    setDragging(false);
+    const max = getMaxOffset();
+    if (offset >= max * 0.9) {
+      setOffset(max);
+      setConfirmed(true);
+      setTimeout(() => onConfirm(), 300);
+    } else {
+      setOffset(0);
+    }
+  }, [dragging, offset, getMaxOffset, onConfirm]);
+
+  useEffect(() => {
+    if (!dragging) return;
+    const onMouseMove = (e) => handleMove(e.clientX);
+    const onTouchMove = (e) => handleMove(e.touches[0].clientX);
+    const onEnd = () => handleEnd();
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onEnd);
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchend', onEnd);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onEnd);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onEnd);
+    };
+  }, [dragging, handleMove, handleEnd]);
+
+  const max = getMaxOffset();
+  const progress = max > 0 ? offset / max : 0;
+
+  return (
+    <div
+      ref={trackRef}
+      className={`relative h-14 rounded-xl select-none overflow-hidden transition-colors ${
+        confirmed ? 'bg-red-500' : 'bg-gray-100'
+      }`}
+    >
+      {/* Background text */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <span className={`text-sm font-medium transition-opacity ${confirmed ? 'text-white opacity-100' : 'text-gray-400 opacity-100'}`}
+          style={{ opacity: confirmed ? 1 : Math.max(0, 1 - progress * 2) }}>
+          {confirmed ? 'Supprimé' : 'Glisser pour supprimer'}
+        </span>
+      </div>
+
+      {/* Draggable thumb */}
+      {!confirmed && (
+        <div
+          className="absolute top-1 left-1 w-12 h-12 rounded-lg bg-red-500 flex items-center justify-center cursor-grab active:cursor-grabbing shadow-lg transition-transform"
+          style={{ transform: `translateX(${offset}px)` }}
+          onMouseDown={(e) => { e.preventDefault(); handleStart(e.clientX); }}
+          onTouchStart={(e) => handleStart(e.touches[0].clientX)}
+        >
+          <ChevronRight size={20} className="text-white" />
+          <ChevronRight size={20} className="text-white -ml-3" />
         </div>
       )}
     </div>
