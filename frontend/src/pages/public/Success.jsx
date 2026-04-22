@@ -169,8 +169,8 @@ export default function Success() {
                 <h2 className="text-lg font-semibold text-gray-900">{t('success.transaction')}</h2>
               </div>
               <div className="space-y-3">
+                {r.orderNumber && <TransactionRow label="N° de commande" value={r.orderNumber} mono />}
                 {r.transactionId && <TransactionRow label={t('success.fields.transactionId')} value={r.transactionId} mono />}
-                {r.transactionNumber && <TransactionRow label={t('success.fields.orderId')} value={r.transactionNumber} mono />}
                 {r.approvalCode && <TransactionRow label="N° d'approbation" value={r.approvalCode} mono />}
                 {r.paymentMethod && <TransactionRow label={t('success.fields.method')} value={r.paymentMethod} />}
                 {r.paymentDate && <TransactionRow label={t('success.fields.paymentDate')} value={new Date(r.paymentDate).toLocaleString('fr-FR')} />}

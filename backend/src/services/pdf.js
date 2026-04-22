@@ -126,6 +126,9 @@ async function generateTicketPDF(registration) {
         y = drawSectionHeader(doc, mx, y, 'DÉTAILS DU PAIEMENT', brandColor);
         y += 5;
 
+        if (registration.orderNumber) {
+          y = drawPaymentRow(doc, mx, y, cw, 'N° de commande', registration.orderNumber);
+        }
         if (registration.transactionId) {
           y = drawPaymentRow(doc, mx, y, cw, 'N° de transaction', registration.transactionId);
         }
