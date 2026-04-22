@@ -181,7 +181,7 @@ async function registrationRoutes(fastify) {
       },
     });
     if (processingReg) {
-      return { available: false, reason: 'processing' };
+      return { available: false, reason: 'processing', registrationId: processingReg.id };
     }
 
     // Check pending registration (< 1 hour old)

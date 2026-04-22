@@ -186,7 +186,7 @@ export default function Register() {
           if (d.available) {
             setEmailStatus('available');
             setPendingRegId(null);
-          } else if (d.reason === 'pending' && d.registrationId) {
+          } else if ((d.reason === 'pending' || d.reason === 'processing') && d.registrationId) {
             setEmailStatus('pending');
             setPendingRegId(d.registrationId);
           } else {
