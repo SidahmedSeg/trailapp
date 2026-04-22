@@ -48,7 +48,7 @@ async function generateTicketPDF(registration) {
       // ═══════════════════════════════════════
       doc.fillColor(GRAY_900);
       doc.fontSize(12).font('Helvetica-Bold')
-        .text('✓  INSCRIPTION CONFIRMÉE', 0, 120, { align: 'center' });
+        .text('INSCRIPTION CONFIRMÉE', 0, 120, { align: 'center' });
 
       // ═══════════════════════════════════════
       // BIB NUMBER + QR CODE (side by side)

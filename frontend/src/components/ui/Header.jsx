@@ -43,17 +43,6 @@ export default function Header({ title, event }) {
 
       {/* Red banner with title + shapes */}
       <div className="relative overflow-hidden" style={{ backgroundColor: brand }}>
-        <img
-          src="/shape.svg"
-          alt=""
-          className="absolute start-0 top-1/2 -translate-y-1/2 h-full opacity-80 pointer-events-none select-none"
-        />
-        <img
-          src="/shape.svg"
-          alt=""
-          className="absolute end-0 top-1/2 -translate-y-1/2 h-full opacity-80 pointer-events-none select-none -scale-x-100"
-        />
-
         <div className="relative z-10 pt-16 pb-16 text-center">
           <h1 className="text-white text-2xl md:text-3xl font-extrabold uppercase tracking-wide">
             {title || 'PAGE TITLE HERE'}
