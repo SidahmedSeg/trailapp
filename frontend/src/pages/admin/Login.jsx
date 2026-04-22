@@ -111,9 +111,8 @@ export default function Login() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <img src="/logo_mouflon.svg" alt="Trail des Mouflons d'Or" className="h-24 mx-auto mb-4" />
+          <img src="/logo_lassm.svg" alt="LASSM" className="h-20 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900">Administration</h1>
-          <p className="text-gray-500 mt-1">Trail des Mouflons d'Or 2026</p>
         </div>
 
         {/* Step 1: Credentials */}
