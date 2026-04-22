@@ -190,7 +190,7 @@ async function registrationRoutes(fastify) {
         email: emailLower,
         eventId: event.id,
         paymentStatus: 'pending',
-        createdAt: { gt: new Date(Date.now() - 60 * 60 * 1000) },
+        createdAt: { gt: new Date(Date.now() - STALE_THRESHOLD_MS) },
       },
     });
     if (pendingReg) {
