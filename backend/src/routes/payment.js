@@ -43,9 +43,14 @@ async function paymentRoutes(fastify) {
       data: { paymentStatus: 'processing', termsAccepted: true },
     });
 
-    // Register payment with SATIM — 8-char alphanumeric order ID
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I confusion
-    const orderId = Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    // Register payment with SATIM — 8-char alphanumeric order ID (guaranteed mix of letters + digits)
+    const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const digits = '23456789';
+    const all = letters + digits;
+    const pick = (s) => s[Math.floor(Math.random() * s.length)];
+    const base = [pick(letters), pick(letters), pick(digits), pick(digits), pick(all), pick(all), pick(all), pick(all)];
+    for (let i = base.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [base[i], base[j]] = [base[j], base[i]]; }
+    const orderId = base.join('');
     const returnUrl = `${env.SATIM_CALLBACK_URL}?registrationId=${registrationId}`;
     const failUrl = `${env.APP_URL}/failed?id=${registrationId}`;
 
