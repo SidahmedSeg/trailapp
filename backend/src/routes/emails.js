@@ -19,11 +19,14 @@ async function emailRoutes(fastify) {
       throw new AppError(400, 'Inscription incomplète', 'INCOMPLETE');
     }
 
+    const body = request.body || {};
+    const targetEmail = body.email && body.email.trim() ? body.email.trim() : registration.email;
+
     const eventName = registration.event?.name || 'Événement';
     const pdfBuffer = await generateTicketPDF(registration);
 
     const msg = {
-      to: registration.email,
+      to: targetEmail,
       from: { email: env.SENDGRID_FROM_EMAIL, name: env.SENDGRID_FROM_NAME },
       subject: `Votre ticket - ${eventName} - Dossard #${registration.bibNumber}`,
       html: `<p>Bonjour ${registration.firstName},</p>
@@ -56,7 +59,7 @@ async function emailRoutes(fastify) {
       },
     });
 
-    return { success: true, message: `PDF envoyé à ${registration.email}` };
+    return { success: true, message: `PDF envoyé à ${targetEmail}` };
   });
 }
 

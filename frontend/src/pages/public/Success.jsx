@@ -15,6 +15,8 @@ export default function Success() {
   const [error, setError] = useState('');
   const [sendingPdf, setSendingPdf] = useState(false);
   const [pdfSent, setPdfSent] = useState(false);
+  const [showEmailInput, setShowEmailInput] = useState(false);
+  const [sendToEmail, setSendToEmail] = useState('');
 
   useEffect(() => {
     if (!id) {
@@ -38,14 +40,20 @@ export default function Success() {
   }
 
   async function handleSendPdf() {
+    const targetEmail = sendToEmail.trim() || null;
     setSendingPdf(true);
     try {
-      const res = await fetch(`/api/registration/${id}/send-pdf`, { method: 'POST' });
+      const res = await fetch(`/api/registration/${id}/send-pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: targetEmail }),
+      });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         throw new Error(body?.message || 'Erreur lors de l\'envoi.');
       }
       setPdfSent(true);
+      setShowEmailInput(false);
     } catch (err) {
       alert(err.message);
     } finally {
@@ -203,7 +211,15 @@ export default function Success() {
               Imprimer
             </button>
             <button
-              onClick={handleSendPdf}
+              onClick={() => {
+                if (pdfSent) return;
+                if (!showEmailInput) {
+                  setSendToEmail(r.email || '');
+                  setShowEmailInput(true);
+                } else {
+                  handleSendPdf();
+                }
+              }}
               disabled={sendingPdf || pdfSent}
               className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-bold py-3.5 rounded-xl text-sm transition shadow-sm disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
             >
@@ -211,6 +227,32 @@ export default function Success() {
               {pdfSent ? t('success.emailSent') : sendingPdf ? t('common.sending') : t('success.sendEmail')}
             </button>
           </div>
+
+          {/* Email input */}
+          {showEmailInput && !pdfSent && (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Envoyer le ticket à :</label>
+              <div className="flex gap-3">
+                <input
+                  type="email"
+                  value={sendToEmail}
+                  onChange={(e) => setSendToEmail(e.target.value)}
+                  placeholder="adresse@email.com"
+                  className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50/80 focus:bg-white focus:border-[#C42826] focus:ring-2 focus:ring-[#C42826]/10 outline-none transition"
+                />
+                <button
+                  onClick={handleSendPdf}
+                  disabled={sendingPdf || !sendToEmail.trim()}
+                  style={{ backgroundColor: brand }}
+                  className="hover:opacity-90 disabled:opacity-50 text-white font-medium px-5 py-2.5 rounded-xl text-sm transition cursor-pointer flex items-center gap-2"
+                >
+                  <Send size={16} />
+                  {sendingPdf ? 'Envoi...' : 'Envoyer'}
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 mt-2">Par défaut : {r.email}</p>
+            </div>
+          )}
 
           {/* Back */}
           <div className="text-center pb-4">
