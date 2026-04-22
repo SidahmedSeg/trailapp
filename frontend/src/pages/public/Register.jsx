@@ -173,15 +173,28 @@ export default function Register() {
     });
   }
 
+  const [pendingRegId, setPendingRegId] = useState(null);
+
   function checkEmail(email) {
-    if (!email || !email.includes('@')) { setEmailStatus(null); return; }
+    if (!email || !email.includes('@')) { setEmailStatus(null); setPendingRegId(null); return; }
     setEmailStatus('checking');
     if (emailTimeout.current) clearTimeout(emailTimeout.current);
     emailTimeout.current = setTimeout(() => {
       fetch(`/api/check-email?email=${encodeURIComponent(email)}`)
         .then((r) => r.json())
-        .then((d) => setEmailStatus(d.available ? 'available' : 'taken'))
-        .catch(() => setEmailStatus(null));
+        .then((d) => {
+          if (d.available) {
+            setEmailStatus('available');
+            setPendingRegId(null);
+          } else if (d.reason === 'pending' && d.registrationId) {
+            setEmailStatus('pending');
+            setPendingRegId(d.registrationId);
+          } else {
+            setEmailStatus('taken');
+            setPendingRegId(null);
+          }
+        })
+        .catch(() => { setEmailStatus(null); setPendingRegId(null); });
     }, 400);
   }
 
@@ -263,7 +276,7 @@ export default function Register() {
     if (!form.declarationFit || !form.declarationRules || !form.declarationImage) {
       setError(t('register.errors.declarationsRequired')); return;
     }
-    if (emailStatus === 'taken') {
+    if (emailStatus === 'taken' || emailStatus === 'pending') {
       setError(t('register.errors.emailTaken')); return;
     }
 
@@ -426,9 +439,20 @@ export default function Register() {
                   />
                   {emailStatus === 'checking' && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" size={18} />}
                   {emailStatus === 'available' && <Check className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500" size={20} />}
-                  {emailStatus === 'taken' && <X className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500" size={20} />}
+                  {(emailStatus === 'taken' || emailStatus === 'pending') && <X className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500" size={20} />}
                 </div>
                 {emailStatus === 'taken' && <p className="text-red-500 text-xs mt-1">{t('register.errors.emailTaken')}</p>}
+                {emailStatus === 'pending' && pendingRegId && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-1.5">
+                    <p className="text-xs text-amber-700">
+                      Une inscription en attente de paiement existe pour cet email.
+                    </p>
+                    <button type="button" onClick={() => navigate(`/recap?id=${pendingRegId}`)}
+                      className="text-xs font-medium text-[#C42826] hover:underline mt-1 cursor-pointer">
+                      Continuer vers le paiement
+                    </button>
+                  </div>
+                )}
               </div>
               <div>
                 <label className={labelCls}>{t('register.fields.confirmEmail')}<span className="text-[#C42826] ms-0.5">*</span></label>

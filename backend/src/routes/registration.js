@@ -159,7 +159,7 @@ async function registrationRoutes(fastify) {
     const event = await getActiveEvent(prisma);
     const emailLower = email.toLowerCase().trim();
 
-    // Block only success/manual
+    // Block success/manual
     const existingSuccess = await prisma.registration.findFirst({
       where: {
         email: emailLower,
@@ -168,7 +168,7 @@ async function registrationRoutes(fastify) {
       },
     });
     if (existingSuccess) {
-      return { available: false };
+      return { available: false, reason: 'paid' };
     }
 
     // Check active processing (< 30 min)
@@ -180,8 +180,24 @@ async function registrationRoutes(fastify) {
         updatedAt: { gt: new Date(Date.now() - STALE_THRESHOLD_MS) },
       },
     });
+    if (processingReg) {
+      return { available: false, reason: 'processing' };
+    }
 
-    return { available: !processingReg };
+    // Check pending registration (< 1 hour old)
+    const pendingReg = await prisma.registration.findFirst({
+      where: {
+        email: emailLower,
+        eventId: event.id,
+        paymentStatus: 'pending',
+        createdAt: { gt: new Date(Date.now() - 60 * 60 * 1000) },
+      },
+    });
+    if (pendingReg) {
+      return { available: false, reason: 'pending', registrationId: pendingReg.id };
+    }
+
+    return { available: true };
   });
 
   // GET /api/registration/:id
