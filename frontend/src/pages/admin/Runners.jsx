@@ -278,7 +278,7 @@ function ExportCSVModal({ open, onClose }) {
 }
 
 /* ─── Runner Create Modal ─── */
-function RunnerCreateModal({ open, onClose, onCreated }) {
+function RunnerCreateModal({ open, onClose, onCreated, event }) {
   const empty = {
     bibNumber: '', firstName: '', lastName: '', birthDate: '', gender: 'Homme',
     nationality: 'Algérie', phoneCountryCode: '+213', phoneNumber: '',
@@ -330,18 +330,18 @@ function RunnerCreateModal({ open, onClose, onCreated }) {
     { value: 'Femme', label: 'Femme' },
   ];
 
-  const levelOptions = [
-    { value: 'Débutant', label: 'Débutant' },
-    { value: 'Confirmé', label: 'Confirmé' },
-    { value: 'Elite', label: 'Elite' },
-  ];
+  const bibStart = event?.bibStart || 101;
+  const bibEnd = event?.bibEnd || 1500;
+  const manualMax = bibStart - 1;
+  const eventLevels = event?.runnerLevels || ['Débutant', 'Confirmé', 'Elite'];
+  const levelOptions = eventLevels.map(l => ({ value: l, label: l }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     const bib = Number(form.bibNumber);
-    if (!bib || (bib >= 101 && bib <= 1500)) {
-      setError('Le dossard doit etre en dehors de la plage 101-1500.');
+    if (!bib || bib < 1 || bib > manualMax) {
+      setError(`Le dossard doit être entre 1 et ${manualMax} (plage manuelle).`);
       return;
     }
     setSaving(true);
@@ -376,9 +376,9 @@ function RunnerCreateModal({ open, onClose, onCreated }) {
           {/* Bib */}
           <div>
             <label className={labelCls}>Numero de dossard *</label>
-            <input type="number" required value={form.bibNumber} onChange={(e) => set('bibNumber', e.target.value)}
-              placeholder="Ex: 50 ou 1501 (hors plage 101-1500)" className={INPUT_CLS} />
-            <p className="text-xs text-gray-400 mt-1">Doit etre en dehors de la plage automatique (101-1500)</p>
+            <input type="number" required min="1" max={manualMax} value={form.bibNumber} onChange={(e) => set('bibNumber', e.target.value)}
+              placeholder={`1 — ${manualMax}`} className={INPUT_CLS} />
+            <p className="text-xs text-gray-400 mt-1">Plage manuelle : 1 à {manualMax} (plage auto : {bibStart}–{bibEnd})</p>
           </div>
 
           {/* Personal info */}
@@ -747,7 +747,7 @@ function DetailPanel({ runner, onClose, onUpdated }) {
 /* ─── Main Runners Page ─── */
 export default function Runners() {
   const { user } = useAuth();
-  const { selectedEventId } = useEvent();
+  const { selectedEventId, selectedEvent } = useEvent();
 
   const [runners, setRunners] = useState([]);
   const [total, setTotal] = useState(0);
@@ -761,6 +761,14 @@ export default function Runners() {
   const [loading, setLoading] = useState(true);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [eventConfig, setEventConfig] = useState(null);
+
+  // Fetch full event config for create modal
+  useEffect(() => {
+    if (selectedEventId) {
+      get(`/admin/events/${selectedEventId}`).then(res => setEventConfig(res.data)).catch(() => {});
+    }
+  }, [selectedEventId]);
 
   const limit = 20;
 
@@ -976,6 +984,7 @@ export default function Runners() {
         onCreated={() => {
           fetchRunners();
         }}
+        event={eventConfig}
       />
     </div>
   );
