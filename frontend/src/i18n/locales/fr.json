@@ -94,7 +94,7 @@
       "level": "Niveau",
       "amount": "Montant à payer"
     },
-    "paymentMethod": "Carte CIB / Dahabia",
+    "paymentMethod": "Carte CIB / EDAHABIA",
     "paymentSecure": "Paiement sécurisé via SATIM",
     "terms": "J'accepte les conditions générales de vente et la politique de remboursement.",
     "submit": "Confirmer et Payer",

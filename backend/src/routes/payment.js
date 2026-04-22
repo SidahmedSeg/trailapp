@@ -152,7 +152,7 @@ async function paymentRoutes(fastify) {
         // Send confirmation email (async)
         const fullReg = await prisma.registration.findUnique({
           where: { id: registrationId },
-          include: { event: { select: { name: true, date: true, location: true } } },
+          include: { event: { select: { name: true, date: true, location: true, primaryColor: true } } },
         });
         sendConfirmationEmail(fullReg).catch(console.error);
 

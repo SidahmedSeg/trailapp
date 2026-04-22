@@ -219,7 +219,7 @@ async function registrationRoutes(fastify) {
   fastify.get('/registration/:id/pdf', async (request, reply) => {
     const registration = await prisma.registration.findUnique({
       where: { id: request.params.id },
-      include: { event: { select: { name: true, date: true, location: true } } },
+      include: { event: { select: { name: true, date: true, location: true, primaryColor: true } } },
     });
     if (!registration) throw new AppError(404, 'Inscription non trouvée', 'NOT_FOUND');
     if (!registration.bibNumber || !registration.qrToken) {

@@ -12,7 +12,7 @@ async function emailRoutes(fastify) {
   fastify.post('/registration/:id/send-pdf', async (request) => {
     const registration = await prisma.registration.findUnique({
       where: { id: request.params.id },
-      include: { event: { select: { name: true, date: true, location: true } } },
+      include: { event: { select: { name: true, date: true, location: true, primaryColor: true } } },
     });
     if (!registration) throw new AppError(404, 'Inscription non trouvée', 'NOT_FOUND');
     if (!registration.bibNumber) {
