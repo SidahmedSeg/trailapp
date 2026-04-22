@@ -5,7 +5,7 @@ export default function PrivacyPolicy() {
   const { t } = useTranslation();
 
   return (
-    <PublicLayout title={t('privacy.title')}>
+    <PublicLayout title="event">
       <div className="py-10 px-4">
         <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-sm p-8 md:p-10 space-y-8">
 
