@@ -58,6 +58,9 @@ export default function Header({ title, event }) {
           <h1 className="text-white text-2xl md:text-3xl font-extrabold uppercase tracking-wide">
             {title || 'PAGE TITLE HERE'}
           </h1>
+          {event?.eventName && (
+            <p className="text-white/70 text-sm mt-2 font-medium tracking-wide">{event.eventName}</p>
+          )}
         </div>
       </div>
     </header>
