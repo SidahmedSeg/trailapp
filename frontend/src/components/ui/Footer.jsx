@@ -70,9 +70,6 @@ export default function Footer({ event }) {
             <Link to="/terms-conditions" className="text-white/80 text-xs uppercase tracking-wider hover:text-white transition">
               {t('footer.terms')}
             </Link>
-            <Link to="/mentions-legales" className="text-white/80 text-xs uppercase tracking-wider hover:text-white transition">
-              {t('footer.legal')}
-            </Link>
           </div>
         </div>
       </div>
