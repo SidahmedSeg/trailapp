@@ -255,6 +255,7 @@ async function registrationRoutes(fastify) {
       contactLabel: event.contactLabel,
       distances: event.distances,
       runnerLevels: event.runnerLevels,
+      faq: event.faq,
       optionalFields: event.optionalFields,
       priceInCentimes: event.priceInCentimes,
       photoPackPrice: event.photoPackPrice,

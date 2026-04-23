@@ -59,6 +59,9 @@ model Event {
   // Activatable optional fields — "off" | "optional" | "required"
   optionalFields        Json      @default("{}")
 
+  // FAQ — JSON array of {question, answer}
+  faq                   Json      @default("[]")
+
   // Terms/rules text
   termsText             String?   @db.Text
 

@@ -35,6 +35,7 @@ const STEPS = [
   { key: 'distances', label: 'Distances', icon: Route },
   { key: 'pricing', label: 'Tarification', icon: DollarSign },
   { key: 'fields', label: 'Champs', icon: FileText },
+  { key: 'faq', label: 'FAQ', icon: FileText },
 ];
 
 const initialForm = {
@@ -48,6 +49,7 @@ const initialForm = {
   termsText: '',
   distances: [],
   runnerLevels: ['Débutant', 'Confirmé', 'Elite'],
+  faq: [],
   optionalFields: {},
 };
 
@@ -125,6 +127,7 @@ export default function Events() {
         termsText: e.termsText || '',
         distances: e.distances || [],
         runnerLevels: e.runnerLevels || ['Débutant', 'Confirmé', 'Elite'],
+        faq: e.faq || [],
         optionalFields: e.optionalFields || {},
         bibRangeLocked: e.bibRangeLocked,
       });
@@ -799,6 +802,68 @@ export default function Events() {
                       );
                     })}
                   </div>
+                </div>
+              )}
+
+              {/* Step 5: FAQ */}
+              {step === 5 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-gray-500">Ajoutez les questions fréquentes pour cet événement.</p>
+                    <button onClick={() => setForm(f => ({ ...f, faq: [...f.faq, { question: '', answer: '' }] }))}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-[#C42826] text-[#C42826] px-3 py-1.5 text-xs font-medium hover:bg-[#C42826]/5 transition cursor-pointer">
+                      <Plus size={14} /> Ajouter
+                    </button>
+                  </div>
+
+                  {form.faq.length === 0 ? (
+                    <div className="text-center py-12 border border-dashed border-gray-200 rounded-xl">
+                      <FileText size={32} className="mx-auto text-gray-300 mb-3" />
+                      <p className="text-sm text-gray-400">Aucune question FAQ</p>
+                      <button onClick={() => setForm(f => ({ ...f, faq: [...f.faq, { question: '', answer: '' }] }))}
+                        className="mt-3 text-xs text-[#C42826] hover:underline cursor-pointer">
+                        Ajouter une question
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {form.faq.map((item, i) => (
+                        <div key={i} className="border border-gray-200 rounded-xl p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="w-7 h-7 rounded-full bg-[#C42826]/10 flex items-center justify-center flex-shrink-0 mt-1">
+                              <span className="text-xs font-bold text-[#C42826]">{i + 1}</span>
+                            </div>
+                            <div className="flex-1 space-y-3">
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">Question *</label>
+                                <input className={input} placeholder="Ex: Quel est le parcours ?"
+                                  value={item.question}
+                                  onChange={e => {
+                                    const updated = [...form.faq];
+                                    updated[i] = { ...updated[i], question: e.target.value };
+                                    setForm(f => ({ ...f, faq: updated }));
+                                  }} />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">Réponse *</label>
+                                <textarea className={`${input} min-h-[80px]`} placeholder="Réponse détaillée..."
+                                  value={item.answer}
+                                  onChange={e => {
+                                    const updated = [...form.faq];
+                                    updated[i] = { ...updated[i], answer: e.target.value };
+                                    setForm(f => ({ ...f, faq: updated }));
+                                  }} />
+                              </div>
+                            </div>
+                            <button onClick={() => setForm(f => ({ ...f, faq: f.faq.filter((_, idx) => idx !== i) }))}
+                              className="text-gray-300 hover:text-red-500 cursor-pointer mt-1">
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
