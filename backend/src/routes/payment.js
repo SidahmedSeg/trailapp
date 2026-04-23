@@ -122,28 +122,30 @@ async function paymentRoutes(fastify) {
         // Extract last 4 digits of card PAN
         const cardPan = satimStatus.pan ? satimStatus.pan.replace(/\D/g, '').slice(-4) : null;
 
-        // Transaction: update registration + lock bib range
-        await prisma.$transaction([
-          prisma.registration.update({
-            where: { id: registrationId },
-            data: {
-              bibNumber,
-              qrToken,
-              paymentStatus: 'success',
-              status: 'en_attente',
-              paymentMethod: satimStatus.pan ? 'CIB' : 'EDAHABIA',
-              transactionNumber: satimStatus.approvalCode || null,
-              approvalCode: satimStatus.approvalCode || null,
-              paymentAmount: registration.paymentAmount,
-              paymentDate: new Date(),
-              cardPan,
-            },
-          }),
-          prisma.event.update({
+        // Update registration (single write, no transaction needed)
+        await prisma.registration.update({
+          where: { id: registrationId },
+          data: {
+            bibNumber,
+            qrToken,
+            paymentStatus: 'success',
+            status: 'en_attente',
+            paymentMethod: satimStatus.pan ? 'CIB' : 'EDAHABIA',
+            transactionNumber: satimStatus.approvalCode || null,
+            approvalCode: satimStatus.approvalCode || null,
+            paymentAmount: registration.paymentAmount,
+            paymentDate: new Date(),
+            cardPan,
+          },
+        });
+
+        // Lock bib range (only if not already locked — avoids contention)
+        if (!event.bibRangeLocked) {
+          await prisma.event.update({
             where: { id: event.id },
             data: { bibRangeLocked: true },
-          }),
-        ]);
+          });
+        }
 
         // Check auto-close on exhaustion
         if (event.autoCloseOnExhaustion) {
