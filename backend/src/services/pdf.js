@@ -4,8 +4,15 @@ const env = require('../config/env');
 
 // Sanitize text for PDF (Helvetica can't render some Unicode chars)
 function pdfSafe(str) {
-  if (!str) return '—';
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (!str) return '-';
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')     // strip diacritics
+    .replace(/[\t\r]/g, ' ')             // tabs → space
+    .replace(/[""''«»]/g, '"')           // fancy quotes → plain
+    .replace(/[—–]/g, '-')               // em/en dash → hyphen
+    .replace(/[^\x20-\x7E\n]/g, '')      // strip any remaining non-ASCII
+    .trim();
 }
 
 const DEFAULT_BRAND = '#C42826';
@@ -33,7 +40,7 @@ async function generateTicketPDF(registration) {
       // Event info from registration (included via Prisma)
       const eventName = pdfSafe(registration.event?.name || 'Trail des Mouflons d\'Or 2026');
       const eventDate = registration.event?.date
-        ? new Date(registration.event.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+        ? pdfSafe(new Date(registration.event.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }))
         : '';
       const eventLocation = pdfSafe(registration.event?.location || 'Alger');
       const brandColor = registration.event?.primaryColor || DEFAULT_BRAND;
