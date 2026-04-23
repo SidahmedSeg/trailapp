@@ -182,7 +182,12 @@ async function adminRoutes(fastify) {
       details: { bibNumber, name: `${body.firstName} ${body.lastName}`, eventId },
     });
 
-    sendConfirmationEmail(registration).catch(console.error);
+    // Fetch with event for email template
+    const fullReg = await prisma.registration.findUnique({
+      where: { id: registration.id },
+      include: { event: { select: { name: true, date: true, location: true, primaryColor: true } } },
+    });
+    sendConfirmationEmail(fullReg).catch(console.error);
 
     return { data: registration };
   });
