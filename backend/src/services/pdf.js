@@ -2,6 +2,12 @@ const PDFDocument = require('pdfkit');
 const { generateQRBuffer } = require('./qrcode');
 const env = require('../config/env');
 
+// Sanitize text for PDF (Helvetica can't render some Unicode chars)
+function pdfSafe(str) {
+  if (!str) return '—';
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 const DEFAULT_BRAND = '#C42826';
 const GRAY_900 = '#111827';
 const GRAY_600 = '#4B5563';
@@ -25,11 +31,11 @@ async function generateTicketPDF(registration) {
       const cw = pw - mx * 2;      // content width
 
       // Event info from registration (included via Prisma)
-      const eventName = registration.event?.name || 'Trail des Mouflons d\'Or 2026';
+      const eventName = pdfSafe(registration.event?.name || 'Trail des Mouflons d\'Or 2026');
       const eventDate = registration.event?.date
         ? new Date(registration.event.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
         : '';
-      const eventLocation = registration.event?.location || 'Alger';
+      const eventLocation = pdfSafe(registration.event?.location || 'Alger');
       const brandColor = registration.event?.primaryColor || DEFAULT_BRAND;
 
       // ═══════════════════════════════════════
@@ -48,7 +54,7 @@ async function generateTicketPDF(registration) {
       // ═══════════════════════════════════════
       doc.fillColor(GRAY_900);
       doc.fontSize(12).font('Helvetica-Bold')
-        .text('INSCRIPTION CONFIRMÉE', 0, 120, { align: 'center' });
+        .text('INSCRIPTION CONFIRMEE', 0, 120, { align: 'center' });
 
       // ═══════════════════════════════════════
       // BIB NUMBER + QR CODE (side by side)
@@ -86,20 +92,20 @@ async function generateTicketPDF(registration) {
       y += 5;
 
       const colW = cw / 2;
-      y = drawInfoRow(doc, mx, y, 'Nom complet', `${registration.firstName} ${registration.lastName}`, colW);
+      y = drawInfoRow(doc, mx, y, 'Nom complet', pdfSafe(`${registration.firstName} ${registration.lastName}`), colW);
       y = drawInfoRow(doc, mx + colW, y - 20, 'Email', registration.email, colW);
       y += 5;
-      y = drawInfoRow(doc, mx, y, 'Téléphone', registration.phone || '—', colW);
-      y = drawInfoRow(doc, mx + colW, y - 20, 'Genre', registration.gender || '—', colW);
+      y = drawInfoRow(doc, mx, y, 'Telephone', registration.phone || '—', colW);
+      y = drawInfoRow(doc, mx + colW, y - 20, 'Genre', pdfSafe(registration.gender), colW);
       y += 5;
       y = drawInfoRow(doc, mx, y, 'Taille T-shirt', registration.tshirtSize || '—', colW);
-      y = drawInfoRow(doc, mx + colW, y - 20, 'Niveau', registration.runnerLevel || '—', colW);
+      y = drawInfoRow(doc, mx + colW, y - 20, 'Niveau', pdfSafe(registration.runnerLevel), colW);
 
       // ═══════════════════════════════════════
       // EVENT INFO
       // ═══════════════════════════════════════
       y += 15;
-      y = drawSectionHeader(doc, mx, y, 'INFORMATIONS DE L\'ÉVÉNEMENT', brandColor);
+      y = drawSectionHeader(doc, mx, y, 'INFORMATIONS DE L\'EVENEMENT', brandColor);
       y += 5;
 
       const cardW = (cw - 20) / 3;
@@ -123,7 +129,7 @@ async function generateTicketPDF(registration) {
       // PAYMENT INFO
       // ═══════════════════════════════════════
       if (registration.paymentStatus === 'success' || registration.paymentStatus === 'manual') {
-        y = drawSectionHeader(doc, mx, y, 'DÉTAILS DU PAIEMENT', brandColor);
+        y = drawSectionHeader(doc, mx, y, 'DETAILS DU PAIEMENT', brandColor);
         y += 5;
 
         if (registration.orderNumber) {
@@ -136,7 +142,7 @@ async function generateTicketPDF(registration) {
           y = drawPaymentRow(doc, mx, y, cw, 'N° d\'approbation', registration.approvalCode);
         }
         if (registration.paymentMethod) {
-          y = drawPaymentRow(doc, mx, y, cw, 'Méthode', registration.paymentMethod);
+          y = drawPaymentRow(doc, mx, y, cw, 'Methode', registration.paymentMethod);
         }
         y = drawPaymentRow(doc, mx, y, cw, 'Montant',
           `${(registration.paymentAmount / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DZD`);
