@@ -26,9 +26,13 @@ export default function PublicLayout({ title, children }) {
         className="min-h-screen flex flex-col bg-gray-100"
         style={{ '--brand': brandColor }}
       >
-        <Header title={title === 'event' ? (eventConfig?.eventName || '') : title} event={eventConfig} />
+        <div className="print:hidden">
+          <Header title={title === 'event' ? (eventConfig?.eventName || '') : title} event={eventConfig} />
+        </div>
         <main className="flex-1">{children}</main>
-        <Footer event={eventConfig} />
+        <div className="print:hidden">
+          <Footer event={eventConfig} />
+        </div>
       </div>
     </PublicEventContext.Provider>
   );

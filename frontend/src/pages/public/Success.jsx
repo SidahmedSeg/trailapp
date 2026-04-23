@@ -186,7 +186,7 @@ export default function Success() {
           )}
 
           {/* SATIM 3020 support — compact */}
-          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 flex items-center gap-3">
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 flex items-center gap-3 print:hidden">
             <img src="/3020.svg" alt="3020" className="h-10 flex-shrink-0" />
             <p className="text-xs font-bold text-emerald-900">
               EN CAS DE PROBLEME DE PAIEMENT, CONTACTEZ NOTRE SERVICE CLIENT : 3020
@@ -194,7 +194,7 @@ export default function Success() {
           </div>
 
           {/* Action buttons */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 print:hidden">
             <button
               onClick={handleDownloadPdf}
               style={{ backgroundColor: brand }}
@@ -230,7 +230,7 @@ export default function Success() {
 
           {/* Email input */}
           {showEmailInput && !pdfSent && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 print:hidden">
               <label className="block text-sm font-medium text-gray-700 mb-2">Envoyer le ticket à :</label>
               <div className="flex gap-3">
                 <input
@@ -255,7 +255,7 @@ export default function Success() {
           )}
 
           {/* Back */}
-          <div className="text-center pb-4">
+          <div className="text-center pb-4 print:hidden">
             <Link to="/register" className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-[#C42826] transition">
               <ArrowLeft size={14} />
               {t('common.backHome')}
