@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { ChevronRight } from 'lucide-react';
 import { get, post } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import { useEvent } from '../../hooks/useEvent';
@@ -83,22 +84,16 @@ function RunnerModal({ runner, onClose, onDistribute }) {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 transition cursor-pointer"
-          >
-            Fermer
-          </button>
-          {!success && runner.status !== 'distributed' && (
-            <button
-              onClick={handleDistribute}
-              disabled={distributing}
-              className="rounded-lg bg-[#C42826] px-4 py-2 text-sm font-medium text-white hover:bg-[#a82220] disabled:opacity-50 transition cursor-pointer"
-            >
-              {distributing ? 'Distribution...' : 'Confirmer la distribution'}
-            </button>
+        <div className="px-6 py-4 border-t border-gray-200 space-y-3">
+          {!success && runner.status !== 'distribué' && runner.status !== 'distributed' && (
+            <SlideToDistribute onConfirm={handleDistribute} distributing={distributing} />
           )}
+          <button
+            onClick={success ? () => { onDistribute(); onClose(); } : onClose}
+            className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition cursor-pointer text-center"
+          >
+            {success ? 'Fermer' : 'Annuler'}
+          </button>
         </div>
       </div>
     </div>
@@ -378,6 +373,96 @@ export default function ScannerView() {
         onClose={handleModalClose}
         onDistribute={handleModalClose}
       />
+    </div>
+  );
+}
+
+/* ─── Slide to Distribute ─── */
+function SlideToDistribute({ onConfirm, distributing }) {
+  const trackRef = useRef(null);
+  const [dragging, setDragging] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const [confirmed, setConfirmed] = useState(false);
+  const thumbWidth = 48;
+
+  const getMaxOffset = useCallback(() => {
+    if (!trackRef.current) return 200;
+    return trackRef.current.offsetWidth - thumbWidth - 8;
+  }, []);
+
+  const handleMove = useCallback((clientX) => {
+    if (!dragging || confirmed || !trackRef.current) return;
+    const rect = trackRef.current.getBoundingClientRect();
+    const newOffset = Math.max(0, Math.min(clientX - rect.left - thumbWidth / 2 - 4, getMaxOffset()));
+    setOffset(newOffset);
+  }, [dragging, confirmed, getMaxOffset]);
+
+  const handleEnd = useCallback(() => {
+    if (!dragging) return;
+    setDragging(false);
+    const max = getMaxOffset();
+    if (offset >= max * 0.9) {
+      setOffset(max);
+      setConfirmed(true);
+      onConfirm();
+    } else {
+      setOffset(0);
+    }
+  }, [dragging, offset, getMaxOffset, onConfirm]);
+
+  useEffect(() => {
+    if (!dragging) return;
+    const onMouseMove = (e) => handleMove(e.clientX);
+    const onTouchMove = (e) => handleMove(e.touches[0].clientX);
+    const onEnd = () => handleEnd();
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onEnd);
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchend', onEnd);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onEnd);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onEnd);
+    };
+  }, [dragging, handleMove, handleEnd]);
+
+  const max = getMaxOffset();
+  const progress = max > 0 ? offset / max : 0;
+
+  if (distributing) {
+    return (
+      <div className="h-14 rounded-xl bg-emerald-500 flex items-center justify-center">
+        <span className="text-sm font-medium text-white">Distribution en cours...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={trackRef}
+      className={`relative h-14 rounded-xl select-none overflow-hidden transition-colors ${
+        confirmed ? 'bg-emerald-500' : 'bg-gray-100'
+      }`}
+    >
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <span className={`text-sm font-medium transition-opacity ${confirmed ? 'text-white' : 'text-gray-400'}`}
+          style={{ opacity: confirmed ? 1 : Math.max(0, 1 - progress * 2) }}>
+          {confirmed ? 'Distribué !' : 'Glisser pour distribuer'}
+        </span>
+      </div>
+
+      {!confirmed && (
+        <div
+          className="absolute top-1 left-1 w-12 h-12 rounded-lg bg-emerald-500 flex items-center justify-center cursor-grab active:cursor-grabbing shadow-lg"
+          style={{ transform: `translateX(${offset}px)` }}
+          onMouseDown={(e) => { e.preventDefault(); setDragging(true); }}
+          onTouchStart={() => setDragging(true)}
+        >
+          <ChevronRight size={20} className="text-white" />
+          <ChevronRight size={20} className="text-white -ml-3" />
+        </div>
+      )}
     </div>
   );
 }
