@@ -104,15 +104,15 @@ async function adminRoutes(fastify) {
       throw new AppError(400, 'Numéro de dossard requis', 'VALIDATION_ERROR');
     }
 
-    const errors = validateRegistration(body, event?.runnerLevels);
-    if (errors.length > 0) {
-      throw new AppError(400, errors[0].message, 'VALIDATION_ERROR');
-    }
-
-    // Resolve event
+    // Resolve event first (needed for validation)
     const eventId = body.eventId || (await getActiveEvent(prisma)).id;
     const event = await prisma.event.findUnique({ where: { id: eventId } });
     if (!event) throw new AppError(404, 'Événement non trouvé', 'NOT_FOUND');
+
+    const errors = validateRegistration(body, event.runnerLevels);
+    if (errors.length > 0) {
+      throw new AppError(400, errors[0].message, 'VALIDATION_ERROR');
+    }
 
     // Validate optional fields if event has them
     const optErrors = validateOptionalFields(body, event.optionalFields, event.distances);
