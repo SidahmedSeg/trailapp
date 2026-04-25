@@ -179,6 +179,7 @@ function Field({ label, value }) {
 
 /* ─── Export CSV Modal ─── */
 function ExportCSVModal({ open, onClose }) {
+  const { selectedEventId } = useEvent();
   const [selected, setSelected] = useState(new Set(ALL_CSV_FIELDS));
   const [exporting, setExporting] = useState(false);
 
@@ -206,6 +207,10 @@ function ExportCSVModal({ open, onClose }) {
       const res = await fetch(`/api/admin/runners/export/csv?fields=${fields}&eventId=${selectedEventId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.message || `Erreur ${res.status}`);
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -214,8 +219,8 @@ function ExportCSVModal({ open, onClose }) {
       a.click();
       URL.revokeObjectURL(url);
       onClose();
-    } catch {
-      /* ignore */
+    } catch (err) {
+      alert(err.message || 'Erreur lors de l\'export');
     }
     setExporting(false);
   };
