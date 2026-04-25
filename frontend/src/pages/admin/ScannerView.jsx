@@ -34,6 +34,13 @@ function RunnerModal({ runner, onClose, onDistribute }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
+  // Reset state when runner changes
+  useEffect(() => {
+    setDistributing(false);
+    setError('');
+    setSuccess(false);
+  }, [runner?.id]);
+
   if (!runner) return null;
 
   const handleDistribute = async () => {
