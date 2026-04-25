@@ -8,11 +8,15 @@ export default defineConfig({
     port: 3820,
     proxy: {
       '/api': {
-        target: 'http://localhost:8820',
+        target: 'http://127.0.0.1:8820',
         changeOrigin: true,
       },
       '/health': {
-        target: 'http://localhost:8820',
+        target: 'http://127.0.0.1:8820',
+        changeOrigin: true,
+      },
+      '/uploads': {
+        target: 'http://127.0.0.1:8820',
         changeOrigin: true,
       },
     },

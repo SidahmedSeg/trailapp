@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { get, post, put } from '../../lib/api';
 import { getAccessToken } from '../../lib/auth';
 import { useAuth } from '../../hooks/useAuth';
+import { useEvent } from '../../hooks/useEvent';
 import Sidebar from '../../components/ui/Sidebar';
 import Select from 'react-select';
 import { ChevronDown, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
@@ -202,7 +203,7 @@ function ExportCSVModal({ open, onClose }) {
     try {
       const fields = [...selected].join(',');
       const token = getAccessToken();
-      const res = await fetch(`/api/admin/runners/export/csv?fields=${fields}`, {
+      const res = await fetch(`/api/admin/runners/export/csv?fields=${fields}&eventId=${selectedEventId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const blob = await res.blob();
@@ -277,7 +278,7 @@ function ExportCSVModal({ open, onClose }) {
 }
 
 /* ─── Runner Create Modal ─── */
-function RunnerCreateModal({ open, onClose, onCreated }) {
+function RunnerCreateModal({ open, onClose, onCreated, event }) {
   const empty = {
     bibNumber: '', firstName: '', lastName: '', birthDate: '', gender: 'Homme',
     nationality: 'Algérie', phoneCountryCode: '+213', phoneNumber: '',
@@ -329,18 +330,18 @@ function RunnerCreateModal({ open, onClose, onCreated }) {
     { value: 'Femme', label: 'Femme' },
   ];
 
-  const levelOptions = [
-    { value: 'Débutant', label: 'Débutant' },
-    { value: 'Confirmé', label: 'Confirmé' },
-    { value: 'Elite', label: 'Elite' },
-  ];
+  const bibStart = event?.bibStart || 101;
+  const bibEnd = event?.bibEnd || 1500;
+  const manualMax = bibStart - 1;
+  const eventLevels = event?.runnerLevels || ['Débutant', 'Confirmé', 'Elite'];
+  const levelOptions = eventLevels.map(l => ({ value: l, label: l }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     const bib = Number(form.bibNumber);
-    if (!bib || (bib >= 101 && bib <= 1500)) {
-      setError('Le dossard doit etre en dehors de la plage 101-1500.');
+    if (!bib || bib < 1 || bib > manualMax) {
+      setError(`Le dossard doit être entre 1 et ${manualMax} (plage manuelle).`);
       return;
     }
     setSaving(true);
@@ -375,9 +376,9 @@ function RunnerCreateModal({ open, onClose, onCreated }) {
           {/* Bib */}
           <div>
             <label className={labelCls}>Numero de dossard *</label>
-            <input type="number" required value={form.bibNumber} onChange={(e) => set('bibNumber', e.target.value)}
-              placeholder="Ex: 50 ou 1501 (hors plage 101-1500)" className={INPUT_CLS} />
-            <p className="text-xs text-gray-400 mt-1">Doit etre en dehors de la plage automatique (101-1500)</p>
+            <input type="number" required min="1" max={manualMax} value={form.bibNumber} onChange={(e) => set('bibNumber', e.target.value)}
+              placeholder={`1 — ${manualMax}`} className={INPUT_CLS} />
+            <p className="text-xs text-gray-400 mt-1">Plage manuelle : 1 à {manualMax} (plage auto : {bibStart}–{bibEnd})</p>
           </div>
 
           {/* Personal info */}
@@ -525,6 +526,34 @@ function RunnerCreateModal({ open, onClose, onCreated }) {
 }
 
 /* ─── Detail Panel (with edit mode) ─── */
+function ResendEmailButton({ registrationId }) {
+  const [sending, setSending] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  const handleResend = async () => {
+    setSending(true);
+    setMsg(null);
+    try {
+      await post(`/registration/${registrationId}/send-pdf`);
+      setMsg({ type: 'success', text: 'Email envoyé' });
+    } catch (err) {
+      setMsg({ type: 'error', text: err.message });
+    }
+    setSending(false);
+    setTimeout(() => setMsg(null), 3000);
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <button onClick={handleResend} disabled={sending}
+        className="rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-600 hover:bg-gray-50 transition cursor-pointer disabled:opacity-50">
+        {sending ? 'Envoi...' : 'Renvoyer email'}
+      </button>
+      {msg && <span className={`text-xs ${msg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>{msg.text}</span>}
+    </div>
+  );
+}
+
 function DetailPanel({ runner, onClose, onUpdated }) {
   const [tab, setTab] = useState('profil');
   const [editing, setEditing] = useState(false);
@@ -679,9 +708,14 @@ function DetailPanel({ runner, onClose, onUpdated }) {
               {/* Edit buttons */}
               <div className="pt-4 flex gap-3">
                 {!editing ? (
-                  <button onClick={startEdit} className={BTN_PRIMARY}>
-                    Modifier
-                  </button>
+                  <>
+                    <button onClick={startEdit} className={BTN_PRIMARY}>
+                      Modifier
+                    </button>
+                    {display.bibNumber && (
+                      <ResendEmailButton registrationId={runner.id} />
+                    )}
+                  </>
                 ) : (
                   <>
                     <button onClick={saveEdit} disabled={saving} className={BTN_PRIMARY + ' disabled:opacity-50'}>
@@ -699,6 +733,9 @@ function DetailPanel({ runner, onClose, onUpdated }) {
               <Field label="Statut paiement" value={<StatusBadge status={display.paymentStatus} />} />
               <Field label="Montant" value={display.paymentAmount != null ? `${(display.paymentAmount / 100).toLocaleString('fr-FR')} DZD` : '—'} />
               <Field label="Methode" value={display.paymentMethod} />
+              <Field label="N° de commande" value={display.orderNumber || '—'} />
+              <Field label="Carte (4 derniers)" value={display.cardPan || '—'} />
+              <Field label="Transaction SATIM" value={display.transactionNumber || '—'} />
               <Field label="Date paiement" value={display.paymentDate ? new Date(display.paymentDate).toLocaleString('fr-FR') : '—'} />
             </>
           )}
@@ -711,6 +748,7 @@ function DetailPanel({ runner, onClose, onUpdated }) {
 /* ─── Main Runners Page ─── */
 export default function Runners() {
   const { user } = useAuth();
+  const { selectedEventId, selectedEvent } = useEvent();
 
   const [runners, setRunners] = useState([]);
   const [total, setTotal] = useState(0);
@@ -724,6 +762,14 @@ export default function Runners() {
   const [loading, setLoading] = useState(true);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [eventConfig, setEventConfig] = useState(null);
+
+  // Fetch full event config for create modal
+  useEffect(() => {
+    if (selectedEventId) {
+      get(`/admin/events/${selectedEventId}`).then(res => setEventConfig(res.data)).catch(() => {});
+    }
+  }, [selectedEventId]);
 
   const limit = 20;
 
@@ -738,9 +784,10 @@ export default function Runners() {
   };
 
   const fetchRunners = useCallback(async () => {
+    if (!selectedEventId) return;
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page, limit, sortBy, sortOrder });
+      const params = new URLSearchParams({ page, limit, sortBy, sortOrder, eventId: selectedEventId });
       if (search) params.set('search', search);
       if (statusFilter) params.set('status', statusFilter);
       if (sourceFilter) params.set('source', sourceFilter);
@@ -751,7 +798,7 @@ export default function Runners() {
       /* ignore */
     }
     setLoading(false);
-  }, [page, search, statusFilter, sourceFilter, sortBy, sortOrder]);
+  }, [page, search, statusFilter, sourceFilter, sortBy, sortOrder, selectedEventId]);
 
   useEffect(() => {
     fetchRunners();
@@ -938,6 +985,7 @@ export default function Runners() {
         onCreated={() => {
           fetchRunners();
         }}
+        event={eventConfig}
       />
     </div>
   );

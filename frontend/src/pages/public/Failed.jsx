@@ -10,6 +10,7 @@ export default function Failed() {
   const id = searchParams.get('id');
   const message = searchParams.get('message');
   const reason = searchParams.get('reason');
+  const errorCode = searchParams.get('error');
 
   const [retrying, setRetrying] = useState(false);
   const [error, setError] = useState('');
@@ -71,8 +72,19 @@ export default function Failed() {
                 </div>
               )}
 
-              {/* Generic hints if no reason */}
-              {!reason && (
+              {/* Error code */}
+              {!reason && errorCode && (
+                <div className="bg-red-50 rounded-xl p-4 flex items-start gap-3">
+                  <ShieldAlert size={16} className="text-red-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-xs font-medium text-red-500 uppercase tracking-wide mb-1">Code erreur</p>
+                    <p className="text-sm text-red-700 font-mono">{errorCode}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Generic hints if no reason and no error code */}
+              {!reason && !errorCode && (
                 <div className="bg-gray-50 rounded-xl p-4 space-y-2">
                   <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Causes possibles</p>
                   <div className="flex items-start gap-3">

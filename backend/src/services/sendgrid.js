@@ -16,11 +16,23 @@ async function sendConfirmationEmail(registration) {
     return;
   }
 
+  const eventName = registration.event?.name || 'Événement';
+  const eventDate = registration.event?.date
+    ? new Date(registration.event.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '';
+  const eventLocation = registration.event?.location || '';
+
   const body = template.body
     .replace(/\{\{prenom\}\}/g, registration.firstName)
     .replace(/\{\{nom\}\}/g, registration.lastName)
     .replace(/\{\{dossard\}\}/g, String(registration.bibNumber))
-    .replace(/\{\{email\}\}/g, registration.email);
+    .replace(/\{\{email\}\}/g, registration.email)
+    .replace(/\{\{eventName\}\}/g, eventName)
+    .replace(/\{\{eventDate\}\}/g, eventDate)
+    .replace(/\{\{eventLocation\}\}/g, eventLocation);
+
+  const subject = template.subject
+    .replace(/\{\{eventName\}\}/g, eventName);
 
   // Generate PDF attachment
   const pdfBuffer = await generateTicketPDF(registration);
@@ -28,7 +40,7 @@ async function sendConfirmationEmail(registration) {
   const msg = {
     to: registration.email,
     from: { email: env.SENDGRID_FROM_EMAIL, name: env.SENDGRID_FROM_NAME },
-    subject: template.subject,
+    subject,
     html: body,
     attachments: [
       {

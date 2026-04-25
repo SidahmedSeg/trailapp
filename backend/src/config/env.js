@@ -39,7 +39,6 @@ const env = {
 
   // Bib
   BIB_RESERVATION_TTL_SECONDS: parseInt(process.env.BIB_RESERVATION_TTL_SECONDS, 10) || 900,
-  PAYMENT_AMOUNT_CENTIMES: parseInt(process.env.PAYMENT_AMOUNT_CENTIMES, 10) || 200000,
 };
 
 module.exports = env;

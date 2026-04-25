@@ -2,12 +2,11 @@ const { AppError } = require('../utils/errors');
 
 /**
  * Get next sequential bib number from Redis (atomic INCR)
- * Returns the bib number or throws if exhausted
+ * Scoped per event: uses key bib:next:{eventId}
  */
-async function getNextBib(redis, bibEnd) {
-  const bibNumber = await redis.incr('bib:next');
+async function getNextBib(redis, eventId, bibEnd) {
+  const bibNumber = await redis.incr(`bib:next:${eventId}`);
 
-  // The INCR already happened, check if we exceeded the range
   if (bibNumber > bibEnd) {
     throw new AppError(403, 'Plus de dossards disponibles', 'NO_BIBS');
   }
@@ -26,7 +25,6 @@ async function validateManualBib(prisma, bibNumber, bibStart, bibEnd) {
     );
   }
 
-  // Check uniqueness
   const existing = await prisma.registration.findUnique({
     where: { bibNumber },
   });

@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useEvent } from '../../hooks/useEvent';
 import {
   LayoutDashboard, ScanLine, ClipboardList, Users, UserCheck,
-  Settings, Ticket, LogOut, ChevronDown, Menu, X,
+  Settings, Ticket, LogOut, ChevronDown, Menu, X, Calendar, Eye, Plus,
 } from 'lucide-react';
 
 const navItems = [
@@ -11,6 +12,7 @@ const navItems = [
   { to: '/admin/runners', icon: UserCheck, label: 'Coureurs' },
   { to: '/admin/scan', icon: ScanLine, label: 'Scanner' },
   { to: '/admin/bibs', icon: Ticket, label: 'Dossards' },
+  { to: '/admin/events', icon: Calendar, label: 'Événements' },
   { to: '/admin/activity', icon: ClipboardList, label: 'Activité' },
   { to: '/admin/users', icon: Users, label: 'Utilisateurs', superOnly: true },
   { to: '/admin/settings', icon: Settings, label: 'Paramètres' },
@@ -20,21 +22,25 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { events, selectedEvent, switchEvent, isViewingHistory } = useEvent();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [eventMenuOpen, setEventMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const menuRef = useRef(null);
+  const eventMenuRef = useRef(null);
 
   useEffect(() => {
-    function handleClick(e) { if (menuRef.current && !menuRef.current.contains(e.target)) setUserMenuOpen(false); }
+    function handleClick(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setUserMenuOpen(false);
+      if (eventMenuRef.current && !eventMenuRef.current.contains(e.target)) setEventMenuOpen(false);
+    }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  // Close mobile menu on navigation
   useEffect(() => { setMobileOpen(false); }, [location.pathname]);
 
   const handleLogout = () => { logout(); navigate('/admin/login', { replace: true }); };
-
   const handleNav = (to) => { navigate(to); setMobileOpen(false); };
 
   const sidebarContent = (
@@ -49,6 +55,57 @@ export default function Sidebar() {
           <X size={20} />
         </button>
       </div>
+
+      {/* Event switcher */}
+      {events.length > 0 && (
+        <div className="px-3 py-2 border-b border-gray-200 relative" ref={eventMenuRef}>
+          <button
+            onClick={() => setEventMenuOpen(!eventMenuOpen)}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition cursor-pointer"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <Calendar size={14} className="text-[#C42826] flex-shrink-0" />
+              <span className="text-xs font-medium text-gray-700 truncate">
+                {selectedEvent?.name || 'Événement'}
+              </span>
+            </div>
+            <ChevronDown size={12} className={`text-gray-400 transition flex-shrink-0 ${eventMenuOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {isViewingHistory && (
+            <div className="mx-3 mt-1 flex items-center gap-1 text-xs text-amber-600">
+              <Eye size={12} />
+              <span>Consultation historique</span>
+            </div>
+          )}
+
+          {eventMenuOpen && (
+            <div className="absolute left-3 right-3 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 max-h-48 overflow-y-auto">
+              {events.map((evt) => (
+                <button
+                  key={evt.id}
+                  onClick={() => { switchEvent(evt.id); setEventMenuOpen(false); }}
+                  className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 transition cursor-pointer flex items-center justify-between ${
+                    evt.id === selectedEvent?.id ? 'bg-[#C42826]/5 text-[#C42826] font-medium' : 'text-gray-700'
+                  }`}
+                >
+                  <span className="truncate">{evt.name}</span>
+                  {evt.active && (
+                    <span className="flex-shrink-0 ml-2 text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">actif</span>
+                  )}
+                </button>
+              ))}
+              <button
+                onClick={() => { setEventMenuOpen(false); navigate('/admin/events'); }}
+                className="w-full text-left px-3 py-2 text-xs text-[#C42826] hover:bg-[#C42826]/5 transition cursor-pointer flex items-center gap-1.5 border-t border-gray-100 mt-1 pt-2"
+              >
+                <Plus size={12} />
+                <span>Nouvel événement</span>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Nav */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">

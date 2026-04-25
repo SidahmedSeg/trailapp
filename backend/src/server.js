@@ -1,3 +1,4 @@
+const path = require('path');
 const env = require('./config/env');
 const prisma = require('./config/database');
 const redis = require('./config/redis');
@@ -16,6 +17,18 @@ fastify.register(require('@fastify/cors'), {
 });
 
 fastify.register(require('@fastify/helmet'));
+
+// Multipart file uploads (5MB limit)
+fastify.register(require('@fastify/multipart'), {
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
+
+// Serve uploaded files
+fastify.register(require('@fastify/static'), {
+  root: path.resolve(__dirname, '../uploads'),
+  prefix: '/uploads/',
+  decorateReply: false,
+});
 
 // Decorate with shared instances
 fastify.decorate('prisma', prisma);
@@ -41,7 +54,7 @@ fastify.get('/health', async () => {
 fastify.register(require('./routes/registration'), { prefix: '/api' });
 fastify.register(require('./routes/auth'), { prefix: '/api/admin' });
 fastify.register(require('./routes/admin'), { prefix: '/api/admin' });
-fastify.register(require('./routes/settings'), { prefix: '/api/admin' });
+fastify.register(require('./routes/events'), { prefix: '/api/admin' });
 fastify.register(require('./routes/scanner'), { prefix: '/api' });
 fastify.register(require('./routes/activity'), { prefix: '/api/admin' });
 fastify.register(require('./routes/payment'), { prefix: '/api' });
@@ -63,6 +76,12 @@ process.on('SIGINT', gracefulShutdown);
 // Start
 const start = async () => {
   try {
+    // Ensure upload directories exist
+    const fs = require('fs');
+    const uploadsDir = path.resolve(__dirname, '../uploads');
+    fs.mkdirSync(path.join(uploadsDir, 'events'), { recursive: true });
+    fs.mkdirSync(path.join(uploadsDir, 'certificates'), { recursive: true });
+
     await fastify.listen({ port: env.PORT, host: env.HOST });
     fastify.log.info(`Server running on port ${env.PORT}`);
 

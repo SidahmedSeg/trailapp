@@ -1,1 +1,54 @@
 @import "tailwindcss";
+
+/* Brand color from event */
+[style*="--brand"] .brand-bg { background-color: var(--brand, #C42826) !important; }
+[style*="--brand"] .brand-text { color: var(--brand, #C42826) !important; }
+[style*="--brand"] .brand-border-focus:focus { border-color: var(--brand, #C42826) !important; }
+[style*="--brand"] .brand-ring-focus:focus { --tw-ring-color: color-mix(in srgb, var(--brand, #C42826) 20%, transparent) !important; }
+[style*="--brand"] .brand-accent { accent-color: var(--brand, #C42826) !important; }
+
+/* Print styles */
+@media print {
+  /* Force colors to print */
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+  /* Reset backgrounds and layout */
+  body, main, .min-h-screen {
+    background: white !important;
+    min-height: auto !important;
+  }
+
+  /* Remove page margins for cleaner output */
+  .py-10 { padding-top: 0 !important; }
+  .shadow-sm, .shadow-md, .shadow-lg { box-shadow: none !important; }
+
+  /* Ensure rounded colored boxes print their bg */
+  [style*="background-color"] {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+/* Quill rich text editor */
+.quill-wrapper .ql-container {
+  border-bottom-left-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+  min-height: 140px;
+  font-size: 0.875rem;
+}
+.quill-wrapper .ql-toolbar {
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+  background: #f9fafb;
+}
+.quill-wrapper .ql-toolbar,
+.quill-wrapper .ql-container {
+  border-color: #d1d5db;
+}
+.quill-wrapper .ql-editor {
+  min-height: 120px;
+}
+.quill-wrapper .ql-editor.ql-blank::before {
+  font-style: normal;
+  color: #9ca3af;
+}

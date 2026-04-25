@@ -91,6 +91,7 @@ export default function Recap() {
   }
 
   const r = registration;
+  const brand = r?.event?.primaryColor || '#C42826';
   const recaptchaLang = i18n.language === 'ar' ? 'ar' : i18n.language === 'en' ? 'en' : 'fr';
 
   return (
@@ -121,7 +122,7 @@ export default function Recap() {
               </div>
 
               {/* Amount card */}
-              <div className="bg-[#C42826] rounded-2xl p-6 text-white">
+              <div className="rounded-2xl p-6 text-white" style={{ backgroundColor: brand }}>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-white/70">{t('recap.fields.amount')}</p>
@@ -148,7 +149,7 @@ export default function Recap() {
 
               {/* Payment method card */}
               <div className="border border-gray-200 rounded-xl p-4 flex items-center gap-3 bg-gray-50/50">
-                <img src="/cib_dahabia.svg" alt="CIB / Dahabia" className="h-9 w-auto" />
+                <img src="/cib_dahabia.svg" alt="CIB / EDAHABIA" className="h-9 w-auto" />
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-gray-900">{t('recap.paymentMethod')}</p>
                   <p className="text-xs text-gray-500">{t('recap.paymentSecure')}</p>
@@ -203,7 +204,8 @@ export default function Recap() {
               <button
                 onClick={handlePay}
                 disabled={!acceptTerms || !recaptchaToken || paying}
-                className="w-full bg-[#C42826] hover:bg-[#a82220] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl text-base transition shadow-md hover:shadow-lg cursor-pointer flex items-center justify-center gap-2"
+                style={{ backgroundColor: brand }}
+                className="w-full hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl text-base transition shadow-md hover:shadow-lg cursor-pointer flex items-center justify-center gap-2"
               >
                 <Lock size={16} />
                 {paying ? t('recap.paying') : t('recap.submit')}

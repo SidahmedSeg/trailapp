@@ -3,9 +3,12 @@ const PHONE_DZ_REGEX = /^[567]\d{8}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const GENDERS = ['Homme', 'Femme'];
 const TSHIRT_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
-const RUNNER_LEVELS = ['Débutant', 'Confirmé', 'Elite'];
+const DEFAULT_RUNNER_LEVELS = ['Débutant', 'Confirmé', 'Elite'];
+const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+const PERFORMANCE_REGEX = /^\d{1,2}:\d{2}:\d{2}$/;
 
-function validateRegistration(body) {
+function validateRegistration(body, eventRunnerLevels) {
+  const RUNNER_LEVELS = (eventRunnerLevels && eventRunnerLevels.length > 0) ? eventRunnerLevels : DEFAULT_RUNNER_LEVELS;
   const errors = [];
 
   // Required fields
@@ -92,6 +95,88 @@ function validateRegistration(body) {
   return errors;
 }
 
+/**
+ * Validate optional fields based on event's optionalFields config.
+ * @param {object} body - request body
+ * @param {object} optionalFields - event's optionalFields config (key: "off"|"optional"|"required")
+ * @param {Array} distances - event's distances array [{name, elevation?, timeLimit?}]
+ * @returns {Array} errors
+ */
+function validateOptionalFields(body, optionalFields, distances) {
+  const errors = [];
+  if (!optionalFields || typeof optionalFields !== 'object') return errors;
+
+  // Distance
+  if (optionalFields.distance && optionalFields.distance !== 'off') {
+    if (optionalFields.distance === 'required' && !body.selectedDistance) {
+      errors.push({ field: 'selectedDistance', message: 'Distance requise' });
+    }
+    if (body.selectedDistance) {
+      const validDistances = (distances || []).map(d => d.name);
+      if (!validDistances.includes(body.selectedDistance)) {
+        errors.push({ field: 'selectedDistance', message: 'Distance invalide' });
+      }
+    }
+  }
+
+  // Club
+  if (optionalFields.club === 'required' && !body.club) {
+    errors.push({ field: 'club', message: 'Club requis' });
+  }
+
+  // License number
+  if (optionalFields.licenseNumber === 'required' && !body.licenseNumber) {
+    errors.push({ field: 'licenseNumber', message: 'Numéro de licence requis' });
+  }
+
+  // Best performance
+  if (optionalFields.bestPerformance && optionalFields.bestPerformance !== 'off') {
+    if (optionalFields.bestPerformance === 'required' && !body.bestPerformance) {
+      errors.push({ field: 'bestPerformance', message: 'Meilleure performance requise' });
+    }
+    if (body.bestPerformance && !PERFORMANCE_REGEX.test(body.bestPerformance)) {
+      errors.push({ field: 'bestPerformance', message: 'Format H:MM:SS requis' });
+    }
+  }
+
+  // Previous participations
+  if (optionalFields.previousParticipations && optionalFields.previousParticipations !== 'off') {
+    if (optionalFields.previousParticipations === 'required' && (body.previousParticipations == null || body.previousParticipations === '')) {
+      errors.push({ field: 'previousParticipations', message: 'Nombre de participations requis' });
+    }
+    if (body.previousParticipations != null && body.previousParticipations !== '') {
+      const num = parseInt(body.previousParticipations, 10);
+      if (!Number.isInteger(num) || num < 0) {
+        errors.push({ field: 'previousParticipations', message: 'Nombre invalide' });
+      }
+    }
+  }
+
+  // Shuttle
+  if (optionalFields.shuttle === 'required' && body.shuttle == null) {
+    errors.push({ field: 'shuttle', message: 'Choix navette requis' });
+  }
+
+  // Blood type
+  if (optionalFields.bloodType && optionalFields.bloodType !== 'off') {
+    if (optionalFields.bloodType === 'required' && !body.bloodType) {
+      errors.push({ field: 'bloodType', message: 'Groupe sanguin requis' });
+    }
+    if (body.bloodType && !BLOOD_TYPES.includes(body.bloodType)) {
+      errors.push({ field: 'bloodType', message: 'Groupe sanguin invalide' });
+    }
+  }
+
+  // Photo pack
+  if (optionalFields.photoPack === 'required' && body.photoPack == null) {
+    errors.push({ field: 'photoPack', message: 'Choix pack photo requis' });
+  }
+
+  // Medical certificate — validated separately (file upload)
+
+  return errors;
+}
+
 function validatePhone(countryCode, number, prefix, errors) {
   if (countryCode === '+213') {
     if (!PHONE_DZ_REGEX.test(number)) {
@@ -111,4 +196,4 @@ function buildE164(countryCode, number) {
   return `${countryCode}${number}`;
 }
 
-module.exports = { validateRegistration, buildE164 };
+module.exports = { validateRegistration, validateOptionalFields, buildE164, BLOOD_TYPES };

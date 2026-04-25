@@ -54,8 +54,8 @@
       "level": "Votre niveau en trail"
     },
     "placeholders": {
-      "phone": "770 585 909",
-      "emergencyPhone": "661 234 567",
+      "phone": "6XX XXX XXX",
+      "emergencyPhone": "5XX XXX XXX",
       "city": "Ville de résidence",
       "selectWilaya": "Choisir une wilaya",
       "enterName": "Saisissez le nom"
@@ -94,7 +94,7 @@
       "level": "Niveau",
       "amount": "Montant à payer"
     },
-    "paymentMethod": "Carte CIB / Dahabia",
+    "paymentMethod": "Carte CIB / EDAHABIA",
     "paymentSecure": "Paiement sécurisé via SATIM",
     "terms": "J'accepte les conditions générales de vente et la politique de remboursement.",
     "submit": "Confirmer et Payer",
@@ -194,7 +194,7 @@
     "title": "Politique de confidentialité",
     "dataCollected": {
       "title": "Données collectées",
-      "text": "Lors de votre inscription au Trail des Mouflons d'or 2026, nous collectons les données standard des participants."
+      "text": "Lors de votre inscription, nous collectons les données standard des participants."
     },
     "websiteData": {
       "title": "Données du site Web",
@@ -257,7 +257,7 @@
   },
   "terms": {
     "title": "Conditions générales",
-    "subtitle": "CONDITIONS GÉNÉRALES DE PAIEMENT ÉLECTRONIQUE MOUFLON 2026",
+    "subtitle": "CONDITIONS GÉNÉRALES DE PAIEMENT ÉLECTRONIQUE",
     "bank": "Banque acquéreuse",
     "gateway": "Passerelle de paiement",
     "sections": {
@@ -267,7 +267,7 @@
       },
       "object": {
         "title": "Objet",
-        "text": "Les présentes conditions encadrent les paiements électroniques réalisés pour l'inscription au MOUFLON 2026 via la plateforme sécurisée SATIM."
+        "text": "Les présentes conditions encadrent les paiements électroniques réalisés via la plateforme sécurisée SATIM, pour l'inscription aux différents événements sportifs organisés par la LASSM."
       },
       "paymentMethods": {
         "title": "Modalités de paiement",

@@ -12,20 +12,25 @@ async function emailRoutes(fastify) {
   fastify.post('/registration/:id/send-pdf', async (request) => {
     const registration = await prisma.registration.findUnique({
       where: { id: request.params.id },
+      include: { event: { select: { name: true, date: true, location: true, primaryColor: true } } },
     });
     if (!registration) throw new AppError(404, 'Inscription non trouvée', 'NOT_FOUND');
     if (!registration.bibNumber) {
       throw new AppError(400, 'Inscription incomplète', 'INCOMPLETE');
     }
 
+    const body = request.body || {};
+    const targetEmail = body.email && body.email.trim() ? body.email.trim() : registration.email;
+
+    const eventName = registration.event?.name || 'Événement';
     const pdfBuffer = await generateTicketPDF(registration);
 
     const msg = {
-      to: registration.email,
+      to: targetEmail,
       from: { email: env.SENDGRID_FROM_EMAIL, name: env.SENDGRID_FROM_NAME },
-      subject: `Votre ticket - Trail des Mouflons d'Or 2026 - Dossard #${registration.bibNumber}`,
+      subject: `Votre ticket - ${eventName} - Dossard #${registration.bibNumber}`,
       html: `<p>Bonjour ${registration.firstName},</p>
-<p>Vous trouverez ci-joint votre ticket de confirmation pour le Trail des Mouflons d'Or 2026.</p>
+<p>Vous trouverez ci-joint votre ticket de confirmation pour ${eventName}.</p>
 <p>Votre numéro de dossard : <strong>#${registration.bibNumber}</strong></p>
 <p>À bientôt !</p>`,
       attachments: [
@@ -45,7 +50,16 @@ async function emailRoutes(fastify) {
       throw new AppError(500, 'Erreur lors de l\'envoi de l\'email', 'EMAIL_ERROR');
     }
 
-    return { success: true, message: `PDF envoyé à ${registration.email}` };
+    // Log the email
+    await prisma.emailLog.create({
+      data: {
+        registrationId: registration.id,
+        templateName: 'confirmation',
+        sentBy: request.user?.username || 'system',
+      },
+    });
+
+    return { success: true, message: `PDF envoyé à ${targetEmail}` };
   });
 }
 

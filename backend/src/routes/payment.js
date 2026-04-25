@@ -22,8 +22,6 @@ async function paymentRoutes(fastify) {
       throw new AppError(400, 'Vous devez accepter les conditions générales', 'TERMS_REQUIRED');
     }
 
-    // TODO: Verify reCAPTCHA in production
-
     const registration = await prisma.registration.findUnique({ where: { id: registrationId } });
     if (!registration) {
       throw new AppError(404, 'Inscription non trouvée', 'NOT_FOUND');
@@ -36,7 +34,8 @@ async function paymentRoutes(fastify) {
       throw new AppError(400, 'Paiement déjà en cours', 'PAYMENT_PROCESSING');
     }
 
-    // Bib is NOT assigned here — assigned only on payment success (no gaps)
+    // Dynamic pricing from registration (computed at register time from event config)
+    const paymentAmount = registration.paymentAmount;
 
     // Update registration to processing
     await prisma.registration.update({
@@ -44,28 +43,36 @@ async function paymentRoutes(fastify) {
       data: { paymentStatus: 'processing', termsAccepted: true },
     });
 
-    // Register payment with SATIM
-    const orderId = `TM-${Date.now()}-${registrationId.substring(0, 8)}`;
+    // Register payment with SATIM — 8-char alphanumeric order ID (guaranteed mix of letters + digits)
+    const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const digits = '23456789';
+    const all = letters + digits;
+    const pick = (s) => s[Math.floor(Math.random() * s.length)];
+    const base = [pick(letters), pick(letters), pick(digits), pick(digits), pick(all), pick(all), pick(all), pick(all)];
+    for (let i = base.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [base[i], base[j]] = [base[j], base[i]]; }
+    const orderId = base.join('');
     const returnUrl = `${env.SATIM_CALLBACK_URL}?registrationId=${registrationId}`;
     const failUrl = `${env.APP_URL}/failed?id=${registrationId}`;
 
     try {
       const satimResult = await registerPayment({
         orderId,
-        amount: env.PAYMENT_AMOUNT_CENTIMES,
+        amount: paymentAmount,
         returnUrl,
         failUrl,
       });
 
-      // Store SATIM order ID
+      // Store our order number + SATIM's order ID
       await prisma.registration.update({
         where: { id: registrationId },
-        data: { transactionId: satimResult.orderId },
+        data: {
+          transactionId: satimResult.orderId,
+          orderNumber: orderId,
+        },
       });
 
       return { satimRedirectUrl: satimResult.formUrl };
     } catch (err) {
-      // Roll back to failed if SATIM registration fails
       await prisma.registration.update({
         where: { id: registrationId },
         data: { paymentStatus: 'failed' },
@@ -86,7 +93,6 @@ async function paymentRoutes(fastify) {
     const idempKey = `idempotency:${orderId}`;
     const alreadyProcessed = await redis.set(idempKey, 'processing', 'EX', 86400, 'NX');
     if (!alreadyProcessed) {
-      // Already processed — redirect to success page
       const reg = await prisma.registration.findUnique({ where: { id: registrationId } });
       if (reg?.paymentStatus === 'success') {
         return reply.redirect(`${env.APP_URL}/success?id=${registrationId}`);
@@ -95,63 +101,74 @@ async function paymentRoutes(fastify) {
     }
 
     try {
-      // IMPORTANT: Never trust query params — call SATIM server-to-server
-      // Step 1: Confirm the order (triggers capture)
+      // Server-to-server verification
       await confirmOrder(orderId).catch((err) => {
         request.log.warn(err, 'confirmOrder failed (may already be confirmed)');
       });
 
-      // Step 2: Get actual payment status
       const satimStatus = await getOrderStatus(orderId);
 
       if (satimStatus.orderStatus === 2 && satimStatus.actionCode === 0) {
-        // SUCCESS — assign bib NOW (only on success, no gaps)
-        const settings = await prisma.settings.findUnique({ where: { id: 'default' } });
-        const bibNumber = await getNextBib(redis, settings.bibEnd);
+        // SUCCESS — assign bib and store card info
+        const registration = await prisma.registration.findUnique({
+          where: { id: registrationId },
+          include: { event: true },
+        });
+
+        const event = registration.event;
+        const bibNumber = await getNextBib(redis, event.id, event.bibEnd);
         const qrToken = uuidv4();
 
-        // Transaction: update registration + lock bib range
-        await prisma.$transaction([
-          prisma.registration.update({
-            where: { id: registrationId },
-            data: {
-              bibNumber,
-              qrToken,
-              paymentStatus: 'success',
-              status: 'en_attente',
-              paymentMethod: satimStatus.pan ? 'CIB' : 'EDAHABIA',
-              transactionNumber: satimStatus.approvalCode || null,
-              approvalCode: satimStatus.approvalCode || null,
-              paymentAmount: env.PAYMENT_AMOUNT_CENTIMES,
-              paymentDate: new Date(),
-            },
-          }),
-          prisma.settings.update({
-            where: { id: 'default' },
-            data: { bibRangeLocked: true },
-          }),
-        ]);
+        // Extract last 4 digits of card PAN
+        const cardPan = satimStatus.pan ? satimStatus.pan.replace(/\D/g, '').slice(-4) : null;
 
-        // Check auto-close on exhaustion (settings already fetched above)
-        if (settings.autoCloseOnExhaustion) {
-          const nextBib = await redis.get('bib:next');
-          if (parseInt(nextBib, 10) > settings.bibEnd) {
-            await prisma.settings.update({
-              where: { id: 'default' },
+        // Update registration (single write, no transaction needed)
+        await prisma.registration.update({
+          where: { id: registrationId },
+          data: {
+            bibNumber,
+            qrToken,
+            paymentStatus: 'success',
+            status: 'en_attente',
+            paymentMethod: satimStatus.pan ? 'CIB' : 'EDAHABIA',
+            transactionNumber: satimStatus.approvalCode || null,
+            approvalCode: satimStatus.approvalCode || null,
+            paymentAmount: registration.paymentAmount,
+            paymentDate: new Date(),
+            cardPan,
+          },
+        });
+
+        // Lock bib range (only if not already locked — avoids contention)
+        if (!event.bibRangeLocked) {
+          await prisma.event.update({
+            where: { id: event.id },
+            data: { bibRangeLocked: true },
+          });
+        }
+
+        // Check auto-close on exhaustion
+        if (event.autoCloseOnExhaustion) {
+          const nextBib = await redis.get(`bib:next:${event.id}`);
+          if (parseInt(nextBib, 10) > event.bibEnd) {
+            await prisma.event.update({
+              where: { id: event.id },
               data: { registrationOpen: false },
             });
             request.log.info('Auto-closed registrations: bibs exhausted');
           }
         }
 
-        // Send confirmation email (async, don't block redirect)
-        const fullReg = await prisma.registration.findUnique({ where: { id: registrationId } });
+        // Send confirmation email (async)
+        const fullReg = await prisma.registration.findUnique({
+          where: { id: registrationId },
+          include: { event: { select: { name: true, date: true, location: true, primaryColor: true } } },
+        });
         sendConfirmationEmail(fullReg).catch(console.error);
 
         return reply.redirect(`${env.APP_URL}/success?id=${registrationId}`);
       } else {
-        // FAILURE — no bib was assigned, nothing to clean up
-
+        // FAILURE
         await prisma.registration.update({
           where: { id: registrationId },
           data: { paymentStatus: 'failed' },
@@ -169,8 +186,8 @@ async function paymentRoutes(fastify) {
   });
 
   // Cleanup job: mark stale "processing" as "failed" after 30 min
-  const CLEANUP_INTERVAL = 10 * 60 * 1000; // 10 minutes
-  const STALE_THRESHOLD = 30 * 60 * 1000; // 30 minutes
+  const CLEANUP_INTERVAL = 10 * 60 * 1000;
+  const STALE_THRESHOLD = 30 * 60 * 1000;
 
   const cleanupJob = setInterval(async () => {
     try {

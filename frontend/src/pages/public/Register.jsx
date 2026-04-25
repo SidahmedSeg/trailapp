@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Select from 'react-select';
-import { Check, X, Loader2, Ban, User, Mail, MapPin, Phone, Shirt, Trophy, FileCheck } from 'lucide-react';
+import { Check, X, Loader2, Ban, User, Mail, MapPin, Phone, Shirt, Trophy, FileCheck, Route, Heart, Users, Bus, Camera } from 'lucide-react';
 import PublicLayout from '../../components/ui/PublicLayout';
 import { COUNTRIES_DATA, PHONE_CODES, WILAYAS, COMMUNES_MAP } from '../../data/formData';
 
@@ -74,11 +74,12 @@ function FlagLabel({ code, label }) {
 }
 
 // --- Section header helper ---
-function SectionHeader({ icon: Icon, title }) {
+function SectionHeader({ icon: Icon, title, color }) {
+  const c = color || 'var(--brand, #C42826)';
   return (
     <div className="flex items-center gap-3 pb-4 mb-5 border-b border-gray-100">
-      <div className="w-9 h-9 rounded-lg bg-[#C42826]/10 flex items-center justify-center">
-        <Icon size={18} className="text-[#C42826]" />
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: `color-mix(in srgb, ${c} 10%, transparent)` }}>
+        <Icon size={18} style={{ color: c }} />
       </div>
       <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
     </div>
@@ -96,6 +97,7 @@ export default function Register() {
   const [emailStatus, setEmailStatus] = useState(null);
   const emailTimeout = useRef(null);
   const [showConditions, setShowConditions] = useState(false);
+  const [eventConfig, setEventConfig] = useState(null);
 
   const [form, setForm] = useState({
     lastName: '', firstName: '', birthDate: '', gender: '',
@@ -105,6 +107,9 @@ export default function Register() {
     emergencyPhoneCountryCode: '+213', emergencyPhoneNumber: '',
     tshirtSize: '', runnerLevel: '',
     declarationFit: false, declarationRules: false, declarationImage: false,
+    // Optional fields
+    selectedDistance: '', medicalCertificateFile: null, club: '', licenseNumber: '', bestPerformance: '',
+    previousParticipations: '', shuttle: null, bloodType: '', photoPack: null,
   });
   const [fieldErrors, setFieldErrors] = useState({});
 
@@ -114,11 +119,8 @@ export default function Register() {
     { value: 'Femme', label: t('register.genders.female') },
   ];
 
-  const levelOptions = [
-    { value: 'Débutant', label: 'Débutant' },
-    { value: 'Confirmé', label: 'Confirmé' },
-    { value: 'Elite', label: 'Elite' },
-  ];
+  const eventLevels = eventConfig?.runnerLevels || ['Débutant', 'Confirmé', 'Elite'];
+  const levelOptions = eventLevels.map(l => ({ value: l, label: l }));
 
   const countryOptions = COUNTRIES_DATA.map((c) => ({
     value: c.value,
@@ -137,10 +139,15 @@ export default function Register() {
   useEffect(() => {
     fetch('/api/settings/public')
       .then((r) => r.json())
-      .then((d) => { if (!d.registrationOpen) setClosed(true); })
+      .then((d) => {
+        setEventConfig(d);
+        if (!d.registrationOpen) setClosed(true);
+      })
       .catch(() => setClosed(true))
       .finally(() => setLoading(false));
   }, []);
+
+  const optFields = eventConfig?.optionalFields || {};
 
   const LATIN_REGEX = /^[a-zA-ZÀ-ÿ\s\-']*$/;
   const UPPERCASE_FIELDS = ['lastName', 'firstName', 'ville'];
@@ -166,15 +173,28 @@ export default function Register() {
     });
   }
 
+  const [pendingRegId, setPendingRegId] = useState(null);
+
   function checkEmail(email) {
-    if (!email || !email.includes('@')) { setEmailStatus(null); return; }
+    if (!email || !email.includes('@')) { setEmailStatus(null); setPendingRegId(null); return; }
     setEmailStatus('checking');
     if (emailTimeout.current) clearTimeout(emailTimeout.current);
     emailTimeout.current = setTimeout(() => {
       fetch(`/api/check-email?email=${encodeURIComponent(email)}`)
         .then((r) => r.json())
-        .then((d) => setEmailStatus(d.available ? 'available' : 'taken'))
-        .catch(() => setEmailStatus(null));
+        .then((d) => {
+          if (d.available) {
+            setEmailStatus('available');
+            setPendingRegId(null);
+          } else if ((d.reason === 'pending' || d.reason === 'processing') && d.registrationId) {
+            setEmailStatus('pending');
+            setPendingRegId(d.registrationId);
+          } else {
+            setEmailStatus('taken');
+            setPendingRegId(null);
+          }
+        })
+        .catch(() => { setEmailStatus(null); setPendingRegId(null); });
     }, 400);
   }
 
@@ -256,7 +276,7 @@ export default function Register() {
     if (!form.declarationFit || !form.declarationRules || !form.declarationImage) {
       setError(t('register.errors.declarationsRequired')); return;
     }
-    if (emailStatus === 'taken') {
+    if (emailStatus === 'taken' || emailStatus === 'pending') {
       setError(t('register.errors.emailTaken')); return;
     }
 
@@ -266,6 +286,9 @@ export default function Register() {
       phoneNumber: form.phoneNumber.replace(/^0+/, ''),
       emergencyPhoneNumber: form.emergencyPhoneNumber.replace(/^0+/, ''),
     };
+    // Remove file object from JSON payload (uploaded separately)
+    const medicalFile = submitData.medicalCertificateFile;
+    delete submitData.medicalCertificateFile;
 
     setSubmitting(true);
     try {
@@ -279,6 +302,17 @@ export default function Register() {
         throw new Error(body?.message || t('register.errors.generic'));
       }
       const data = await res.json();
+
+      // Upload medical certificate if present
+      if (medicalFile) {
+        const fd = new FormData();
+        fd.append('medicalCertificate', medicalFile);
+        await fetch(`/api/registration/${data.registrationId}/upload-certificate`, {
+          method: 'POST',
+          body: fd,
+        }).catch(() => {}); // non-blocking
+      }
+
       navigate(`/recap?id=${data.registrationId}`);
     } catch (err) {
       setError(err.message);
@@ -405,9 +439,20 @@ export default function Register() {
                   />
                   {emailStatus === 'checking' && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" size={18} />}
                   {emailStatus === 'available' && <Check className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500" size={20} />}
-                  {emailStatus === 'taken' && <X className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500" size={20} />}
+                  {(emailStatus === 'taken' || emailStatus === 'pending') && <X className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500" size={20} />}
                 </div>
                 {emailStatus === 'taken' && <p className="text-red-500 text-xs mt-1">{t('register.errors.emailTaken')}</p>}
+                {emailStatus === 'pending' && pendingRegId && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-1.5">
+                    <p className="text-xs text-amber-700">
+                      Une inscription en attente de paiement existe pour cet email.
+                    </p>
+                    <button type="button" onClick={() => navigate(`/recap?id=${pendingRegId}`)}
+                      className="text-xs font-medium text-[#C42826] hover:underline mt-1 cursor-pointer">
+                      Continuer vers le paiement
+                    </button>
+                  </div>
+                )}
               </div>
               <div>
                 <label className={labelCls}>{t('register.fields.confirmEmail')}<span className="text-[#C42826] ms-0.5">*</span></label>
@@ -532,6 +577,170 @@ export default function Register() {
             </div>
           </section>
 
+          {/* Dynamic Optional Fields */}
+          {Object.values(optFields).some(v => v && v !== 'off') && (
+            <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
+              <SectionHeader icon={Route} title="Informations complémentaires" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Distance */}
+                {optFields.distance && optFields.distance !== 'off' && eventConfig?.distances?.length > 0 && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Distance {optFields.distance === 'required' && <span className="text-red-500">*</span>}
+                      {optFields.distance === 'optional' && <span className="text-gray-400 text-xs ml-1">(optionnel)</span>}
+                    </label>
+                    <Select
+                      options={eventConfig.distances.map(d => ({
+                        value: d.name,
+                        label: `${d.name}${d.elevation ? ` — ${d.elevation}` : ''}${d.timeLimit ? ` (${d.timeLimit})` : ''}`,
+                      }))}
+                      value={form.selectedDistance ? { value: form.selectedDistance, label: form.selectedDistance } : null}
+                      onChange={(opt) => update('selectedDistance', opt?.value || '')}
+                      placeholder="Choisir une distance..."
+                      isClearable
+                    />
+                  </div>
+                )}
+
+                {/* Medical Certificate */}
+                {optFields.medicalCertificate && optFields.medicalCertificate !== 'off' && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Certificat médical {optFields.medicalCertificate === 'required' && <span className="text-red-500">*</span>}
+                      {optFields.medicalCertificate === 'optional' && <span className="text-gray-400 text-xs ml-1">(optionnel)</span>}
+                    </label>
+                    <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 hover:border-[#C42826]/30 transition">
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        className="hidden"
+                        id="medical-cert-upload"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            update('medicalCertificateFile', file);
+                          }
+                        }}
+                      />
+                      {form.medicalCertificateFile ? (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-sm text-gray-700">
+                            <FileCheck size={16} className="text-green-600" />
+                            <span>{form.medicalCertificateFile.name}</span>
+                            <span className="text-xs text-gray-400">({(form.medicalCertificateFile.size / 1024).toFixed(0)} Ko)</span>
+                          </div>
+                          <button type="button" onClick={() => update('medicalCertificateFile', null)} className="text-xs text-red-500 hover:underline cursor-pointer">
+                            Supprimer
+                          </button>
+                        </div>
+                      ) : (
+                        <label htmlFor="medical-cert-upload" className="flex flex-col items-center gap-1 cursor-pointer">
+                          <FileCheck size={24} className="text-gray-300" />
+                          <span className="text-xs text-[#C42826]">Choisir un fichier</span>
+                          <span className="text-[10px] text-gray-400">PDF, JPG ou PNG (max 5 Mo)</span>
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Club */}
+                {optFields.club && optFields.club !== 'off' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Club / Équipe {optFields.club === 'required' && <span className="text-red-500">*</span>}
+                      {optFields.club === 'optional' && <span className="text-gray-400 text-xs ml-1">(optionnel)</span>}
+                    </label>
+                    <input type="text" className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-gray-50/80 focus:bg-white focus:border-[#C42826] focus:ring-2 focus:ring-[#C42826]/10 outline-none transition"
+                      value={form.club} onChange={(e) => update('club', e.target.value.toUpperCase())} />
+                  </div>
+                )}
+
+                {/* License Number */}
+                {optFields.licenseNumber && optFields.licenseNumber !== 'off' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Numéro de licence {optFields.licenseNumber === 'required' && <span className="text-red-500">*</span>}
+                      {optFields.licenseNumber === 'optional' && <span className="text-gray-400 text-xs ml-1">(optionnel)</span>}
+                    </label>
+                    <input type="text" className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-gray-50/80 focus:bg-white focus:border-[#C42826] focus:ring-2 focus:ring-[#C42826]/10 outline-none transition"
+                      value={form.licenseNumber} onChange={(e) => update('licenseNumber', e.target.value)} />
+                  </div>
+                )}
+
+                {/* Best Performance */}
+                {optFields.bestPerformance && optFields.bestPerformance !== 'off' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Meilleure performance {optFields.bestPerformance === 'required' && <span className="text-red-500">*</span>}
+                      {optFields.bestPerformance === 'optional' && <span className="text-gray-400 text-xs ml-1">(optionnel)</span>}
+                    </label>
+                    <input type="text" placeholder="H:MM:SS" className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-gray-50/80 focus:bg-white focus:border-[#C42826] focus:ring-2 focus:ring-[#C42826]/10 outline-none transition"
+                      value={form.bestPerformance} onChange={(e) => update('bestPerformance', e.target.value)} />
+                  </div>
+                )}
+
+                {/* Previous Participations */}
+                {optFields.previousParticipations && optFields.previousParticipations !== 'off' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Participations précédentes {optFields.previousParticipations === 'required' && <span className="text-red-500">*</span>}
+                      {optFields.previousParticipations === 'optional' && <span className="text-gray-400 text-xs ml-1">(optionnel)</span>}
+                    </label>
+                    <input type="number" min="0" className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-gray-50/80 focus:bg-white focus:border-[#C42826] focus:ring-2 focus:ring-[#C42826]/10 outline-none transition"
+                      value={form.previousParticipations} onChange={(e) => update('previousParticipations', e.target.value)} />
+                  </div>
+                )}
+
+                {/* Blood Type */}
+                {optFields.bloodType && optFields.bloodType !== 'off' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Groupe sanguin {optFields.bloodType === 'required' && <span className="text-red-500">*</span>}
+                      {optFields.bloodType === 'optional' && <span className="text-gray-400 text-xs ml-1">(optionnel)</span>}
+                    </label>
+                    <Select
+                      options={['A+','A-','B+','B-','AB+','AB-','O+','O-'].map(v => ({ value: v, label: v }))}
+                      value={form.bloodType ? { value: form.bloodType, label: form.bloodType } : null}
+                      onChange={(opt) => update('bloodType', opt?.value || '')}
+                      placeholder="Choisir..."
+                      isClearable
+                    />
+                  </div>
+                )}
+
+                {/* Shuttle Transport */}
+                {optFields.shuttle && optFields.shuttle !== 'off' && (
+                  <div className="flex items-center gap-3">
+                    <input type="checkbox" className="h-4 w-4 rounded border-gray-300 text-[#C42826] accent-[#C42826]"
+                      checked={form.shuttle === true}
+                      onChange={(e) => update('shuttle', e.target.checked)} />
+                    <label className="text-sm text-gray-700">
+                      Navette transport
+                      {optFields.shuttle === 'required' && <span className="text-red-500 ml-1">*</span>}
+                    </label>
+                  </div>
+                )}
+
+                {/* Photo Pack */}
+                {optFields.photoPack && optFields.photoPack !== 'off' && (
+                  <div className="flex items-center gap-3">
+                    <input type="checkbox" className="h-4 w-4 rounded border-gray-300 text-[#C42826] accent-[#C42826]"
+                      checked={form.photoPack === true}
+                      onChange={(e) => update('photoPack', e.target.checked)} />
+                    <label className="text-sm text-gray-700">
+                      Pack photo / vidéo
+                      {optFields.photoPack === 'required' && <span className="text-red-500 ml-1">*</span>}
+                      {eventConfig?.photoPackPrice && (
+                        <span className="text-xs text-gray-500 ml-1">(+{(eventConfig.photoPackPrice / 100).toLocaleString('fr-FR')} DZD)</span>
+                      )}
+                    </label>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+
           {/* Declarations */}
           <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
             <SectionHeader icon={FileCheck} title={t('register.sections.declarations')} />
@@ -561,7 +770,8 @@ export default function Register() {
           {/* Submit */}
           <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
             <button type="submit" disabled={submitting}
-              className="w-full bg-[#C42826] hover:bg-[#a82220] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl text-base transition shadow-md hover:shadow-lg cursor-pointer"
+              style={{ backgroundColor: eventConfig?.primaryColor || '#C42826' }}
+              className="w-full hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl text-base transition shadow-md hover:shadow-lg cursor-pointer"
             >
               {submitting ? t('register.submitting') : t('register.submit')}
             </button>
@@ -573,6 +783,7 @@ export default function Register() {
       {/* Conditions Modal */}
       {showConditions && (
         <ConditionsModal
+          termsHtml={eventConfig?.termsText}
           onAccept={() => { update('declarationFit', true); setShowConditions(false); }}
           onDecline={() => setShowConditions(false)}
         />
@@ -582,7 +793,7 @@ export default function Register() {
 }
 
 /* --- Conditions de Participation Modal --- */
-function ConditionsModal({ onAccept, onDecline }) {
+function ConditionsModal({ termsHtml, onAccept, onDecline }) {
   const [canAccept, setCanAccept] = useState(false);
   const contentRef = useRef(null);
 
@@ -594,13 +805,23 @@ function ConditionsModal({ onAccept, onDecline }) {
     }
   };
 
+  // If termsText is short or no scroll needed, enable accept immediately
+  useEffect(() => {
+    const el = contentRef.current;
+    if (el && el.scrollHeight <= el.clientHeight + 20) {
+      setCanAccept(true);
+    }
+  }, [termsHtml]);
+
+  const hasCustomTerms = termsHtml && termsHtml.trim() && termsHtml !== '<p><br></p>';
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40" onClick={onDecline} />
       <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-lg max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="px-6 py-5 border-b border-gray-200 text-center">
-          <h3 className="text-xl font-bold text-gray-900">Conditions de Participation</h3>
+          <h3 className="text-xl font-bold text-gray-900">Règlement de l'événement</h3>
           <p className="text-sm text-gray-500 mt-1">Lisez jusqu'en bas pour activer le bouton Accepter</p>
         </div>
 
@@ -608,96 +829,105 @@ function ConditionsModal({ onAccept, onDecline }) {
         <div
           ref={contentRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto px-6 py-5 text-sm text-gray-700 leading-relaxed space-y-5"
+          className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-5 text-sm text-gray-700 leading-relaxed space-y-5"
         >
-          <Article title="Article 1 -- Informations generales">
-            <p>La Ligue Algéroise de Ski et des Sports de Montagne (LASSM) a le plaisir de vous inviter à la 3ᵉ édition du Trail des Mouflons d'Or, organisée sous le parrainage de Monsieur le Ministre Wali d'Alger et sous l'égide de la Direction de la Jeunesse, des Sports et des Loisirs de la Wilaya d'Alger, à l'occasion du Festival d'Alger des Sports.</p>
-            <p>Le Trail des Mouflons d'Or est une épreuve de course nature se déroulant en milieu naturel, sur un parcours exigeant et vallonné au cœur du Parc Zoologique de Ben Aknoun (entrée Village Africain).</p>
-            <p className="font-medium">Informations principales :</p>
-            <ul className="list-disc list-inside space-y-1 ps-2">
-              <li>Date : 1er mai 2026</li>
-              <li>Accueil des participants : à partir de 06h00</li>
-              <li>Départ de la course : 08h00</li>
-              <li>Distance : 16,57 km</li>
-              <li>Dénivelé positif : 443 m D+</li>
-            </ul>
-          </Article>
+          {hasCustomTerms ? (
+            /* Admin-defined rich text rules */
+            <div className="prose prose-sm max-w-none break-words prose-headings:text-gray-900 prose-p:text-gray-700 prose-li:text-gray-700 prose-a:text-[#C42826]"
+              dangerouslySetInnerHTML={{ __html: termsHtml }} />
+          ) : (
+            /* Fallback: hardcoded TMO rules */
+            <>
+              <Article title="Article 1 -- Informations generales">
+                <p>La Ligue Algéroise de Ski et des Sports de Montagne (LASSM) a le plaisir de vous inviter à la 3ᵉ édition du Trail des Mouflons d'Or, organisée sous le parrainage de Monsieur le Ministre Wali d'Alger et sous l'égide de la Direction de la Jeunesse, des Sports et des Loisirs de la Wilaya d'Alger, à l'occasion du Festival d'Alger des Sports.</p>
+                <p>Le Trail des Mouflons d'Or est une épreuve de course nature se déroulant en milieu naturel, sur un parcours exigeant et vallonné au cœur du Parc Zoologique de Ben Aknoun (entrée Village Africain).</p>
+                <p className="font-medium">Informations principales :</p>
+                <ul className="list-disc list-inside space-y-1 ps-2">
+                  <li>Date : 1er mai 2026</li>
+                  <li>Accueil des participants : à partir de 06h00</li>
+                  <li>Départ de la course : 08h00</li>
+                  <li>Distance : 16,57 km</li>
+                  <li>Dénivelé positif : 443 m D+</li>
+                </ul>
+              </Article>
 
-          <Article title="Article 2 -- Inscriptions / Tarifs / Annulation / Dossard">
-            <p><strong>2.1 – Inscriptions</strong><br/>Les inscriptions sont ouvertes dès la publication officielle de l'événement. L'inscription se fait exclusivement en ligne via la plateforme officielle : www.tmo.lassm.dz</p>
-            <p><strong>2.2 – Procédure d'inscription</strong><br/>Pour valider son inscription, chaque participant doit :</p>
-            <ol className="list-decimal list-inside space-y-1 ps-2">
-              <li>Remplir le formulaire d'inscription en renseignant ses informations personnelles ;</li>
-              <li>Déclarer sur l'honneur être physiquement apte à participer ;</li>
-              <li>Lire et accepter intégralement le présent règlement ;</li>
-              <li>Confirmer son inscription ;</li>
-              <li>Procéder au paiement en ligne par carte CIB.</li>
-            </ol>
-            <p><strong>2.3 – Informations de paiement</strong><br/>Titulaire : Ligue Algéroise de Ski et des Sports de Montagne<br/>Domiciliation : Agence Belahdjel, 24 Rue Hocine Belahdjel, Alger</p>
-            <p><strong>2.4 – Tarif</strong><br/>2 000 DA par participant</p>
-            <p><strong>2.5 – Conditions d'annulation</strong><br/>Toute inscription est ferme, définitive et non remboursable. Aucun remboursement ne sera effectué, quel qu'en soit le motif.</p>
-            <p><strong>2.6 – Conditions obligatoires</strong><br/>La participation sans inscription est strictement interdite. Il est interdit de céder ou prêter son dossard. Toute usurpation entraîne une disqualification immédiate.</p>
-            <p><strong>2.7 – Dossard</strong><br/>Le dossard doit être porté de manière visible sur la poitrine, fixé avec 4 épingles, et conservé en bon état.</p>
-          </Article>
+              <Article title="Article 2 -- Inscriptions / Tarifs / Annulation / Dossard">
+                <p><strong>2.1 – Inscriptions</strong><br/>Les inscriptions sont ouvertes dès la publication officielle de l'événement. L'inscription se fait exclusivement en ligne via la plateforme officielle : www.tmo.lassm.dz</p>
+                <p><strong>2.2 – Procédure d'inscription</strong><br/>Pour valider son inscription, chaque participant doit :</p>
+                <ol className="list-decimal list-inside space-y-1 ps-2">
+                  <li>Remplir le formulaire d'inscription en renseignant ses informations personnelles ;</li>
+                  <li>Déclarer sur l'honneur être physiquement apte à participer ;</li>
+                  <li>Lire et accepter intégralement le présent règlement ;</li>
+                  <li>Confirmer son inscription ;</li>
+                  <li>Procéder au paiement en ligne par carte CIB.</li>
+                </ol>
+                <p><strong>2.3 – Informations de paiement</strong><br/>Titulaire : Ligue Algéroise de Ski et des Sports de Montagne<br/>Domiciliation : Agence Belahdjel, 24 Rue Hocine Belahdjel, Alger</p>
+                <p><strong>2.4 – Tarif</strong><br/>2 000 DA par participant</p>
+                <p><strong>2.5 – Conditions d'annulation</strong><br/>Toute inscription est ferme, définitive et non remboursable. Aucun remboursement ne sera effectué, quel qu'en soit le motif.</p>
+                <p><strong>2.6 – Conditions obligatoires</strong><br/>La participation sans inscription est strictement interdite. Il est interdit de céder ou prêter son dossard. Toute usurpation entraîne une disqualification immédiate.</p>
+                <p><strong>2.7 – Dossard</strong><br/>Le dossard doit être porté de manière visible sur la poitrine, fixé avec 4 épingles, et conservé en bon état.</p>
+              </Article>
 
-          <Article title="Article 3 -- Remise des dossards">
-            <p>Le lieu et les horaires de retrait seront communiqués sur www.lassm.dz et les réseaux sociaux. Le retrait se fait sur présentation d'une pièce d'identité. Aucun dossard ne sera remis le jour de la course, sauf décision exceptionnelle.</p>
-          </Article>
+              <Article title="Article 3 -- Remise des dossards">
+                <p>Le lieu et les horaires de retrait seront communiqués sur www.lassm.dz et les réseaux sociaux. Le retrait se fait sur présentation d'une pièce d'identité. Aucun dossard ne sera remis le jour de la course, sauf décision exceptionnelle.</p>
+              </Article>
 
-          <Article title="Article 4 -- L'epreuve sportive">
-            <p>Distance : 16,57 km — 443 m D+<br/>Départ et arrivée : Parc Zoologique de Ben Aknoun – entrée Village Africain<br/>Regroupement : 06h00 — Départ : 08h00<br/>Âge minimum : 19 ans</p>
-            <p>L'organisation se réserve le droit de modifier la date, le lieu, le parcours, l'horaire, ou d'annuler l'événement. Ces situations ne donnent lieu à aucune indemnisation.</p>
-          </Article>
+              <Article title="Article 4 -- L'epreuve sportive">
+                <p>Distance : 16,57 km — 443 m D+<br/>Départ et arrivée : Parc Zoologique de Ben Aknoun – entrée Village Africain<br/>Regroupement : 06h00 — Départ : 08h00<br/>Âge minimum : 19 ans</p>
+                <p>L'organisation se réserve le droit de modifier la date, le lieu, le parcours, l'horaire, ou d'annuler l'événement. Ces situations ne donnent lieu à aucune indemnisation.</p>
+              </Article>
 
-          <Article title="Article 5 -- Respect de l'environnement">
-            <p>Il est strictement interdit de jeter des bouteilles d'eau, emballages, mégots ou tout autre déchet sur le parcours. Sanction : disqualification immédiate.</p>
-          </Article>
+              <Article title="Article 5 -- Respect de l'environnement">
+                <p>Il est strictement interdit de jeter des bouteilles d'eau, emballages, mégots ou tout autre déchet sur le parcours. Sanction : disqualification immédiate.</p>
+              </Article>
 
-          <Article title="Article 6 -- Materiel obligatoire">
-            <ul className="list-disc list-inside space-y-1 ps-2">
-              <li>Téléphone portable chargé et opérationnel</li>
-              <li>Réserve d'eau d'au moins 1 litre</li>
-              <li>Chaussures adaptées au trail</li>
-              <li>Dossard officiel correctement porté</li>
-            </ul>
-          </Article>
+              <Article title="Article 6 -- Materiel obligatoire">
+                <ul className="list-disc list-inside space-y-1 ps-2">
+                  <li>Téléphone portable chargé et opérationnel</li>
+                  <li>Réserve d'eau d'au moins 1 litre</li>
+                  <li>Chaussures adaptées au trail</li>
+                  <li>Dossard officiel correctement porté</li>
+                </ul>
+              </Article>
 
-          <Article title="Article 7 -- Parcours et signalisation">
-            <p>2 points de ravitaillement (km 6,30 et km 10,70), des points de contrôle obligatoires. Barrière horaire : 3h00 à l'arrivée.</p>
-          </Article>
+              <Article title="Article 7 -- Parcours et signalisation">
+                <p>2 points de ravitaillement (km 6,30 et km 10,70), des points de contrôle obligatoires. Barrière horaire : 3h00 à l'arrivée.</p>
+              </Article>
 
-          <Article title="Article 8 -- Securite et assistance">
-            <p>Chaque participant est responsable de sa propre sécurité. Tout participant a l'obligation de porter assistance à une personne en difficulté. Ne jamais laisser une personne blessée seule.</p>
-          </Article>
+              <Article title="Article 8 -- Securite et assistance">
+                <p>Chaque participant est responsable de sa propre sécurité. Tout participant a l'obligation de porter assistance à une personne en difficulté. Ne jamais laisser une personne blessée seule.</p>
+              </Article>
 
-          <Article title="Article 9 -- Droit a l'image">
-            <p>Chaque participant autorise la LASSM à photographier, filmer, enregistrer et diffuser son image dans le cadre de l'événement, à titre gratuit.</p>
-          </Article>
+              <Article title="Article 9 -- Droit a l'image">
+                <p>Chaque participant autorise la LASSM à photographier, filmer, enregistrer et diffuser son image dans le cadre de l'événement, à titre gratuit.</p>
+              </Article>
 
-          <Article title="Article 10 -- Donnees personnelles">
-            <p>Les données collectées sont utilisées exclusivement pour la gestion des inscriptions, l'organisation et la communication liée à la course.</p>
-          </Article>
+              <Article title="Article 10 -- Donnees personnelles">
+                <p>Les données collectées sont utilisées exclusivement pour la gestion des inscriptions, l'organisation et la communication liée à la course.</p>
+              </Article>
 
-          <Article title="Article 11 -- Service consigne">
-            <p>Un service de consigne sera disponible à partir de 06h00. L'organisation ne peut être tenue responsable en cas de perte, vol ou détérioration.</p>
-          </Article>
+              <Article title="Article 11 -- Service consigne">
+                <p>Un service de consigne sera disponible à partir de 06h00. L'organisation ne peut être tenue responsable en cas de perte, vol ou détérioration.</p>
+              </Article>
 
-          <Article title="Article 12 -- Aptitude physique et acceptation des risques">
-            <p>En validant son inscription, chaque participant reconnaît et accepte :</p>
-            <ol className="list-decimal list-inside space-y-1 ps-2">
-              <li>Être en bonne condition physique et apte à participer ;</li>
-              <li>Participer sous sa propre responsabilité ;</li>
-              <li>Assumer l'entière responsabilité de son état de santé et de sa préparation ;</li>
-              <li>Attester qu'aucune contre-indication médicale ne l'empêche de participer ;</li>
-              <li>Reconnaître qu'il lui appartient de consulter un médecin si nécessaire ;</li>
-              <li>Reconnaître que l'organisateur ne pourra être tenu responsable d'un incident résultant d'une pathologie préexistante ;</li>
-              <li>Accepter que l'organisation puisse refuser le départ de tout participant présentant un risque.</li>
-            </ol>
-          </Article>
+              <Article title="Article 12 -- Aptitude physique et acceptation des risques">
+                <p>En validant son inscription, chaque participant reconnaît et accepte :</p>
+                <ol className="list-decimal list-inside space-y-1 ps-2">
+                  <li>Être en bonne condition physique et apte à participer ;</li>
+                  <li>Participer sous sa propre responsabilité ;</li>
+                  <li>Assumer l'entière responsabilité de son état de santé et de sa préparation ;</li>
+                  <li>Attester qu'aucune contre-indication médicale ne l'empêche de participer ;</li>
+                  <li>Reconnaître qu'il lui appartient de consulter un médecin si nécessaire ;</li>
+                  <li>Reconnaître que l'organisateur ne pourra être tenu responsable d'un incident résultant d'une pathologie préexistante ;</li>
+                  <li>Accepter que l'organisation puisse refuser le départ de tout participant présentant un risque.</li>
+                </ol>
+              </Article>
 
-          <Article title="Article 13 -- Assurance">
-            <p>L'organisation est couverte par une assurance responsabilité civile. Il appartient à chaque participant de vérifier sa couverture personnelle. L'organisation recommande vivement de souscrire une assurance individuelle accident.</p>
-          </Article>
+              <Article title="Article 13 -- Assurance">
+                <p>L'organisation est couverte par une assurance responsabilité civile. Il appartient à chaque participant de vérifier sa couverture personnelle. L'organisation recommande vivement de souscrire une assurance individuelle accident.</p>
+              </Article>
+            </>
+          )}
         </div>
 
         {/* Footer */}
@@ -711,7 +941,8 @@ function ConditionsModal({ onAccept, onDecline }) {
           <button
             onClick={onAccept}
             disabled={!canAccept}
-            className="rounded-xl bg-[#C42826] px-6 py-2.5 text-sm font-medium text-white hover:bg-[#a82220] disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+            style={{ backgroundColor: 'var(--brand, #C42826)' }}
+            className="rounded-xl px-6 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
           >
             Accepter
           </button>
