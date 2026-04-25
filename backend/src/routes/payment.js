@@ -115,6 +115,11 @@ async function paymentRoutes(fastify) {
           include: { event: true },
         });
 
+        // Skip if already successfully processed (late SATIM retry)
+        if (registration.paymentStatus === 'success' && registration.bibNumber) {
+          return reply.redirect(`${env.APP_URL}/success?id=${registrationId}`);
+        }
+
         const event = registration.event;
         const bibNumber = await getNextBib(redis, event.id, event.bibEnd);
         const qrToken = uuidv4();
