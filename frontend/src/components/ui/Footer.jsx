@@ -61,7 +61,7 @@ export default function Footer({ event }) {
       <div className="border-t border-white/20">
         <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-3">
           <p className="text-white/80 text-xs uppercase tracking-wider">
-            {t('footer.copyright')}
+            {t('footer.copyright', { eventName: event?.eventName || 'Trail des Mouflons d\'Or 2026' })}
           </p>
           <div className="flex items-center gap-6">
             <Link to="/privacy-policy" className="text-white/80 text-xs uppercase tracking-wider hover:text-white transition">

@@ -18,7 +18,7 @@
     "signUp": "Sign Up"
   },
   "footer": {
-    "copyright": "All rights reserved.",
+    "copyright": "All rights reserved © {{eventName}}",
     "privacy": "Privacy Policy",
     "terms": "Terms of Service",
     "legal": "Legal Notice"

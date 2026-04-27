@@ -18,7 +18,7 @@
     "signUp": "S'INSCRIRE"
   },
   "footer": {
-    "copyright": "Tous droits réservés © Trail des Mouflons d'Or 2026",
+    "copyright": "Tous droits réservés © {{eventName}}",
     "privacy": "Politique de confidentialité",
     "terms": "Conditions générales",
     "legal": "Mentions légales"
