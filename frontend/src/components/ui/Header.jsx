@@ -17,18 +17,18 @@ export default function Header({ title, event }) {
           <Link
             to="/faq"
             style={{ backgroundColor: brand }}
-            className="text-white text-sm font-bold px-5 py-2 rounded uppercase tracking-wide hover:opacity-90 transition"
+            className="text-white text-xs sm:text-sm font-bold px-3 sm:px-5 py-2 rounded uppercase tracking-wide hover:opacity-90 transition"
           >
             {t('header.faq')}
           </Link>
 
-          <div className="w-32" />
+          <div className="w-16 sm:w-32 flex-shrink-0" />
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <Link
               to="/register"
               style={{ backgroundColor: brand }}
-              className="text-white text-sm font-bold px-5 py-2 rounded uppercase tracking-wide hover:opacity-90 transition"
+              className="text-white text-xs sm:text-sm font-bold px-3 sm:px-5 py-2 rounded uppercase tracking-wide hover:opacity-90 transition"
             >
               {t('header.signUp')}
             </Link>
@@ -37,7 +37,7 @@ export default function Header({ title, event }) {
         </div>
 
         <Link to="/register" className="absolute left-1/2 -translate-x-1/2 top-2 z-30">
-          <img src={logoSrc} alt={logoAlt} className="h-24" />
+          <img src={logoSrc} alt={logoAlt} className="h-14 sm:h-20 md:h-24" />
         </Link>
       </div>
 
