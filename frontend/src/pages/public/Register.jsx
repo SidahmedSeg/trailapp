@@ -125,15 +125,15 @@ export default function Register() {
   const countryOptions = COUNTRIES_DATA.map((c) => ({
     value: c.value,
     code: c.code,
-    label: <FlagLabel code={c.code} label={t(c.i18nKey)} />,
-    textLabel: t(c.i18nKey),
+    label: <FlagLabel code={c.code} label={t(c.i18nKey, c.value)} />,
+    textLabel: t(c.i18nKey, c.value),
   }));
 
   const phoneOptions = PHONE_CODES.map((p) => ({
     value: p.value,
     code: p.code,
     label: <FlagLabel code={p.code} label={p.value} />,
-    textLabel: `${t(p.i18nKey)} ${p.value}`,
+    textLabel: `${t(p.i18nKey, p.value)} ${p.value}`,
   }));
 
   useEffect(() => {
