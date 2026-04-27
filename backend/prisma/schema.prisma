@@ -119,7 +119,7 @@ model Registration {
   termsAccepted             Boolean   @default(false)
 
   // Attribution
-  bibNumber                 Int?      @unique
+  bibNumber                 Int?
   qrToken                   String?   @unique
 
   // Paiement
@@ -160,6 +160,7 @@ model Registration {
   updatedAt                 DateTime  @updatedAt
 
   @@unique([email, eventId])
+  @@unique([bibNumber, eventId])
   @@index([eventId])
   @@index([status])
   @@index([paymentStatus])
