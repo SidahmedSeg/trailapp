@@ -264,6 +264,49 @@ async function adminRoutes(fastify) {
     return { data: updated };
   });
 
+  // POST /api/admin/runners/:id/cancel-distribution — super_admin only
+  fastify.post('/runners/:id/cancel-distribution', { preHandler: authorize('super_admin') }, async (request) => {
+    const { id } = request.params;
+
+    const registration = await prisma.registration.findUnique({ where: { id } });
+    if (!registration) throw new AppError(404, 'Coureur non trouvé', 'NOT_FOUND');
+    if (registration.status !== 'distribué') {
+      throw new AppError(400, 'Ce dossard n\'a pas été distribué', 'NOT_DISTRIBUTED');
+    }
+
+    const originalDistributedAt = registration.distributedAt;
+    const originalDistributedBy = registration.distributedBy;
+
+    // Revert distribution
+    const updated = await prisma.registration.update({
+      where: { id },
+      data: {
+        status: 'en_attente',
+        distributedAt: null,
+        distributedBy: null,
+      },
+    });
+
+    // Remove the scanner session(s) for this registration
+    await prisma.scannerSession.deleteMany({
+      where: { registrationId: id },
+    });
+
+    await logActivity({
+      action: 'bib_distribution_cancelled',
+      adminUsername: request.user.username,
+      targetType: 'registration',
+      targetId: id,
+      details: {
+        bibNumber: registration.bibNumber,
+        originalDistributedBy,
+        originalDistributedAt,
+      },
+    });
+
+    return { data: updated };
+  });
+
   // GET /api/admin/runners/export/csv — admin only
   fastify.get('/runners/export/csv', { preHandler: authorize('admin', 'super_admin') }, async (request, reply) => {
     const { fields } = request.query;

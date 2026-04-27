@@ -560,11 +560,27 @@ function ResendEmailButton({ registrationId }) {
 }
 
 function DetailPanel({ runner, onClose, onUpdated }) {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'super_admin';
   const [tab, setTab] = useState('profil');
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [showCancelDistModal, setShowCancelDistModal] = useState(false);
+  const [cancellingDist, setCancellingDist] = useState(false);
+
+  const handleCancelDistribution = async () => {
+    setCancellingDist(true);
+    try {
+      await post(`/admin/runners/${runner.id}/cancel-distribution`);
+      setShowCancelDistModal(false);
+      onUpdated();
+    } catch (err) {
+      alert(err.message || 'Erreur lors de l\'annulation');
+    }
+    setCancellingDist(false);
+  };
 
   useEffect(() => {
     if (runner) {
@@ -711,7 +727,7 @@ function DetailPanel({ runner, onClose, onUpdated }) {
               )}
 
               {/* Edit buttons */}
-              <div className="pt-4 flex gap-3">
+              <div className="pt-4 flex gap-3 flex-wrap">
                 {!editing ? (
                   <>
                     <button onClick={startEdit} className={BTN_PRIMARY}>
@@ -719,6 +735,14 @@ function DetailPanel({ runner, onClose, onUpdated }) {
                     </button>
                     {display.bibNumber && (
                       <ResendEmailButton registrationId={runner.id} />
+                    )}
+                    {isSuperAdmin && display.status === 'distribué' && (
+                      <button
+                        onClick={() => setShowCancelDistModal(true)}
+                        className="rounded-lg border border-amber-300 bg-amber-50 text-amber-700 px-3 py-2 text-xs hover:bg-amber-100 transition cursor-pointer"
+                      >
+                        Annuler la distribution
+                      </button>
                     )}
                   </>
                 ) : (
@@ -746,6 +770,45 @@ function DetailPanel({ runner, onClose, onUpdated }) {
           )}
         </div>
       </div>
+
+      {/* Cancel Distribution Modal */}
+      {showCancelDistModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => !cancellingDist && setShowCancelDistModal(false)} />
+          <div className="relative bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Annuler la distribution</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-2">
+              Voulez-vous annuler la distribution du dossard <strong>#{display.bibNumber}</strong> ?
+            </p>
+            <p className="text-xs text-gray-400 mb-1">
+              Distribué le {display.distributedAt ? new Date(display.distributedAt).toLocaleString('fr-FR') : '—'}
+            </p>
+            <p className="text-xs text-gray-400 mb-6">
+              Par {display.distributedBy || '—'}
+            </p>
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-5">
+              Le coureur passera à nouveau en attente. Le dossard pourra être redistribué via le scanner.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setShowCancelDistModal(false)} disabled={cancellingDist}
+                className="rounded-lg border border-gray-200 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition cursor-pointer disabled:opacity-50">
+                Retour
+              </button>
+              <button onClick={handleCancelDistribution} disabled={cancellingDist}
+                className="rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-amber-600 transition cursor-pointer disabled:opacity-50">
+                {cancellingDist ? 'Annulation...' : 'Annuler la distribution'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
