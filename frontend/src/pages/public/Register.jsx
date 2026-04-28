@@ -237,8 +237,8 @@ export default function Register() {
       let age = today.getFullYear() - birth.getFullYear();
       const m = today.getMonth() - birth.getMonth();
       if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-      if (age < 19) {
-        errors.birthDate = 'Vous devez avoir au moins 19 ans pour participer';
+      if (age < 18) {
+        errors.birthDate = 'Vous devez avoir au moins 18 ans pour participer';
       }
     }
 
@@ -984,7 +984,7 @@ function BirthDatePicker({ value, onChange, error }) {
   const dayOptions = Array.from({ length: 31 }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }));
   const currentYear = new Date().getFullYear();
   const yearOptions = Array.from({ length: 80 }, (_, i) => {
-    const y = currentYear - 19 - i;
+    const y = currentYear - 18 - i;
     return { value: String(y), label: String(y) };
   });
 
