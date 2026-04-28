@@ -59,6 +59,8 @@ async function adminRoutes(fastify) {
         { lastName: { contains: s, mode: 'insensitive' } },
         { email: { contains: s, mode: 'insensitive' } },
         { phone: { contains: s } },
+        { orderNumber: { contains: s, mode: 'insensitive' } },
+        { transactionId: { contains: s, mode: 'insensitive' } },
         ...(isNaN(bibNum) ? [] : [{ bibNumber: bibNum }]),
       ];
     }

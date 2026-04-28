@@ -920,7 +920,7 @@ export default function Runners() {
         <div className="flex flex-wrap items-center gap-3 mb-4">
           <input
             type="text"
-            placeholder="Rechercher par nom, email, dossard..."
+            placeholder="Rechercher par nom, email, dossard, n° de commande..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
