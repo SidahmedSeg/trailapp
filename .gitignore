@@ -3,3 +3,18 @@ dist/
 .env
 *.log
 .DS_Store
+
+# DB backups & exports — contain plaintext production data
+# Scoped to root-level files only so backend/prisma/migrations/*.sql stays tracked
+/*.sql
+*.sql.gz
+backup-*
+backups/
+
+# Audit/recovery data dumps with PII (emails, phones, payment info)
+/*.csv
+/*.tsv
+/duplicate_payments.csv
+/transactions_*.csv
+/orphans_*.csv
+/orphan_*.tsv
