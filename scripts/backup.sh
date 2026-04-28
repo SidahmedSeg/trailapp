@@ -12,9 +12,10 @@ BACKUP_FILE="${BACKUP_DIR}/trail_mouflons_${TIMESTAMP}.sql.gz"
 # Create backup directory
 mkdir -p "${BACKUP_DIR}"
 
-# Dump database (compressed)
-PGPASSWORD=postgres pg_dump \
-  -h localhost -p 8833 -U postgres trail_mouflons \
+# Dump database (compressed) — runs pg_dump inside the container
+# so we don't need postgresql-client installed on the host.
+docker exec -e PGPASSWORD=postgres trail-postgres pg_dump \
+  -U postgres trail_mouflons \
   | gzip > "${BACKUP_FILE}"
 
 echo "Backup created: ${BACKUP_FILE} ($(du -sh "${BACKUP_FILE}" | cut -f1))"
