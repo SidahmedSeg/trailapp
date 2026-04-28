@@ -55,17 +55,45 @@ async function registrationRoutes(fastify) {
       throw new AppError(409, 'Un paiement est déjà en cours pour cet email', 'PAYMENT_PROCESSING');
     }
 
-    // Delete any previous failed/pending/stale-processing registrations
-    await prisma.registration.deleteMany({
-      where: {
-        email: emailLower,
-        eventId: event.id,
-        OR: [
-          { paymentStatus: { in: ['pending', 'failed'] } },
-          { paymentStatus: 'processing', updatedAt: { lt: new Date(Date.now() - STALE_THRESHOLD_MS) } },
-        ],
-      },
-    });
+    // Snapshot any previous failed/pending/stale-processing registrations to ActivityLog
+    // before deletion, so we never lose forensic data (paid orphans, etc.)
+    const purgeWhere = {
+      email: emailLower,
+      eventId: event.id,
+      OR: [
+        { paymentStatus: { in: ['pending', 'failed'] } },
+        { paymentStatus: 'processing', updatedAt: { lt: new Date(Date.now() - STALE_THRESHOLD_MS) } },
+      ],
+    };
+    const toPurge = await prisma.registration.findMany({ where: purgeWhere });
+    if (toPurge.length > 0) {
+      await prisma.activityLog.createMany({
+        data: toPurge.map((r) => ({
+          action: 'registration_purged_on_re_registration',
+          adminUsername: 'system',
+          targetType: 'registration',
+          targetId: r.id,
+          details: {
+            email: r.email,
+            firstName: r.firstName,
+            lastName: r.lastName,
+            phone: r.phone,
+            paymentStatus: r.paymentStatus,
+            bibNumber: r.bibNumber,
+            orderNumber: r.orderNumber,
+            transactionId: r.transactionId,
+            paymentMethod: r.paymentMethod,
+            paymentDate: r.paymentDate,
+            cardPan: r.cardPan,
+            approvalCode: r.approvalCode,
+            eventId: r.eventId,
+            createdAt: r.createdAt,
+            purgedAt: new Date().toISOString(),
+          },
+        })),
+      });
+      await prisma.registration.deleteMany({ where: purgeWhere });
+    }
 
     // Build E.164 phone numbers
     const phone = buildE164(body.phoneCountryCode, body.phoneNumber);
