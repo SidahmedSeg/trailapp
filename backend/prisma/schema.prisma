@@ -8,37 +8,37 @@ datasource db {
 }
 
 model Event {
-  id                    String    @id @default(uuid())
-  slug                  String    @unique
+  id   String @id @default(uuid())
+  slug String @unique
 
   // Identity
-  name                  String
-  type                  String    @default("trail") // trail | route | marathon
-  description           String?   @db.Text
-  date                  DateTime?
-  location              String    @default("Alger")
+  name        String
+  type        String    @default("trail") // trail | route | marathon
+  description String?   @db.Text
+  date        DateTime?
+  location    String    @default("Alger")
 
   // Branding
-  primaryColor          String    @default("#C42826")
-  logoPath              String?
-  coverImagePath        String?
+  primaryColor   String  @default("#C42826")
+  logoPath       String?
+  coverImagePath String?
 
   // Social links
-  facebookUrl           String?
-  instagramUrl          String?
-  tiktokUrl             String?
-  websiteUrl            String?
+  facebookUrl  String?
+  instagramUrl String?
+  tiktokUrl    String?
+  websiteUrl   String?
 
   // Contact CTA
-  contactEmail          String?
-  contactPhone          String?
-  contactLabel          String?
+  contactEmail String?
+  contactPhone String?
+  contactLabel String?
 
   // Distances — JSON array of {name, elevation?, timeLimit?}
-  distances             Json      @default("[]")
+  distances Json @default("[]")
 
   // Runner levels — JSON array of strings, e.g. ["Débutant", "Confirmé", "Elite"]
-  runnerLevels          Json      @default("[\"Débutant\", \"Confirmé\", \"Elite\"]")
+  runnerLevels Json @default("[\"Débutant\", \"Confirmé\", \"Elite\"]")
 
   // Registration control
   registrationOpen      Boolean   @default(true)
@@ -47,117 +47,119 @@ model Event {
   autoCloseOnExhaustion Boolean   @default(true)
 
   // Bib config
-  bibStart              Int       @default(101)
-  bibEnd                Int       @default(1500)
-  bibPrefix             String?
-  bibRangeLocked        Boolean   @default(false)
+  bibStart       Int     @default(101)
+  bibEnd         Int     @default(1500)
+  bibPrefix      String?
+  bibRangeLocked Boolean @default(false)
 
   // Pricing
-  priceInCentimes       Int       @default(200000)
-  photoPackPrice        Int?
+  priceInCentimes Int  @default(200000)
+  photoPackPrice  Int?
 
   // Activatable optional fields — "off" | "optional" | "required"
-  optionalFields        Json      @default("{}")
+  optionalFields Json @default("{}")
 
   // FAQ — JSON array of {question, answer}
-  faq                   Json      @default("[]")
+  faq Json @default("[]")
 
   // Terms/rules text
-  termsText             String?   @db.Text
+  termsText String? @db.Text
 
   // Status
-  active                Boolean   @default(false)
-  status                String    @default("upcoming") // upcoming | active | archived
+  active Boolean @default(false)
+  status String  @default("upcoming") // upcoming | active | archived
 
   // Relations
-  registrations         Registration[]
+  registrations        Registration[]
+  satimReconciliations SatimReconciliation[]
 
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([active])
   @@index([status])
 }
 
 model Registration {
-  id                        String    @id @default(uuid())
+  id String @id @default(uuid())
 
   // Event
-  eventId                   String
-  event                     Event     @relation(fields: [eventId], references: [id])
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
 
   // Informations personnelles
-  lastName                  String
-  firstName                 String
-  birthDate                 DateTime
-  gender                    String    // "Homme" | "Femme"
-  nationality               String
-  phoneCountryCode          String
-  phoneNumber               String
-  phone                     String    // E.164
-  email                     String
+  lastName         String
+  firstName        String
+  birthDate        DateTime
+  gender           String // "Homme" | "Femme"
+  nationality      String
+  phoneCountryCode String
+  phoneNumber      String
+  phone            String // E.164
+  email            String
 
   // Residence
-  countryOfResidence        String
-  wilaya                    String?
-  commune                   String?
-  ville                     String?
+  countryOfResidence String
+  wilaya             String?
+  commune            String?
+  ville              String?
 
   // Urgence
   emergencyPhoneCountryCode String
   emergencyPhoneNumber      String
-  emergencyPhone            String    // E.164
+  emergencyPhone            String // E.164
 
   // Preferences
-  tshirtSize                String    // S | M | L | XL | XXL
-  runnerLevel               String    // Debutant | Confirme | Elite
+  tshirtSize  String // S | M | L | XL | XXL
+  runnerLevel String // Debutant | Confirme | Elite
 
   // Declarations
-  declarationFit            Boolean   @default(false)
-  declarationRules          Boolean   @default(false)
-  declarationImage          Boolean   @default(false)
-  termsAccepted             Boolean   @default(false)
+  declarationFit   Boolean @default(false)
+  declarationRules Boolean @default(false)
+  declarationImage Boolean @default(false)
+  termsAccepted    Boolean @default(false)
 
   // Attribution
-  bibNumber                 Int?
-  qrToken                   String?   @unique
+  bibNumber Int?
+  qrToken   String? @unique
 
   // Paiement
-  paymentStatus             String    @default("pending") // pending | processing | success | failed | manual
-  paymentMethod             String?   // CIB / EDAHABIA / null
-  orderNumber               String?   // our 8-char order ID
-  transactionId             String?   @unique
-  transactionNumber         String?
-  approvalCode              String?
-  paymentAmount             Int       @default(200000) // centimes
-  paymentDate               DateTime?
-  cardPan                   String?   // last 4 digits from SATIM
+  paymentStatus     String    @default("pending") // pending | processing | success | failed | manual
+  paymentMethod     String? // CIB / EDAHABIA / null
+  orderNumber       String? // our 8-char order ID
+  transactionId     String?   @unique
+  transactionNumber String?
+  approvalCode      String?
+  paymentAmount     Int       @default(200000) // centimes
+  paymentDate       DateTime?
+  cardPan           String? // last 4 digits from SATIM
 
   // Statut
-  status                    String    @default("en_attente") // en_attente | distribue
-  distributedAt             DateTime?
-  distributedBy             String?
+  status        String    @default("en_attente") // en_attente | distribue
+  distributedAt DateTime?
+  distributedBy String?
 
   // Source
-  source                    String    @default("public") // public | admin
-  createdBy                 String?
+  source    String  @default("public") // public | admin
+  createdBy String?
 
   // Optional fields (activated per event)
-  selectedDistance          String?
-  medicalCertificatePath   String?
-  club                     String?
-  licenseNumber            String?
-  bestPerformance          String?   // H:MM:SS
-  previousParticipations   Int?
-  shuttle                  Boolean?
-  bloodType                String?   // A+ | A- | B+ | B- | AB+ | AB- | O+ | O-
-  photoPack                Boolean?
+  selectedDistance       String?
+  medicalCertificatePath String?
+  club                   String?
+  licenseNumber          String?
+  bestPerformance        String? // H:MM:SS
+  previousParticipations Int?
+  shuttle                Boolean?
+  bloodType              String? // A+ | A- | B+ | B- | AB+ | AB- | O+ | O-
+  photoPack              Boolean?
 
   // Relations
-  emailsSent                EmailLog[]
+  emailsSent          EmailLog[]
+  satimReconciliation SatimReconciliation?
 
-  createdAt                 DateTime  @default(now())
-  updatedAt                 DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([email, eventId])
   @@unique([bibNumber, eventId])
@@ -199,9 +201,9 @@ model EmailLog {
   id             String       @id @default(uuid())
   registrationId String
   registration   Registration @relation(fields: [registrationId], references: [id])
-  templateName   String       // confirmation | invitation
+  templateName   String // confirmation | invitation
   sentAt         DateTime     @default(now())
-  sentBy         String       // "system" or admin username
+  sentBy         String // "system" or admin username
 }
 
 model EmailTemplate {
@@ -215,11 +217,47 @@ model ActivityLog {
   id            String   @id @default(uuid())
   action        String
   adminUsername String
-  targetType    String?  // registration | event | admin_user
+  targetType    String? // registration | event | admin_user | satim_reconciliation
   targetId      String?
   details       Json?
   createdAt     DateTime @default(now())
 
   @@index([createdAt])
   @@index([adminUsername])
+}
+
+model SatimReconciliation {
+  id      String @id @default(uuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  // SATIM row data (from Excel)
+  paymentStatus  String // always 'Déposé' (validated on upload)
+  orderNumber    String
+  paymentDate    DateTime?
+  depositDate    DateTime?
+  approvedAmount Int // centimes (DZD × 100)
+  cardholderName String
+  cardPan        String // last 4 digits
+
+  // Token / outreach
+  status          String    @default("pending") // pending | link_generated | submitted_matched | submitted_unmatched | expired | cancelled
+  linkToken       String?   @unique
+  linkExpiresAt   DateTime?
+  linkSentToEmail String?
+  linkSentAt      DateTime?
+
+  // Resulting registration (filled on submit)
+  registrationId String?       @unique
+  registration   Registration? @relation(fields: [registrationId], references: [id])
+  enteredCardPan String? // what the runner typed (for audit, even on mismatch)
+
+  // Audit
+  uploadedBy String // admin username
+  uploadedAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([eventId, orderNumber])
+  @@index([eventId, status])
+  @@index([linkToken])
 }

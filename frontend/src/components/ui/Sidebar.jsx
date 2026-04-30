@@ -4,7 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useEvent } from '../../hooks/useEvent';
 import {
   LayoutDashboard, ScanLine, ClipboardList, Users, UserCheck,
-  Settings, Ticket, LogOut, ChevronDown, Menu, X, Calendar, Eye, Plus,
+  Settings, Ticket, LogOut, ChevronDown, Menu, X, Calendar, Eye, Plus, Shuffle,
 } from 'lucide-react';
 
 const navItems = [
@@ -13,6 +13,7 @@ const navItems = [
   { to: '/admin/scan', icon: ScanLine, label: 'Scanner' },
   { to: '/admin/bibs', icon: Ticket, label: 'Dossards' },
   { to: '/admin/events', icon: Calendar, label: 'Événements' },
+  { to: '/admin/reconciliation', icon: Shuffle, label: 'Réconciliation', roles: ['super_admin', 'reconciliation_specialist'] },
   { to: '/admin/activity', icon: ClipboardList, label: 'Activité' },
   { to: '/admin/users', icon: Users, label: 'Utilisateurs', superOnly: true },
   { to: '/admin/settings', icon: Settings, label: 'Paramètres' },
@@ -111,6 +112,7 @@ export default function Sidebar() {
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           if (item.superOnly && user?.role !== 'super_admin') return null;
+          if (item.roles && !item.roles.includes(user?.role)) return null;
           const active = location.pathname === item.to;
           const Icon = item.icon;
           return (

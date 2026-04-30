@@ -217,7 +217,7 @@ async function authRoutes(fastify) {
       throw new AppError(400, 'username, email et role requis', 'VALIDATION_ERROR');
     }
 
-    if (!['super_admin', 'admin', 'scanner'].includes(role)) {
+    if (!['super_admin', 'admin', 'scanner', 'reconciliation_specialist'].includes(role)) {
       throw new AppError(400, 'Rôle invalide', 'VALIDATION_ERROR');
     }
 
@@ -347,7 +347,7 @@ async function authRoutes(fastify) {
 
     const updateData = {};
     if (typeof active === 'boolean') updateData.active = active;
-    if (role && ['super_admin', 'admin', 'scanner'].includes(role)) updateData.role = role;
+    if (role && ['super_admin', 'admin', 'scanner', 'reconciliation_specialist'].includes(role)) updateData.role = role;
 
     const updated = await prisma.adminUser.update({
       where: { id },

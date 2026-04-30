@@ -20,6 +20,8 @@ import PrivacyPolicy from './pages/public/PrivacyPolicy';
 import FAQ from './pages/public/FAQ';
 import Terms from './pages/public/Terms';
 import LegalNotice from './pages/public/LegalNotice';
+import ReconciliationRegister from './pages/public/ReconciliationRegister';
+import ReconciliationRecap from './pages/public/ReconciliationRecap';
 
 // Admin pages (lazy loaded)
 const Login = lazy(() => import('./pages/admin/Login'));
@@ -31,6 +33,7 @@ const Bibs = lazy(() => import('./pages/admin/Bibs'));
 const Activity = lazy(() => import('./pages/admin/Activity'));
 const UserManagement = lazy(() => import('./pages/admin/UserManagement'));
 const Events = lazy(() => import('./pages/admin/Events'));
+const Reconciliation = lazy(() => import('./pages/admin/Reconciliation'));
 
 function AdminRoute({ children }) {
   const token = localStorage.getItem('access_token');
@@ -64,6 +67,8 @@ export default function App() {
           <Route path="/terms-conditions" element={<Terms />} />
           <Route path="/mentions-legales" element={<LegalNotice />} />
           <Route path="/faq" element={<FAQ />} />
+          <Route path="/reconciliation/:token" element={<ReconciliationRegister />} />
+          <Route path="/reconciliation/:token/recap" element={<ReconciliationRecap />} />
 
           {/* Admin routes */}
           <Route path="/admin/login" element={<Login />} />
@@ -75,6 +80,7 @@ export default function App() {
           <Route path="/admin/activity" element={<AdminRoute><Activity /></AdminRoute>} />
           <Route path="/admin/users" element={<AdminRoute><UserManagement /></AdminRoute>} />
           <Route path="/admin/events" element={<AdminRoute><Events /></AdminRoute>} />
+          <Route path="/admin/reconciliation" element={<AdminRoute><Reconciliation /></AdminRoute>} />
         </Routes>
       </Suspense>
     </AuthProvider>

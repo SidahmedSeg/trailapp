@@ -87,6 +87,25 @@ async function main() {
 <p>Ce lien expire dans 48 heures.</p>`,
     },
   });
+  const reconciliationTemplate = {
+    subject: 'Finalisez votre inscription — {{eventName}}',
+    body: `<div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
+  <h2 style="color: #C42826; margin-bottom: 8px;">Finalisez votre inscription</h2>
+  <p style="color: #444;">Bonjour {{titulaire}},</p>
+  <p style="color: #444;">Nous avons retrouvé votre paiement pour <strong>{{eventName}}</strong>, mais votre inscription n'a pas pu être finalisée.</p>
+  <p style="color: #444;">Cliquez sur le bouton ci-dessous pour compléter votre inscription. <strong>Aucun nouveau paiement ne sera demandé.</strong></p>
+  <p style="text-align: center; margin: 28px 0;">
+    <a href="{{lien}}" style="background:#C42826;color:#fff;text-decoration:none;padding:14px 28px;border-radius:10px;font-weight:bold;display:inline-block;">Finaliser mon inscription</a>
+  </p>
+  <p style="color: #777; font-size: 13px;">Ce lien est valable jusqu'au <strong>{{expiry}}</strong>.</p>
+  <p style="color: #999; font-size: 12px; margin-top: 24px;">Si ce n'est pas vous, ignorez simplement cet email.</p>
+</div>`,
+  };
+  await prisma.emailTemplate.upsert({
+    where: { name: 'reconciliation_invitation' },
+    update: reconciliationTemplate,
+    create: { name: 'reconciliation_invitation', ...reconciliationTemplate },
+  });
   console.log('Email templates seeded');
 
   // 4. Redis bib:next:{eventId} (SET NX — only if not exists)

@@ -130,4 +130,66 @@ async function sendOtpEmail(email, username, otpCode) {
   }
 }
 
-module.exports = { sendConfirmationEmail, sendInvitationEmail, sendOtpEmail };
+/**
+ * Send a reconciliation invitation email — runner clicks the link to complete
+ * registration without paying again (their SATIM payment is on file).
+ */
+async function sendReconciliationInvitation({ toEmail, cardholderName, cardPan, eventName, link, expiresAt }) {
+  const template = await prisma.emailTemplate.findUnique({ where: { name: 'reconciliation_invitation' } });
+
+  const expiryStr = expiresAt
+    ? new Date(expiresAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '';
+
+  let subject;
+  let body;
+
+  if (template) {
+    subject = template.subject.replace(/\{\{eventName\}\}/g, eventName || 'Événement');
+    body = template.body
+      .replace(/\{\{prenom\}\}/g, cardholderName || '')
+      .replace(/\{\{titulaire\}\}/g, cardholderName || '')
+      .replace(/\{\{eventName\}\}/g, eventName || 'Événement')
+      .replace(/\{\{lien\}\}/g, link)
+      .replace(/\{\{link\}\}/g, link)
+      .replace(/\{\{expiry\}\}/g, expiryStr);
+  } else {
+    // Fallback if the seed hasn't run yet
+    subject = `Finalisez votre inscription — ${eventName || 'Événement'}`;
+    body = `<div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
+      <h2 style="color: #C42826; margin-bottom: 8px;">Finalisez votre inscription</h2>
+      <p style="color: #444;">Bonjour ${cardholderName || ''},</p>
+      <p style="color: #444;">Nous avons retrouvé votre paiement pour <strong>${eventName || 'l\'événement'}</strong>,
+        mais votre inscription n'a pas pu être finalisée.</p>
+      <p style="color: #444;">Cliquez sur le bouton ci-dessous pour compléter votre inscription. Aucun nouveau paiement ne sera demandé.</p>
+      <p style="text-align: center; margin: 28px 0;">
+        <a href="${link}" style="background:#C42826;color:#fff;text-decoration:none;padding:14px 28px;border-radius:10px;font-weight:bold;display:inline-block;">Finaliser mon inscription</a>
+      </p>
+      <p style="color: #777; font-size: 13px;">Ce lien est valable jusqu'au <strong>${expiryStr}</strong>.</p>
+      <p style="color: #999; font-size: 12px; margin-top: 24px;">Si ce n'est pas vous, ignorez simplement cet email.</p>
+    </div>`;
+  }
+
+  const msg = {
+    to: toEmail,
+    from: { email: env.SENDGRID_FROM_EMAIL, name: env.SENDGRID_FROM_NAME },
+    subject,
+    html: body,
+    // Disable SendGrid click-tracking so the runner sees the real URL
+    // (otherwise links get rewritten through url3118.lassm.dz/ls/click?...)
+    trackingSettings: {
+      clickTracking: { enable: false, enableText: false },
+      openTracking: { enable: false },
+    },
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log(`Reconciliation invitation sent to ${toEmail}`);
+  } catch (err) {
+    console.error('SendGrid error (reconciliation):', err.response?.body?.errors || err.message);
+    throw new Error('Erreur lors de l\'envoi de l\'invitation');
+  }
+}
+
+module.exports = { sendConfirmationEmail, sendInvitationEmail, sendOtpEmail, sendReconciliationInvitation };
