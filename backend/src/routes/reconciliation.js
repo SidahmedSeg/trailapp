@@ -448,15 +448,42 @@ async function reconciliationRoutes(fastify) {
       ...optionalData,
     };
 
-    // Atomic-enough: create registration, link, mark token consumed
+    // Look up any existing registration for the same email + event.
+    // If none → create. If failed/pending/processing → update it (we're effectively
+    // "completing" their previously stuck registration). If success/manual → reject.
+    const existingReg = await prisma.registration.findUnique({
+      where: { email_eventId: { email: emailLower, eventId: event.id } },
+    });
+
     let registration;
-    try {
-      registration = await prisma.registration.create({ data: registrationData });
-    } catch (err) {
-      if (err.code === 'P2002') {
-        throw new AppError(409, 'Un coureur existe déjà avec ces informations', 'DUPLICATE');
+    if (!existingReg) {
+      try {
+        registration = await prisma.registration.create({ data: registrationData });
+      } catch (err) {
+        if (err.code === 'P2002') {
+          throw new AppError(409, 'Un coureur existe déjà avec ces informations', 'DUPLICATE');
+        }
+        throw err;
       }
-      throw err;
+    } else if (['success', 'manual'].includes(existingReg.paymentStatus) || existingReg.bibNumber) {
+      throw new AppError(
+        409,
+        `Vous êtes déjà inscrit à cet événement (dossard ${existingReg.bibNumber || '?'}). Aucune action requise.`,
+        'ALREADY_REGISTERED'
+      );
+    } else {
+      // Update existing failed/pending/processing row in place
+      try {
+        registration = await prisma.registration.update({
+          where: { id: existingReg.id },
+          data: registrationData,
+        });
+      } catch (err) {
+        if (err.code === 'P2002') {
+          throw new AppError(409, 'Un coureur existe déjà avec ces informations', 'DUPLICATE');
+        }
+        throw err;
+      }
     }
 
     const newStatus = isMatch ? 'submitted_matched' : 'submitted_unmatched';
