@@ -1,11 +1,36 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Select from 'react-select';
 import { get, post } from '../../lib/api';
 import { getAccessToken, refreshAccessToken } from '../../lib/auth';
 import { useEvent } from '../../hooks/useEvent';
 import { useAuth } from '../../hooks/useAuth';
 import Sidebar from '../../components/ui/Sidebar';
 import { Upload, Link2, Copy, Mail, X, CheckCircle, AlertCircle, Clock, ChevronRight, Search } from 'lucide-react';
+
+const statusSelectStyles = {
+  control: (base, state) => ({
+    ...base,
+    borderRadius: '0.5rem',
+    borderColor: state.isFocused ? '#C42826' : '#e5e7eb',
+    boxShadow: state.isFocused ? '0 0 0 2px rgba(196,40,38,0.1)' : 'none',
+    minHeight: 38,
+    minWidth: 200,
+    backgroundColor: '#ffffff',
+    fontSize: '0.875rem',
+    '&:hover': { borderColor: '#C42826' },
+  }),
+  option: (base, state) => ({
+    ...base,
+    backgroundColor: state.isSelected ? '#C42826' : state.isFocused ? '#fde8e8' : 'white',
+    color: state.isSelected ? 'white' : '#1f2937',
+    fontSize: '0.875rem',
+    padding: '8px 12px',
+  }),
+  singleValue: (base) => ({ ...base, fontSize: '0.875rem', color: '#1f2937' }),
+  placeholder: (base) => ({ ...base, fontSize: '0.875rem', color: '#9ca3af' }),
+  menu: (base) => ({ ...base, zIndex: 50 }),
+};
 
 const ALLOWED_ROLES = ['super_admin', 'reconciliation_specialist'];
 
@@ -246,55 +271,68 @@ export default function Reconciliation() {
           </div>
         </div>
 
-        {/* Upload bar — SATIM tab only */}
-        {tab === 'satim' && (
-          <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 flex items-center gap-3 flex-wrap">
-            <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv"
-              onChange={(e) => handleUpload(e.target.files?.[0])}
-              disabled={uploading || !selectedEventId} className="hidden" />
-            <button type="button" onClick={() => fileInputRef.current?.click()}
-              disabled={uploading || !selectedEventId}
-              className="inline-flex items-center gap-2 rounded-lg bg-[#C42826] text-white px-4 py-2.5 text-sm font-medium hover:bg-[#a82220] transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-              <Upload size={16} />
-              {uploading ? 'Téléchargement...' : 'Charger un fichier SATIM (.xlsx, .csv)'}
-            </button>
-            <p className="text-xs text-gray-500">
-              Seules les lignes avec <strong>Etat du paiement = Déposé</strong> seront gardées.
-            </p>
-          </div>
-        )}
-
-        {/* Search + status filter */}
-        <div className="flex flex-wrap items-center gap-3 mb-4">
-          <div className="relative flex-1 min-w-[260px] max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
-            <input type="text" placeholder="Rechercher par titulaire, n° commande ou PAN..."
-              value={search} onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-[#C42826] focus:ring-2 focus:ring-[#C42826]/10 transition" />
-          </div>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:border-[#C42826] focus:ring-2 focus:ring-[#C42826]/10 transition cursor-pointer">
-            {tab === 'satim' ? (
-              <>
-                <option value="all">Tous les statuts</option>
-                <option value="pending">En attente</option>
-                <option value="link_generated">Lien généré</option>
-                <option value="expired">Expiré</option>
-                <option value="cancelled">Annulé</option>
-              </>
-            ) : (
-              <>
-                <option value="all">Tous les statuts</option>
-                <option value="submitted_matched">Validé</option>
-                <option value="submitted_unmatched">Non concordant</option>
-              </>
+        {/* Toolbar: search + status filter (left) + upload (right) */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          {/* Left side: search + status filter */}
+          <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0">
+            <div className="relative flex-1 min-w-[240px] max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+              <input type="text" placeholder="Rechercher par titulaire, n° commande ou PAN..."
+                value={search} onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-[#C42826] focus:ring-2 focus:ring-[#C42826]/10 transition" />
+            </div>
+            <Select
+              styles={statusSelectStyles}
+              options={(tab === 'satim'
+                ? [
+                    { value: 'all',            label: 'Tous les statuts' },
+                    { value: 'pending',        label: 'En attente' },
+                    { value: 'link_generated', label: 'Lien généré' },
+                    { value: 'expired',        label: 'Expiré' },
+                    { value: 'cancelled',      label: 'Annulé' },
+                  ]
+                : [
+                    { value: 'all',                 label: 'Tous les statuts' },
+                    { value: 'submitted_matched',   label: 'Validé' },
+                    { value: 'submitted_unmatched', label: 'Non concordant' },
+                  ])}
+              value={(tab === 'satim'
+                ? [
+                    { value: 'all', label: 'Tous les statuts' },
+                    { value: 'pending', label: 'En attente' },
+                    { value: 'link_generated', label: 'Lien généré' },
+                    { value: 'expired', label: 'Expiré' },
+                    { value: 'cancelled', label: 'Annulé' },
+                  ]
+                : [
+                    { value: 'all', label: 'Tous les statuts' },
+                    { value: 'submitted_matched', label: 'Validé' },
+                    { value: 'submitted_unmatched', label: 'Non concordant' },
+                  ]).find((o) => o.value === statusFilter)}
+              onChange={(opt) => setStatusFilter(opt?.value || 'all')}
+              isSearchable={false}
+            />
+            {(search || statusFilter !== 'all') && (
+              <button onClick={() => { setSearch(''); setStatusFilter('all'); }}
+                className="text-xs text-gray-500 hover:text-[#C42826] cursor-pointer flex items-center gap-1">
+                <X size={12} /> Réinitialiser
+              </button>
             )}
-          </select>
-          {(search || statusFilter !== 'all') && (
-            <button onClick={() => { setSearch(''); setStatusFilter('all'); }}
-              className="text-xs text-gray-500 hover:text-[#C42826] cursor-pointer flex items-center gap-1">
-              <X size={12} /> Réinitialiser
-            </button>
+          </div>
+
+          {/* Right side: upload button — SATIM tab only */}
+          {tab === 'satim' && (
+            <div className="flex items-center gap-2">
+              <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv"
+                onChange={(e) => handleUpload(e.target.files?.[0])}
+                disabled={uploading || !selectedEventId} className="hidden" />
+              <button type="button" onClick={() => fileInputRef.current?.click()}
+                disabled={uploading || !selectedEventId}
+                className="inline-flex items-center gap-2 rounded-lg bg-[#C42826] text-white px-4 py-2 text-sm font-medium hover:bg-[#a82220] transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                <Upload size={16} />
+                {uploading ? 'Téléchargement...' : 'Charger un fichier SATIM'}
+              </button>
+            </div>
           )}
         </div>
 
