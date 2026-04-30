@@ -5,7 +5,7 @@ import { getAccessToken, refreshAccessToken } from '../../lib/auth';
 import { useEvent } from '../../hooks/useEvent';
 import { useAuth } from '../../hooks/useAuth';
 import Sidebar from '../../components/ui/Sidebar';
-import { Upload, Link2, Copy, Mail, X, CheckCircle, AlertCircle, Clock, ChevronRight } from 'lucide-react';
+import { Upload, Link2, Copy, Mail, X, CheckCircle, AlertCircle, Clock, ChevronRight, Search } from 'lucide-react';
 
 const ALLOWED_ROLES = ['super_admin', 'reconciliation_specialist'];
 
@@ -46,12 +46,28 @@ export default function Reconciliation() {
   const { selectedEventId, selectedEvent } = useEvent();
 
   const [tab, setTab] = useState('satim');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [uploading, setUploading] = useState(false);
   const [modal, setModal] = useState(null); // { row, link, expiresAt, emailValue, sending, copied }
   const fileInputRef = useRef(null);
+
+  // Reset filters when tab changes
+  useEffect(() => {
+    setStatusFilter('all');
+    setSearch('');
+    setDebouncedSearch('');
+  }, [tab]);
+
+  // Debounce search input
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(id);
+  }, [search]);
 
   // Role guard
   useEffect(() => {
@@ -64,14 +80,17 @@ export default function Reconciliation() {
     if (!selectedEventId) return;
     setLoading(true);
     try {
-      const data = await get(`/admin/reconciliation?eventId=${selectedEventId}&tab=${tab}`);
+      const params = new URLSearchParams({ eventId: selectedEventId, tab });
+      if (statusFilter && statusFilter !== 'all') params.set('status', statusFilter);
+      if (debouncedSearch) params.set('search', debouncedSearch);
+      const data = await get(`/admin/reconciliation?${params.toString()}`);
       setRows(data || []);
     } catch (err) {
       setMessage({ type: 'error', text: err.message });
     } finally {
       setLoading(false);
     }
-  }, [selectedEventId, tab]);
+  }, [selectedEventId, tab, statusFilter, debouncedSearch]);
 
   useEffect(() => { fetchRows(); }, [fetchRows]);
 
@@ -245,13 +264,49 @@ export default function Reconciliation() {
           </div>
         )}
 
+        {/* Search + status filter */}
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <div className="relative flex-1 min-w-[260px] max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+            <input type="text" placeholder="Rechercher par titulaire, n° commande ou PAN..."
+              value={search} onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-[#C42826] focus:ring-2 focus:ring-[#C42826]/10 transition" />
+          </div>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:border-[#C42826] focus:ring-2 focus:ring-[#C42826]/10 transition cursor-pointer">
+            {tab === 'satim' ? (
+              <>
+                <option value="all">Tous les statuts</option>
+                <option value="pending">En attente</option>
+                <option value="link_generated">Lien généré</option>
+                <option value="expired">Expiré</option>
+                <option value="cancelled">Annulé</option>
+              </>
+            ) : (
+              <>
+                <option value="all">Tous les statuts</option>
+                <option value="submitted_matched">Validé</option>
+                <option value="submitted_unmatched">Non concordant</option>
+              </>
+            )}
+          </select>
+          {(search || statusFilter !== 'all') && (
+            <button onClick={() => { setSearch(''); setStatusFilter('all'); }}
+              className="text-xs text-gray-500 hover:text-[#C42826] cursor-pointer flex items-center gap-1">
+              <X size={12} /> Réinitialiser
+            </button>
+          )}
+        </div>
+
         {/* Data table */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           {loading ? (
             <div className="p-12 text-center text-gray-400 text-sm">Chargement...</div>
           ) : rows.length === 0 ? (
             <div className="p-12 text-center text-gray-400 text-sm">
-              {tab === 'satim' ? 'Aucune ligne SATIM — chargez un fichier pour commencer.' : 'Aucune validation soumise pour le moment.'}
+              {(search || statusFilter !== 'all')
+                ? 'Aucune ligne ne correspond aux critères de recherche.'
+                : tab === 'satim' ? 'Aucune ligne SATIM — chargez un fichier pour commencer.' : 'Aucune validation soumise pour le moment.'}
             </div>
           ) : (
             <div className="overflow-x-auto">

@@ -128,19 +128,41 @@ async function reconciliationRoutes(fastify) {
     }
   );
 
-  // GET /api/admin/reconciliation?eventId=X&tab=satim|validations
+  // GET /api/admin/reconciliation?eventId=X&tab=satim|validations&status=...&search=...
   fastify.get(
     '/admin/reconciliation',
     { preHandler: [authenticate, authorize(...RECONCILIATION_ROLES)] },
     async (request) => {
-      const { eventId, tab = 'satim' } = request.query;
+      const { eventId, tab = 'satim', status, search } = request.query;
       if (!eventId) throw new AppError(400, 'eventId requis', 'VALIDATION_ERROR');
 
       const where = { eventId };
-      if (tab === 'satim') {
-        where.status = { in: ['pending', 'link_generated', 'expired', 'cancelled'] };
-      } else if (tab === 'validations') {
-        where.status = { in: ['submitted_matched', 'submitted_unmatched'] };
+      const tabStatuses = tab === 'satim'
+        ? ['pending', 'link_generated', 'expired', 'cancelled']
+        : tab === 'validations'
+          ? ['submitted_matched', 'submitted_unmatched']
+          : null;
+
+      if (status && status !== 'all') {
+        // Specific status filter (must still be within the tab's allowed list)
+        if (tabStatuses && !tabStatuses.includes(status)) {
+          // status doesn't belong to the current tab — return empty
+          return [];
+        }
+        where.status = status;
+      } else if (tabStatuses) {
+        where.status = { in: tabStatuses };
+      }
+
+      if (search) {
+        const s = search.trim();
+        if (s) {
+          where.OR = [
+            { cardholderName: { contains: s, mode: 'insensitive' } },
+            { orderNumber:    { contains: s, mode: 'insensitive' } },
+            { cardPan:        { contains: s.replace(/\D/g, '') } },
+          ];
+        }
       }
 
       const rows = await prisma.satimReconciliation.findMany({
