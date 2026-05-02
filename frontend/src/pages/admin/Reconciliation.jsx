@@ -36,12 +36,13 @@ const ALLOWED_ROLES = ['super_admin', 'reconciliation_specialist'];
 
 function StatusBadge({ status }) {
   const map = {
-    pending:              { label: 'En attente',     cls: 'bg-gray-100 text-gray-700',     Icon: Clock },
-    link_generated:       { label: 'Lien généré',    cls: 'bg-blue-100 text-blue-700',     Icon: Link2 },
-    submitted_matched:    { label: 'Validé',         cls: 'bg-emerald-100 text-emerald-700', Icon: CheckCircle },
-    submitted_unmatched:  { label: 'Non concordant', cls: 'bg-red-100 text-red-700',       Icon: AlertCircle },
-    expired:              { label: 'Expiré',         cls: 'bg-amber-100 text-amber-700',   Icon: Clock },
-    cancelled:            { label: 'Annulé',         cls: 'bg-gray-100 text-gray-500',     Icon: X },
+    pending:              { label: 'En attente',                cls: 'bg-gray-100 text-gray-700',     Icon: Clock },
+    link_generated:       { label: 'Lien généré',               cls: 'bg-blue-100 text-blue-700',     Icon: Link2 },
+    submitted_matched:    { label: 'En attente de validation',  cls: 'bg-amber-100 text-amber-700',   Icon: Clock },
+    approved:             { label: 'Approuvé',                  cls: 'bg-emerald-100 text-emerald-700', Icon: CheckCircle },
+    submitted_unmatched:  { label: 'Non concordant',            cls: 'bg-red-100 text-red-700',       Icon: AlertCircle },
+    expired:              { label: 'Expiré',                    cls: 'bg-amber-100 text-amber-700',   Icon: Clock },
+    cancelled:            { label: 'Annulé',                    cls: 'bg-gray-100 text-gray-500',     Icon: X },
   };
   const def = map[status] || { label: status, cls: 'bg-gray-100 text-gray-700', Icon: Clock };
   const I = def.Icon;
@@ -229,6 +230,17 @@ export default function Reconciliation() {
     }
   }
 
+  async function approveRow(id, runnerName) {
+    if (!window.confirm(`Valider l'inscription de ${runnerName} ? Un dossard sera attribué et un email sera envoyé.`)) return;
+    try {
+      const res = await post(`/admin/reconciliation/${id}/approve`);
+      flash('success', `Inscription validée — dossard ${res.bibNumber} attribué et email envoyé`);
+      await fetchRows();
+    } catch (err) {
+      flash('error', err.message);
+    }
+  }
+
   if (!user) return null;
   if (!ALLOWED_ROLES.includes(user.role)) return null;
 
@@ -293,7 +305,8 @@ export default function Reconciliation() {
                   ]
                 : [
                     { value: 'all',                 label: 'Tous les statuts' },
-                    { value: 'submitted_matched',   label: 'Validé' },
+                    { value: 'submitted_matched',   label: 'En attente de validation' },
+                    { value: 'approved',            label: 'Approuvé' },
                     { value: 'submitted_unmatched', label: 'Non concordant' },
                   ])}
               value={(tab === 'satim'
@@ -306,7 +319,8 @@ export default function Reconciliation() {
                   ]
                 : [
                     { value: 'all', label: 'Tous les statuts' },
-                    { value: 'submitted_matched', label: 'Validé' },
+                    { value: 'submitted_matched', label: 'En attente de validation' },
+                    { value: 'approved', label: 'Approuvé' },
                     { value: 'submitted_unmatched', label: 'Non concordant' },
                   ]).find((o) => o.value === statusFilter)}
               onChange={(opt) => setStatusFilter(opt?.value || 'all')}
@@ -403,11 +417,30 @@ export default function Reconciliation() {
                             </button>
                           </div>
                         )}
-                        {tab === 'validations' && r.registration && (
-                          <button onClick={() => navigate(`/admin/runners?search=${encodeURIComponent(r.registration.email)}`)}
-                            className="inline-flex items-center gap-1 text-xs text-gray-600 hover:text-[#C42826] cursor-pointer">
-                            Voir <ChevronRight size={12} />
-                          </button>
+                        {tab === 'validations' && (
+                          <div className="flex items-center justify-end gap-2 flex-wrap">
+                            {r.status === 'submitted_matched' ? (
+                              <button onClick={() => approveRow(r.id, r.registration ? `${r.registration.firstName} ${r.registration.lastName}` : r.cardholderName)}
+                                title="Valider l'inscription, attribuer un dossard et envoyer l'email"
+                                className="inline-flex items-center gap-1 rounded-md bg-emerald-600 text-white px-3 py-1.5 text-xs font-medium hover:bg-emerald-700 cursor-pointer">
+                                <CheckCircle size={12} />
+                                Valider
+                              </button>
+                            ) : r.status === 'submitted_unmatched' ? (
+                              <button disabled
+                                title="Cartes non concordantes — régénérer un lien si besoin"
+                                className="inline-flex items-center gap-1 rounded-md bg-gray-100 text-gray-400 px-3 py-1.5 text-xs font-medium cursor-not-allowed">
+                                <CheckCircle size={12} />
+                                Valider
+                              </button>
+                            ) : null}
+                            {r.registration && (
+                              <button onClick={() => navigate(`/admin/runners?search=${encodeURIComponent(r.registration.email)}`)}
+                                className="inline-flex items-center gap-1 text-xs text-gray-600 hover:text-[#C42826] cursor-pointer">
+                                Voir <ChevronRight size={12} />
+                              </button>
+                            )}
+                          </div>
                         )}
                       </td>
                     </tr>

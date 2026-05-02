@@ -141,7 +141,7 @@ async function reconciliationRoutes(fastify) {
       const tabStatuses = tab === 'satim'
         ? ['pending', 'link_generated', 'expired', 'cancelled']
         : tab === 'validations'
-          ? ['submitted_matched', 'submitted_unmatched']
+          ? ['submitted_matched', 'submitted_unmatched', 'approved']
           : null;
 
       if (status && status !== 'all') {
@@ -432,15 +432,12 @@ async function reconciliationRoutes(fastify) {
     const firstMatch = !!row.cardFirst4 && enteredCardFirst4 === row.cardFirst4;
     const isMatch = lastMatch && firstMatch;
 
-    let bibNumber = null;
-    let qrToken = null;
-    let paymentStatus = 'pending';
-    if (isMatch) {
-      bibNumber = await pickGapFirstBib(prisma, event);
-      if (bibNumber === null) throw new AppError(409, 'Aucun dossard disponible', 'BIB_EXHAUSTED');
-      qrToken = uuidv4();
-      paymentStatus = 'manual';
-    }
+    // Defer bib + qrToken until admin approval. Even when the cards match,
+    // we save the row in a 'pending' state and let admin click Valider in the
+    // Validations tab to promote it to manual+bibbed and send the email.
+    const bibNumber = null;
+    const qrToken = null;
+    const paymentStatus = 'pending';
 
     // Build registration row
     const registrationData = {
@@ -550,26 +547,83 @@ async function reconciliationRoutes(fastify) {
       },
     });
 
-    // Send confirmation email + PDF only on match
-    if (isMatch) {
-      const fullReg = await prisma.registration.findUnique({
-        where: { id: registration.id },
-        include: { event: { select: { name: true, date: true, location: true, primaryColor: true } } },
-      });
-      sendConfirmationEmail(fullReg).catch((err) => {
-        console.error('Reconciliation confirmation email failed:', err.message);
-      });
-    }
+    // No email sent at submit time. The runner gets the bib + confirmation
+    // email only after an admin clicks Valider on the Validations tab.
 
     return {
       matched: isMatch,
       registrationId: registration.id,
-      bibNumber: registration.bibNumber,
+      bibNumber: null,
       message: isMatch
-        ? 'Inscription validée. Vous allez recevoir un email de confirmation avec votre dossard.'
-        : 'Inscription enregistrée. Notre équipe vous contactera pour finaliser la vérification de votre paiement.',
+        ? "Inscription enregistrée. Notre équipe va valider votre paiement et vous recevrez un email avec votre dossard sous peu."
+        : "Inscription enregistrée. Notre équipe vous contactera pour finaliser la vérification de votre paiement.",
     };
   });
+
+  // POST /api/admin/reconciliation/:id/approve
+  // Admin approves a matched submission → assign bib, send email, mark approved.
+  fastify.post(
+    '/admin/reconciliation/:id/approve',
+    { preHandler: [authenticate, authorize(...RECONCILIATION_ROLES)] },
+    async (request) => {
+      const row = await prisma.satimReconciliation.findUnique({
+        where: { id: request.params.id },
+        include: { registration: true, event: true },
+      });
+      if (!row) throw new AppError(404, 'Ligne introuvable', 'NOT_FOUND');
+      if (row.status !== 'submitted_matched') {
+        throw new AppError(409, 'Seules les lignes "matched, en attente" peuvent être validées', 'INVALID_STATE');
+      }
+      if (!row.registrationId || !row.registration) {
+        throw new AppError(409, 'Aucune inscription liée à cette ligne', 'INVALID_STATE');
+      }
+
+      // Pick gap-first bib at approve-time (fresh state)
+      const bibNumber = await pickGapFirstBib(prisma, row.event);
+      if (bibNumber === null) throw new AppError(409, 'Aucun dossard disponible', 'BIB_EXHAUSTED');
+
+      // Promote registration: bib + qrToken + paymentStatus=manual
+      await prisma.registration.update({
+        where: { id: row.registrationId },
+        data: {
+          bibNumber,
+          qrToken: uuidv4(),
+          paymentStatus: 'manual',
+          paymentMethod: 'reconciliation',
+          paymentDate: row.paymentDate || new Date(),
+        },
+      });
+
+      await prisma.satimReconciliation.update({
+        where: { id: row.id },
+        data: { status: 'approved' },
+      });
+
+      // Send confirmation email + PDF (non-blocking)
+      const fullReg = await prisma.registration.findUnique({
+        where: { id: row.registrationId },
+        include: { event: { select: { name: true, date: true, location: true, primaryColor: true } } },
+      });
+      sendConfirmationEmail(fullReg).catch((err) => {
+        console.error('Reconciliation approval email failed:', err.message);
+      });
+
+      await logActivity({
+        action: 'reconciliation_approved',
+        adminUsername: request.user.username,
+        targetType: 'satim_reconciliation',
+        targetId: row.id,
+        details: {
+          registrationId: row.registrationId,
+          bibNumber,
+          orderNumber: row.orderNumber,
+          cardholderName: row.cardholderName,
+        },
+      });
+
+      return { approved: true, bibNumber };
+    }
+  );
 }
 
 module.exports = reconciliationRoutes;
