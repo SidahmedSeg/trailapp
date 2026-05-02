@@ -89,6 +89,7 @@ async function reconciliationRoutes(fastify) {
               approvedAmount: row.approvedAmount || 0,
               cardholderName: row.cardholderName,
               cardPan: row.cardPan,
+              cardFirst4: row.cardFirst4 || null,
               uploadedBy: request.user.username,
             },
           });
@@ -157,10 +158,14 @@ async function reconciliationRoutes(fastify) {
       if (search) {
         const s = search.trim();
         if (s) {
+          const digits = s.replace(/\D/g, '');
           where.OR = [
             { cardholderName: { contains: s, mode: 'insensitive' } },
             { orderNumber:    { contains: s, mode: 'insensitive' } },
-            { cardPan:        { contains: s.replace(/\D/g, '') } },
+            ...(digits ? [
+              { cardPan:     { contains: digits } },
+              { cardFirst4:  { contains: digits } },
+            ] : []),
           ];
         }
       }
@@ -376,6 +381,8 @@ async function reconciliationRoutes(fastify) {
   fastify.post('/reconciliation/:token/register', async (request) => {
     const body = request.body || {};
     const enteredCardPan = String(body.enteredCardPan || '').replace(/\D/g, '').slice(-4);
+    const enteredCardFirst4Raw = String(body.enteredCardFirst4 || '').replace(/\D/g, '');
+    const enteredCardFirst4 = enteredCardFirst4Raw.slice(0, 4);
     if (!enteredCardPan || enteredCardPan.length !== 4) {
       throw new AppError(400, 'Card PAN requis (4 chiffres)', 'VALIDATION_ERROR');
     }
@@ -418,8 +425,12 @@ async function reconciliationRoutes(fastify) {
     if (of.bloodType && of.bloodType !== 'off' && body.bloodType) optionalData.bloodType = body.bloodType;
     if (of.photoPack && of.photoPack !== 'off' && body.photoPack != null) optionalData.photoPack = Boolean(body.photoPack);
 
-    // Match decision
-    const isMatch = enteredCardPan === row.cardPan;
+    // Match decision: BOTH first 4 and last 4 must match the stored SATIM masked PAN.
+    // If a row somehow lacks cardFirst4 (parser failure on upload), it can't match —
+    // surfacing the issue is safer than silently weakening verification.
+    const lastMatch  = !!row.cardPan    && enteredCardPan    === row.cardPan;
+    const firstMatch = !!row.cardFirst4 && enteredCardFirst4 === row.cardFirst4;
+    const isMatch = lastMatch && firstMatch;
 
     let bibNumber = null;
     let qrToken = null;
@@ -530,6 +541,10 @@ async function reconciliationRoutes(fastify) {
         orderNumber: row.orderNumber,
         cardPanExpected: row.cardPan,
         cardPanEntered: enteredCardPan,
+        cardFirst4Expected: row.cardFirst4,
+        cardFirst4Entered: enteredCardFirst4 || null,
+        lastMatched: lastMatch,
+        firstMatched: firstMatch,
         registrationId: registration.id,
         bibNumber: registration.bibNumber,
       },

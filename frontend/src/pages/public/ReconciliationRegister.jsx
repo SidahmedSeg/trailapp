@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import { Loader2, AlertCircle, CreditCard, User, Mail, MapPin, Phone, Shirt, Trophy, FileCheck, ShieldCheck } from 'lucide-react';
@@ -101,6 +101,89 @@ function BirthDatePicker({ value, onChange, error }) {
   );
 }
 
+// OTP-style 4-digit input. Each box accepts one digit, auto-advances on type,
+// auto-rewinds on backspace, supports paste of a 4-digit string.
+function OtpInput({ value, onChange, error, length = 4, autoFocus = false }) {
+  const refs = useRef([]);
+  const digits = String(value || '').padEnd(length, ' ').slice(0, length).split('').map((c) => /\d/.test(c) ? c : '');
+
+  const setAt = (i, ch) => {
+    const arr = digits.slice();
+    arr[i] = ch;
+    onChange(arr.join('').replace(/\s/g, ''));
+  };
+
+  const handleChange = (i, e) => {
+    const v = e.target.value.replace(/\D/g, '');
+    if (!v) { setAt(i, ''); return; }
+    if (v.length === 1) {
+      setAt(i, v);
+      if (i < length - 1) refs.current[i + 1]?.focus();
+    } else {
+      // Multi-char (paste through change): fill from i, advance
+      const chars = v.slice(0, length - i).split('');
+      const arr = digits.slice();
+      chars.forEach((c, j) => { arr[i + j] = c; });
+      onChange(arr.join('').replace(/\s/g, ''));
+      const next = Math.min(i + chars.length, length - 1);
+      refs.current[next]?.focus();
+    }
+  };
+
+  const handleKeyDown = (i, e) => {
+    if (e.key === 'Backspace') {
+      if (digits[i]) {
+        setAt(i, '');
+      } else if (i > 0) {
+        setAt(i - 1, '');
+        refs.current[i - 1]?.focus();
+      }
+      e.preventDefault();
+    } else if (e.key === 'ArrowLeft' && i > 0) {
+      refs.current[i - 1]?.focus();
+      e.preventDefault();
+    } else if (e.key === 'ArrowRight' && i < length - 1) {
+      refs.current[i + 1]?.focus();
+      e.preventDefault();
+    }
+  };
+
+  const handlePaste = (e) => {
+    const pasted = (e.clipboardData?.getData('text') || '').replace(/\D/g, '').slice(0, length);
+    if (!pasted) return;
+    e.preventDefault();
+    onChange(pasted);
+    const next = Math.min(pasted.length, length - 1);
+    refs.current[next]?.focus();
+  };
+
+  return (
+    <div className="flex gap-2">
+      {Array.from({ length }).map((_, i) => (
+        <input
+          key={i}
+          ref={(el) => (refs.current[i] = el)}
+          type="tel"
+          inputMode="numeric"
+          maxLength={1}
+          autoComplete="off"
+          autoFocus={autoFocus && i === 0}
+          value={digits[i] || ''}
+          onChange={(e) => handleChange(i, e)}
+          onKeyDown={(e) => handleKeyDown(i, e)}
+          onPaste={handlePaste}
+          onFocus={(e) => e.target.select()}
+          className={`w-9 h-11 sm:w-10 sm:h-12 text-center text-base font-mono font-semibold rounded-lg outline-none transition ${
+            error
+              ? 'border border-red-300 bg-red-50/40 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
+              : 'border border-gray-200 bg-gray-50/50 focus:border-[#C42826] focus:ring-2 focus:ring-[#C42826]/20 focus:bg-white'
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function ReconciliationRegister() {
   const { token } = useParams();
   const navigate = useNavigate();
@@ -119,6 +202,7 @@ export default function ReconciliationRegister() {
     emergencyPhoneCountryCode: '+213', emergencyPhoneNumber: '',
     tshirtSize: '', runnerLevel: '',
     declarationFit: false, declarationRules: false, declarationImage: false,
+    enteredCardFirst4: '',
     enteredCardPan: '',
   });
 
@@ -163,7 +247,7 @@ export default function ReconciliationRegister() {
         setFieldErrors((p) => { const n = { ...p }; delete n[field]; return n; });
       }
     }
-    if (field === 'enteredCardPan') {
+    if (field === 'enteredCardPan' || field === 'enteredCardFirst4') {
       value = String(value).replace(/\D/g, '').slice(0, 4);
     }
     setForm((p) => {
@@ -220,6 +304,9 @@ export default function ReconciliationRegister() {
       errs.ville = 'Ville requise';
     }
 
+    if (!form.enteredCardFirst4 || form.enteredCardFirst4.length !== 4) {
+      errs.enteredCardFirst4 = 'Les 4 premiers chiffres de votre carte';
+    }
     if (!form.enteredCardPan || form.enteredCardPan.length !== 4) {
       errs.enteredCardPan = 'Les 4 derniers chiffres de votre carte';
     }
@@ -292,8 +379,7 @@ export default function ReconciliationRegister() {
                 Paiement confirmé — finalisez votre inscription
               </p>
               <p className="text-sm text-emerald-700">
-                Nous avons retrouvé votre paiement avec la carte se terminant par <strong>****{tokenData.cardPan}</strong>.
-                Aucun nouveau paiement n'est nécessaire — remplissez simplement le formulaire ci-dessous pour recevoir votre dossard.
+                Nous avons retrouvé votre paiement. Aucun nouveau paiement n'est nécessaire — remplissez simplement le formulaire ci-dessous pour recevoir votre dossard.
               </p>
             </div>
           </div>
@@ -448,20 +534,30 @@ export default function ReconciliationRegister() {
               </div>
             </section>
 
-            {/* Card PAN verification */}
+            {/* Card verification (first 4 + last 4) */}
             <section className="bg-white rounded-2xl border-2 border-[#C42826]/30 shadow-sm p-6 md:p-8">
               <SectionHeader icon={CreditCard} title="Vérification du paiement" />
               <p className="text-sm text-gray-600 mb-4">
-                Pour confirmer votre identité, saisissez les <strong>4 derniers chiffres</strong> de la carte
-                que vous avez utilisée lors du paiement SATIM.
+                Pour confirmer votre identité, saisissez les <strong>4 premiers</strong> et les
+                <strong> 4 derniers</strong> chiffres de la carte utilisée lors du paiement SATIM.
               </p>
-              <div>
-                <label className={labelCls}>4 derniers chiffres de votre carte<span className="text-[#C42826] ms-0.5">*</span></label>
-                <input type="tel" inputMode="numeric" pattern="[0-9]{4}" maxLength={4}
-                  className={fieldErrors.enteredCardPan ? inputErrCls : inputCls}
-                  required value={form.enteredCardPan} onChange={(e) => update('enteredCardPan', e.target.value)}
-                  placeholder="••••" autoComplete="off" />
-                <FieldError name="enteredCardPan" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className={labelCls}>4 premiers chiffres<span className="text-[#C42826] ms-0.5">*</span></label>
+                  <OtpInput value={form.enteredCardFirst4}
+                    onChange={(v) => update('enteredCardFirst4', v)}
+                    error={!!fieldErrors.enteredCardFirst4} />
+                  <FieldError name="enteredCardFirst4" />
+                  <p className="text-xs text-gray-400 mt-2">Ex : 6280 (début du numéro de carte)</p>
+                </div>
+                <div>
+                  <label className={labelCls}>4 derniers chiffres<span className="text-[#C42826] ms-0.5">*</span></label>
+                  <OtpInput value={form.enteredCardPan}
+                    onChange={(v) => update('enteredCardPan', v)}
+                    error={!!fieldErrors.enteredCardPan} />
+                  <FieldError name="enteredCardPan" />
+                  <p className="text-xs text-gray-400 mt-2">Ex : 5733 (fin du numéro de carte)</p>
+                </div>
               </div>
             </section>
 

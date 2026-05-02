@@ -239,6 +239,7 @@ model SatimReconciliation {
   approvedAmount Int // centimes (DZD × 100)
   cardholderName String
   cardPan        String // last 4 digits
+  cardFirst4     String? // first 4 digits of the masked BIN (nullable for backward compat)
 
   // Token / outreach
   status          String    @default("pending") // pending | link_generated | submitted_matched | submitted_unmatched | expired | cancelled

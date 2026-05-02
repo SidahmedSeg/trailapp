@@ -367,7 +367,7 @@ export default function Reconciliation() {
                     <tr key={r.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 font-medium">{r.cardholderName}</td>
                       <td className="px-4 py-3 font-mono text-xs">{r.orderNumber}</td>
-                      <td className="px-4 py-3 font-mono text-xs">****{r.cardPan}</td>
+                      <td className="px-4 py-3 font-mono text-xs">{r.cardFirst4 || '????'}**{r.cardPan}</td>
                       <td className="px-4 py-3 text-gray-600">{formatDate(r.paymentDate)}</td>
                       <td className="px-4 py-3">{formatAmount(r.approvedAmount)}</td>
                       {tab === 'validations' && (
@@ -377,7 +377,7 @@ export default function Reconciliation() {
                               <div>{r.registration.firstName} {r.registration.lastName}</div>
                               <div className="text-xs text-gray-500">{r.registration.email}</div>
                               {r.enteredCardPan && r.enteredCardPan !== r.cardPan && (
-                                <div className="text-xs text-red-600">PAN saisi: ****{r.enteredCardPan}</div>
+                                <div className="text-xs text-red-600">4 derniers saisis : {r.enteredCardPan} (attendus : {r.cardPan})</div>
                               )}
                             </div>
                           ) : '—'}
@@ -435,7 +435,7 @@ export default function Reconciliation() {
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Lien de réconciliation</h3>
                 <p className="text-sm text-gray-500 mt-0.5">
-                  {modal.row.cardholderName} — carte ****{modal.row.cardPan}
+                  {modal.row.cardholderName} — carte {modal.row.cardFirst4 || '????'}**{modal.row.cardPan}
                 </p>
               </div>
               <button onClick={() => setModal(null)}

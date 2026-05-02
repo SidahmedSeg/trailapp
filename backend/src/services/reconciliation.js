@@ -99,6 +99,16 @@ function last4(v) {
   return digits.slice(-4);
 }
 
+// Extract first 4 digits from a masked PAN like "628070**5733" -> "6280".
+// Returns null if fewer than 8 digits (we need at least 4-front + 4-back) so
+// we don't accidentally return overlapping characters.
+function first4(v) {
+  if (v == null) return null;
+  const digits = String(v).replace(/\D/g, '');
+  if (digits.length < 8) return null;
+  return digits.slice(0, 4);
+}
+
 /**
  * Parse an uploaded buffer (xlsx/xls/csv) and return:
  *   { rows: [{orderNumber, paymentDate, depositDate, approvedAmount, cardholderName, cardPan, paymentStatus}],
@@ -143,6 +153,7 @@ function parseSatimWorkbook(buffer) {
     const orderNumber = String(r[headerMap.orderNumber] || '').trim();
     const cardholderName = String(r[headerMap.cardholderName] || '').trim();
     const cardPan = last4(r[headerMap.cardPan]);
+    const cardFirst4 = first4(r[headerMap.cardPan]); // optional — null if BIN not in source
 
     if (!orderNumber || !cardholderName || !cardPan || cardPan.length !== 4) {
       skipped++;
@@ -157,6 +168,7 @@ function parseSatimWorkbook(buffer) {
       approvedAmount: headerMap.approvedAmount ? parseAmountCentimes(r[headerMap.approvedAmount]) : null,
       cardholderName,
       cardPan,
+      cardFirst4,
     });
   }
 

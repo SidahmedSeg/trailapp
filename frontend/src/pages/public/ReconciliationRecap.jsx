@@ -164,7 +164,7 @@ export default function ReconciliationRecap() {
             <Row label="Contact d'urgence" value={`${form.emergencyPhoneCountryCode} ${form.emergencyPhoneNumber}`} />
             <Row label="Taille T-shirt" value={form.tshirtSize} />
             <Row label="Niveau" value={form.runnerLevel} />
-            <Row label="Carte (4 derniers chiffres)" value={`****${form.enteredCardPan}`} />
+            <Row label="Carte (4 premiers / 4 derniers)" value={`${form.enteredCardFirst4 || '????'}**${form.enteredCardPan || '????'}`} />
             <Row label="Événement" value={event?.name} />
           </div>
 
