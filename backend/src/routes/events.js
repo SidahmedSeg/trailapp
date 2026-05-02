@@ -16,6 +16,8 @@ async function eventsRoutes(fastify) {
         id: true, slug: true, name: true, type: true,
         date: true, location: true, active: true, status: true,
         registrationOpen: true, createdAt: true,
+        runnerLevels: true, distances: true, optionalFields: true,
+        bibStart: true, bibEnd: true, primaryColor: true,
       },
     });
     return { data: events };

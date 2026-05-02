@@ -561,7 +561,11 @@ function ResendEmailButton({ registrationId }) {
 
 function DetailPanel({ runner, onClose, onUpdated }) {
   const { user } = useAuth();
+  const { selectedEvent } = useEvent();
   const isSuperAdmin = user?.role === 'super_admin';
+  const eventLevels = selectedEvent?.runnerLevels?.length
+    ? selectedEvent.runnerLevels
+    : ['Débutant', 'Confirmé', 'Elite'];
   const [tab, setTab] = useState('profil');
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({});
@@ -716,7 +720,7 @@ function DetailPanel({ runner, onClose, onUpdated }) {
               {renderField('Commune', 'commune')}
               {renderField('Ville', 'ville')}
               {renderField('Taille t-shirt', 'tshirtSize', { select: ['S', 'M', 'L', 'XL', 'XXL'] })}
-              {renderField('Niveau', 'runnerLevel', { select: ['Débutant', 'Confirmé', 'Elite'] })}
+              {renderField('Niveau', 'runnerLevel', { select: eventLevels })}
               {renderField('Statut', 'status', editing ? { select: ['en_attente', 'distribué'] } : { badge: (v) => <StatusBadge status={v} /> })}
               {renderField('Source', 'source', { readOnly: true })}
               {!editing && (
