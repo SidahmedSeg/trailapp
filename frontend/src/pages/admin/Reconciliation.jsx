@@ -80,6 +80,7 @@ export default function Reconciliation() {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [uploading, setUploading] = useState(false);
   const [modal, setModal] = useState(null); // { row, link, expiresAt, emailValue, sending, copied }
+  const [approveModal, setApproveModal] = useState(null); // { row, runnerName, submitting }
   const fileInputRef = useRef(null);
 
   // Reset filters when tab changes
@@ -230,14 +231,24 @@ export default function Reconciliation() {
     }
   }
 
-  async function approveRow(id, runnerName) {
-    if (!window.confirm(`Valider l'inscription de ${runnerName} ? Un dossard sera attribué et un email sera envoyé.`)) return;
+  function openApproveModal(row) {
+    const runnerName = row.registration
+      ? `${row.registration.firstName} ${row.registration.lastName}`
+      : row.cardholderName;
+    setApproveModal({ row, runnerName, submitting: false });
+  }
+
+  async function confirmApprove() {
+    if (!approveModal) return;
+    setApproveModal((m) => m && { ...m, submitting: true });
     try {
-      const res = await post(`/admin/reconciliation/${id}/approve`);
+      const res = await post(`/admin/reconciliation/${approveModal.row.id}/approve`);
       flash('success', `Inscription validée — dossard ${res.bibNumber} attribué et email envoyé`);
+      setApproveModal(null);
       await fetchRows();
     } catch (err) {
       flash('error', err.message);
+      setApproveModal((m) => m && { ...m, submitting: false });
     }
   }
 
@@ -420,7 +431,7 @@ export default function Reconciliation() {
                         {tab === 'validations' && (
                           <div className="flex items-center justify-end gap-2 flex-wrap">
                             {r.status === 'submitted_matched' ? (
-                              <button onClick={() => approveRow(r.id, r.registration ? `${r.registration.firstName} ${r.registration.lastName}` : r.cardholderName)}
+                              <button onClick={() => openApproveModal(r)}
                                 title="Valider l'inscription, attribuer un dossard et envoyer l'email"
                                 className="inline-flex items-center gap-1 rounded-md bg-emerald-600 text-white px-3 py-1.5 text-xs font-medium hover:bg-emerald-700 cursor-pointer">
                                 <CheckCircle size={12} />
@@ -527,6 +538,60 @@ export default function Reconciliation() {
               <button onClick={() => setModal(null)}
                 className="rounded-lg bg-gray-100 text-gray-700 px-4 py-2 text-sm font-medium hover:bg-gray-200 cursor-pointer">
                 Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Approve Confirmation Modal */}
+      {approveModal && (
+        <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center px-4"
+          onClick={() => !approveModal.submitting && setApproveModal(null)}>
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle size={20} className="text-emerald-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Valider l'inscription</h3>
+              </div>
+              <button onClick={() => !approveModal.submitting && setApproveModal(null)}
+                disabled={approveModal.submitting}
+                className="text-gray-400 hover:text-gray-600 cursor-pointer p-1 disabled:cursor-not-allowed">
+                <X size={20} />
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-2">
+              Vous êtes sur le point de valider l'inscription de :
+            </p>
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
+              <p className="font-semibold text-gray-900">{approveModal.runnerName}</p>
+              {approveModal.row.registration?.email && (
+                <p className="text-xs text-gray-500 mt-0.5">{approveModal.row.registration.email}</p>
+              )}
+              <p className="text-xs text-gray-500 font-mono mt-1">
+                Carte : {approveModal.row.cardFirst4 || '????'}**{approveModal.row.cardPan}
+              </p>
+            </div>
+            <p className="text-sm text-gray-600 mb-1">Cette action va :</p>
+            <ul className="text-sm text-gray-600 space-y-1 mb-5 ms-4 list-disc">
+              <li>Attribuer un dossard (gap-first)</li>
+              <li>Envoyer l'email de confirmation avec le PDF</li>
+              <li>Ajouter le coureur à la liste des Coureurs</li>
+            </ul>
+
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+              <button onClick={() => setApproveModal(null)} disabled={approveModal.submitting}
+                className="rounded-lg bg-gray-100 text-gray-700 px-4 py-2 text-sm font-medium hover:bg-gray-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                Annuler
+              </button>
+              <button onClick={confirmApprove} disabled={approveModal.submitting}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-700 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
+                <CheckCircle size={14} />
+                {approveModal.submitting ? 'Validation...' : 'Valider'}
               </button>
             </div>
           </div>
