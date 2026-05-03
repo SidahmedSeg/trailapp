@@ -139,10 +139,12 @@ async function reconciliationRoutes(fastify) {
 
       const where = { eventId };
       const tabStatuses = tab === 'satim'
-        ? ['pending', 'link_generated', 'expired', 'cancelled']
+        ? ['pending', 'link_generated', 'expired', 'cancelled', 'refund_pending']
         : tab === 'validations'
           ? ['submitted_matched', 'submitted_unmatched', 'approved']
-          : null;
+          : tab === 'refunds'
+            ? ['refunded']
+            : null;
 
       if (status && status !== 'all') {
         // Specific status filter (must still be within the tab's allowed list)
@@ -622,6 +624,106 @@ async function reconciliationRoutes(fastify) {
       });
 
       return { approved: true, bibNumber };
+    }
+  );
+
+  // POST /api/admin/reconciliation/:id/mark-refund
+  // Mark an orphan SATIM row as awaiting refund. Invalidates any active link
+  // token so a runner can't submit a form for a row already in refund flow.
+  fastify.post(
+    '/admin/reconciliation/:id/mark-refund',
+    { preHandler: [authenticate, authorize(...RECONCILIATION_ROLES)] },
+    async (request) => {
+      const row = await prisma.satimReconciliation.findUnique({ where: { id: request.params.id } });
+      if (!row) throw new AppError(404, 'Ligne introuvable', 'NOT_FOUND');
+
+      // Only allow from non-final states that haven't been used by a runner submission
+      const allowedFrom = ['pending', 'link_generated', 'expired', 'cancelled'];
+      if (!allowedFrom.includes(row.status)) {
+        throw new AppError(409, 'Cette ligne ne peut pas être marquée pour remboursement', 'INVALID_STATE');
+      }
+
+      await prisma.satimReconciliation.update({
+        where: { id: row.id },
+        data: { status: 'refund_pending', linkToken: null, linkExpiresAt: null },
+      });
+
+      await logActivity({
+        action: 'reconciliation_refund_marked',
+        adminUsername: request.user.username,
+        targetType: 'satim_reconciliation',
+        targetId: row.id,
+        details: {
+          orderNumber: row.orderNumber,
+          cardholderName: row.cardholderName,
+          previousStatus: row.status,
+        },
+      });
+
+      return { status: 'refund_pending' };
+    }
+  );
+
+  // POST /api/admin/reconciliation/:id/confirm-refund
+  // Confirm the refund has been processed externally on the SATIM merchant
+  // portal. Moves the row to the Remboursés tab.
+  fastify.post(
+    '/admin/reconciliation/:id/confirm-refund',
+    { preHandler: [authenticate, authorize(...RECONCILIATION_ROLES)] },
+    async (request) => {
+      const row = await prisma.satimReconciliation.findUnique({ where: { id: request.params.id } });
+      if (!row) throw new AppError(404, 'Ligne introuvable', 'NOT_FOUND');
+      if (row.status !== 'refund_pending') {
+        throw new AppError(409, 'Seules les lignes "remboursement en cours" peuvent être confirmées', 'INVALID_STATE');
+      }
+
+      await prisma.satimReconciliation.update({
+        where: { id: row.id },
+        data: { status: 'refunded' },
+      });
+
+      await logActivity({
+        action: 'reconciliation_refund_confirmed',
+        adminUsername: request.user.username,
+        targetType: 'satim_reconciliation',
+        targetId: row.id,
+        details: {
+          orderNumber: row.orderNumber,
+          cardholderName: row.cardholderName,
+          approvedAmount: row.approvedAmount,
+        },
+      });
+
+      return { status: 'refunded' };
+    }
+  );
+
+  // POST /api/admin/reconciliation/:id/cancel-refund
+  // Revert a refund-pending row back to pending (admin clicked Rembourser by mistake).
+  fastify.post(
+    '/admin/reconciliation/:id/cancel-refund',
+    { preHandler: [authenticate, authorize(...RECONCILIATION_ROLES)] },
+    async (request) => {
+      const row = await prisma.satimReconciliation.findUnique({ where: { id: request.params.id } });
+      if (!row) throw new AppError(404, 'Ligne introuvable', 'NOT_FOUND');
+      if (row.status !== 'refund_pending') {
+        throw new AppError(409, 'Seules les lignes "remboursement en cours" peuvent être annulées', 'INVALID_STATE');
+      }
+
+      await prisma.satimReconciliation.update({
+        where: { id: row.id },
+        data: { status: 'pending' },
+      });
+
+      await logActivity({
+        action: 'reconciliation_refund_cancelled',
+        adminUsername: request.user.username,
+        targetType: 'satim_reconciliation',
+        targetId: row.id,
+        details: { orderNumber: row.orderNumber, cardholderName: row.cardholderName },
+      });
+
+      return { status: 'pending' };
     }
   );
 }

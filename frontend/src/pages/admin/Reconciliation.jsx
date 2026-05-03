@@ -6,7 +6,7 @@ import { getAccessToken, refreshAccessToken } from '../../lib/auth';
 import { useEvent } from '../../hooks/useEvent';
 import { useAuth } from '../../hooks/useAuth';
 import Sidebar from '../../components/ui/Sidebar';
-import { Upload, Link2, Copy, Mail, X, CheckCircle, AlertCircle, Clock, ChevronRight, Search } from 'lucide-react';
+import { Upload, Link2, Copy, Mail, X, CheckCircle, AlertCircle, Clock, ChevronRight, Search, RefreshCcw, Banknote } from 'lucide-react';
 
 const statusSelectStyles = {
   control: (base, state) => ({
@@ -43,6 +43,8 @@ function StatusBadge({ status }) {
     submitted_unmatched:  { label: 'Non concordant',            cls: 'bg-red-100 text-red-700',       Icon: AlertCircle },
     expired:              { label: 'Expiré',                    cls: 'bg-amber-100 text-amber-700',   Icon: Clock },
     cancelled:            { label: 'Annulé',                    cls: 'bg-gray-100 text-gray-500',     Icon: X },
+    refund_pending:       { label: 'Remboursement en cours',    cls: 'bg-orange-100 text-orange-700', Icon: RefreshCcw },
+    refunded:             { label: 'Remboursé',                 cls: 'bg-blue-100 text-blue-700',     Icon: Banknote },
   };
   const def = map[status] || { label: status, cls: 'bg-gray-100 text-gray-700', Icon: Clock };
   const I = def.Icon;
@@ -81,6 +83,7 @@ export default function Reconciliation() {
   const [uploading, setUploading] = useState(false);
   const [modal, setModal] = useState(null); // { row, link, expiresAt, emailValue, sending, copied }
   const [approveModal, setApproveModal] = useState(null); // { row, runnerName, submitting }
+  const [refundModal, setRefundModal] = useState(null); // { row, action: 'mark'|'confirm'|'cancel', submitting }
   const fileInputRef = useRef(null);
 
   // Reset filters when tab changes
@@ -231,6 +234,35 @@ export default function Reconciliation() {
     }
   }
 
+  function openRefundModal(row, action) {
+    setRefundModal({ row, action, submitting: false });
+  }
+
+  async function confirmRefundAction() {
+    if (!refundModal) return;
+    const { row, action } = refundModal;
+    const endpoint =
+      action === 'mark'    ? 'mark-refund'    :
+      action === 'confirm' ? 'confirm-refund' :
+      action === 'cancel'  ? 'cancel-refund'  : null;
+    if (!endpoint) return;
+
+    setRefundModal((m) => m && { ...m, submitting: true });
+    try {
+      await post(`/admin/reconciliation/${row.id}/${endpoint}`);
+      const successMsg =
+        action === 'mark'    ? 'Ligne marquée pour remboursement' :
+        action === 'confirm' ? 'Remboursement confirmé — la ligne est maintenant dans Remboursés' :
+                               'Remboursement annulé — la ligne est de retour en attente';
+      flash('success', successMsg);
+      setRefundModal(null);
+      await fetchRows();
+    } catch (err) {
+      flash('error', err.message);
+      setRefundModal((m) => m && { ...m, submitting: false });
+    }
+  }
+
   function openApproveModal(row) {
     const runnerName = row.registration
       ? `${row.registration.firstName} ${row.registration.lastName}`
@@ -291,6 +323,12 @@ export default function Reconciliation() {
               }`}>
               Validations
             </button>
+            <button onClick={() => setTab('refunds')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition cursor-pointer ${
+                tab === 'refunds' ? 'border-[#C42826] text-[#C42826]' : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}>
+              Remboursés
+            </button>
           </div>
         </div>
 
@@ -306,34 +344,42 @@ export default function Reconciliation() {
             </div>
             <Select
               styles={statusSelectStyles}
-              options={(tab === 'satim'
-                ? [
-                    { value: 'all',            label: 'Tous les statuts' },
-                    { value: 'pending',        label: 'En attente' },
-                    { value: 'link_generated', label: 'Lien généré' },
-                    { value: 'expired',        label: 'Expiré' },
-                    { value: 'cancelled',      label: 'Annulé' },
-                  ]
-                : [
-                    { value: 'all',                 label: 'Tous les statuts' },
-                    { value: 'submitted_matched',   label: 'En attente de validation' },
-                    { value: 'approved',            label: 'Approuvé' },
-                    { value: 'submitted_unmatched', label: 'Non concordant' },
-                  ])}
-              value={(tab === 'satim'
-                ? [
+              options={(() => {
+                if (tab === 'satim') return [
+                  { value: 'all',            label: 'Tous les statuts' },
+                  { value: 'pending',        label: 'En attente' },
+                  { value: 'link_generated', label: 'Lien généré' },
+                  { value: 'expired',        label: 'Expiré' },
+                  { value: 'cancelled',      label: 'Annulé' },
+                  { value: 'refund_pending', label: 'Remboursement en cours' },
+                ];
+                if (tab === 'validations') return [
+                  { value: 'all',                 label: 'Tous les statuts' },
+                  { value: 'submitted_matched',   label: 'En attente de validation' },
+                  { value: 'approved',            label: 'Approuvé' },
+                  { value: 'submitted_unmatched', label: 'Non concordant' },
+                ];
+                return [{ value: 'all', label: 'Tous les statuts' }, { value: 'refunded', label: 'Remboursé' }];
+              })()}
+              value={(() => {
+                const opts =
+                  tab === 'satim' ? [
                     { value: 'all', label: 'Tous les statuts' },
                     { value: 'pending', label: 'En attente' },
                     { value: 'link_generated', label: 'Lien généré' },
                     { value: 'expired', label: 'Expiré' },
                     { value: 'cancelled', label: 'Annulé' },
+                    { value: 'refund_pending', label: 'Remboursement en cours' },
                   ]
-                : [
+                  : tab === 'validations' ? [
                     { value: 'all', label: 'Tous les statuts' },
                     { value: 'submitted_matched', label: 'En attente de validation' },
                     { value: 'approved', label: 'Approuvé' },
                     { value: 'submitted_unmatched', label: 'Non concordant' },
-                  ]).find((o) => o.value === statusFilter)}
+                  ]
+                  : [{ value: 'all', label: 'Tous les statuts' }, { value: 'refunded', label: 'Remboursé' }];
+                return opts.find((o) => o.value === statusFilter);
+              })()}
               onChange={(opt) => setStatusFilter(opt?.value || 'all')}
               isSearchable={false}
             />
@@ -369,7 +415,9 @@ export default function Reconciliation() {
             <div className="p-12 text-center text-gray-400 text-sm">
               {(search || statusFilter !== 'all')
                 ? 'Aucune ligne ne correspond aux critères de recherche.'
-                : tab === 'satim' ? 'Aucune ligne SATIM — chargez un fichier pour commencer.' : 'Aucune validation soumise pour le moment.'}
+                : tab === 'satim'        ? 'Aucune ligne SATIM — chargez un fichier pour commencer.'
+                : tab === 'validations'  ? 'Aucune validation soumise pour le moment.'
+                :                          'Aucun remboursement effectué pour le moment.'}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -415,12 +463,32 @@ export default function Reconciliation() {
                       )}
                       <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
                       <td className="px-4 py-3 text-right">
-                        {tab === 'satim' && r.status !== 'cancelled' && r.status !== 'submitted_matched' && r.status !== 'submitted_unmatched' && (
+                        {tab === 'satim' && r.status === 'refund_pending' ? (
+                          <div className="flex items-center justify-end gap-2 flex-wrap">
+                            <button onClick={() => openRefundModal(r, 'confirm')}
+                              title="Valider — confirmer que le remboursement a été effectué"
+                              className="inline-flex items-center gap-1 rounded-md bg-emerald-600 text-white px-3 py-1.5 text-xs font-medium hover:bg-emerald-700 cursor-pointer">
+                              <CheckCircle size={12} />
+                              Valider
+                            </button>
+                            <button onClick={() => openRefundModal(r, 'cancel')}
+                              title="Annuler le remboursement, remettre la ligne en attente"
+                              className="inline-flex items-center gap-1 rounded-md text-gray-500 hover:bg-gray-50 px-2 py-1 text-xs cursor-pointer">
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ) : tab === 'satim' && r.status !== 'cancelled' && r.status !== 'submitted_matched' && r.status !== 'submitted_unmatched' && (
                           <div className="flex items-center justify-end gap-2 flex-wrap">
                             <button onClick={() => openLinkModal(r)} title="Générer / voir le lien"
                               className="inline-flex items-center gap-1 rounded-md bg-[#C42826] text-white px-3 py-1.5 text-xs font-medium hover:bg-[#a82220] cursor-pointer">
                               <Link2 size={12} />
                               {r.linkToken ? 'Voir le lien' : 'Générer un lien'}
+                            </button>
+                            <button onClick={() => openRefundModal(r, 'mark')}
+                              title="Marquer pour remboursement"
+                              className="inline-flex items-center gap-1 rounded-md bg-orange-100 text-orange-700 px-3 py-1.5 text-xs font-medium hover:bg-orange-200 cursor-pointer">
+                              <RefreshCcw size={12} />
+                              Rembourser
                             </button>
                             <button onClick={() => cancelRow(r.id)} title="Annuler la ligne"
                               className="inline-flex items-center gap-1 rounded-md text-red-600 hover:bg-red-50 px-2 py-1 text-xs cursor-pointer">
@@ -543,6 +611,64 @@ export default function Reconciliation() {
           </div>
         </div>
       )}
+
+      {/* Refund Confirmation Modal */}
+      {refundModal && (() => {
+        const isMark    = refundModal.action === 'mark';
+        const isConfirm = refundModal.action === 'confirm';
+        const isCancel  = refundModal.action === 'cancel';
+        const palette = isCancel
+          ? { iconBg: 'bg-gray-100', iconColor: 'text-gray-600', btn: 'bg-gray-700 hover:bg-gray-800' }
+          : isConfirm
+          ? { iconBg: 'bg-emerald-100', iconColor: 'text-emerald-600', btn: 'bg-emerald-600 hover:bg-emerald-700' }
+          : { iconBg: 'bg-orange-100', iconColor: 'text-orange-600', btn: 'bg-orange-600 hover:bg-orange-700' };
+        const Icon = isCancel ? X : isConfirm ? CheckCircle : RefreshCcw;
+        const title = isMark ? 'Marquer pour remboursement' : isConfirm ? 'Confirmer le remboursement' : 'Annuler le remboursement';
+        const intro = isMark
+          ? 'Cette ligne sera marquée pour remboursement. Le lien actif (s\'il existe) sera invalidé pour empêcher tout coureur de soumettre le formulaire.'
+          : isConfirm
+          ? 'Confirmez que le remboursement a été effectué sur le portail SATIM. La ligne sera déplacée vers l\'onglet Remboursés.'
+          : 'La ligne sera remise en statut « En attente » dans l\'onglet SATIM.';
+        return (
+          <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center px-4"
+            onClick={() => !refundModal.submitting && setRefundModal(null)}>
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6"
+              onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${palette.iconBg}`}>
+                    <Icon size={20} className={palette.iconColor} />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+                </div>
+                <button onClick={() => !refundModal.submitting && setRefundModal(null)}
+                  disabled={refundModal.submitting}
+                  className="text-gray-400 hover:text-gray-600 cursor-pointer p-1 disabled:cursor-not-allowed">
+                  <X size={20} />
+                </button>
+              </div>
+              <p className="text-sm text-gray-600 mb-3">{intro}</p>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-5">
+                <p className="font-semibold text-gray-900">{refundModal.row.cardholderName}</p>
+                <p className="text-xs text-gray-500 mt-0.5">N° commande : <span className="font-mono">{refundModal.row.orderNumber}</span></p>
+                <p className="text-xs text-gray-500">Montant : {refundModal.row.approvedAmount ? (refundModal.row.approvedAmount / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' DZD' : '—'}</p>
+                <p className="text-xs text-gray-500 font-mono mt-1">Carte : {refundModal.row.cardFirst4 || '????'}**{refundModal.row.cardPan}</p>
+              </div>
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+                <button onClick={() => setRefundModal(null)} disabled={refundModal.submitting}
+                  className="rounded-lg bg-gray-100 text-gray-700 px-4 py-2 text-sm font-medium hover:bg-gray-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                  Annuler
+                </button>
+                <button onClick={confirmRefundAction} disabled={refundModal.submitting}
+                  className={`inline-flex items-center gap-1.5 rounded-lg text-white px-4 py-2 text-sm font-medium cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${palette.btn}`}>
+                  <Icon size={14} />
+                  {refundModal.submitting ? 'Traitement...' : (isMark ? 'Rembourser' : isConfirm ? 'Valider' : 'Confirmer')}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Approve Confirmation Modal */}
       {approveModal && (

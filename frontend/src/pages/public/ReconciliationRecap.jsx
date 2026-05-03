@@ -128,8 +128,7 @@ export default function ReconciliationRecap() {
             <div>
               <p className="font-semibold text-emerald-800 mb-1">Paiement déjà confirmé</p>
               <p className="text-sm text-emerald-700">
-                Carte ****{tokenData.cardPan} — votre paiement SATIM est sur notre dossier. Cliquez sur
-                <strong> "Valider mon inscription"</strong> pour finaliser.
+                Cliquez sur <strong>"Valider mon inscription"</strong> pour finaliser.
               </p>
             </div>
           </div>
