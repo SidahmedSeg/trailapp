@@ -6,7 +6,7 @@ import { getAccessToken, refreshAccessToken } from '../../lib/auth';
 import { useEvent } from '../../hooks/useEvent';
 import { useAuth } from '../../hooks/useAuth';
 import Sidebar from '../../components/ui/Sidebar';
-import { Upload, Link2, Copy, Mail, X, CheckCircle, AlertCircle, Clock, ChevronRight, Search, RefreshCcw, Banknote } from 'lucide-react';
+import { Upload, Link2, Copy, Mail, X, CheckCircle, AlertCircle, Clock, ChevronRight, Search, RefreshCcw, Banknote, Download } from 'lucide-react';
 
 const statusSelectStyles = {
   control: (base, state) => ({
@@ -66,6 +66,27 @@ function formatDate(d) {
 function formatAmount(centimes) {
   if (!centimes) return '—';
   return `${(centimes / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DZD`;
+}
+
+// CSV helpers — escape and download
+function csvCell(v) {
+  if (v === null || v === undefined) return '';
+  const s = typeof v === 'object' && v instanceof Date ? v.toISOString() : String(v);
+  if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+function downloadCsv(filename, header, rows) {
+  const lines = [header.map(csvCell).join(',')];
+  for (const r of rows) lines.push(header.map((h) => csvCell(r[h])).join(','));
+  // Prepend BOM so Excel opens UTF-8 correctly with French accents
+  const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
 }
 
 export default function Reconciliation() {
@@ -234,6 +255,65 @@ export default function Reconciliation() {
     }
   }
 
+  function exportCurrentTab() {
+    if (!rows.length) {
+      flash('error', 'Aucune ligne à exporter');
+      return;
+    }
+    const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+
+    if (tab === 'satim' || tab === 'refunds') {
+      const header = [
+        'orderNumber', 'cardholderName', 'cardFirst4', 'cardPan',
+        'status', 'paymentDate', 'depositDate', 'approvedAmount_DZD',
+        'linkSentToEmail', 'linkSentAt', 'uploadedBy', 'uploadedAt',
+      ];
+      const data = rows.map((r) => ({
+        orderNumber: r.orderNumber,
+        cardholderName: r.cardholderName,
+        cardFirst4: r.cardFirst4 || '',
+        cardPan: r.cardPan,
+        status: r.status,
+        paymentDate: r.paymentDate || '',
+        depositDate: r.depositDate || '',
+        approvedAmount_DZD: r.approvedAmount ? (r.approvedAmount / 100).toFixed(2) : '',
+        linkSentToEmail: r.linkSentToEmail || '',
+        linkSentAt: r.linkSentAt || '',
+        uploadedBy: r.uploadedBy,
+        uploadedAt: r.uploadedAt,
+      }));
+      downloadCsv(`reconciliation_${tab}_${ts}.csv`, header, data);
+      flash('success', `${data.length} ligne(s) exportée(s)`);
+      return;
+    }
+
+    // validations tab — include linked runner info
+    const header = [
+      'orderNumber', 'cardholderName', 'cardFirst4', 'cardPan', 'status',
+      'enteredCardPan', 'firstName', 'lastName', 'email', 'phone',
+      'bibNumber', 'paymentStatus', 'paymentDate', 'approvedAmount_DZD', 'uploadedAt',
+    ];
+    const data = rows.map((r) => ({
+      orderNumber: r.orderNumber,
+      cardholderName: r.cardholderName,
+      cardFirst4: r.cardFirst4 || '',
+      cardPan: r.cardPan,
+      status: r.status,
+      enteredCardPan: r.enteredCardPan || '',
+      firstName: r.registration?.firstName || '',
+      lastName: r.registration?.lastName || '',
+      email: r.registration?.email || '',
+      phone: r.registration?.phone || '',
+      bibNumber: r.registration?.bibNumber || '',
+      paymentStatus: r.registration?.paymentStatus || '',
+      paymentDate: r.paymentDate || '',
+      approvedAmount_DZD: r.approvedAmount ? (r.approvedAmount / 100).toFixed(2) : '',
+      uploadedAt: r.uploadedAt,
+    }));
+    downloadCsv(`reconciliation_validations_${ts}.csv`, header, data);
+    flash('success', `${data.length} ligne(s) exportée(s)`);
+  }
+
   function openRefundModal(row, action) {
     setRefundModal({ row, action, submitting: false });
   }
@@ -391,20 +471,29 @@ export default function Reconciliation() {
             )}
           </div>
 
-          {/* Right side: upload button — SATIM tab only */}
-          {tab === 'satim' && (
-            <div className="flex items-center gap-2">
-              <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv"
-                onChange={(e) => handleUpload(e.target.files?.[0])}
-                disabled={uploading || !selectedEventId} className="hidden" />
-              <button type="button" onClick={() => fileInputRef.current?.click()}
-                disabled={uploading || !selectedEventId}
-                className="inline-flex items-center gap-2 rounded-lg bg-[#C42826] text-white px-4 py-2 text-sm font-medium hover:bg-[#a82220] transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                <Upload size={16} />
-                {uploading ? 'Téléchargement...' : 'Charger un fichier SATIM'}
-              </button>
-            </div>
-          )}
+          {/* Right side: export + upload buttons */}
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={exportCurrentTab}
+              disabled={!rows.length}
+              title={rows.length ? `Exporter ${rows.length} ligne(s) en CSV` : 'Aucune ligne à exporter'}
+              className="inline-flex items-center gap-2 rounded-lg bg-white border border-gray-200 text-gray-700 px-4 py-2 text-sm font-medium hover:bg-gray-50 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+              <Download size={16} />
+              Exporter CSV
+            </button>
+            {tab === 'satim' && (
+              <>
+                <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv"
+                  onChange={(e) => handleUpload(e.target.files?.[0])}
+                  disabled={uploading || !selectedEventId} className="hidden" />
+                <button type="button" onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading || !selectedEventId}
+                  className="inline-flex items-center gap-2 rounded-lg bg-[#C42826] text-white px-4 py-2 text-sm font-medium hover:bg-[#a82220] transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                  <Upload size={16} />
+                  {uploading ? 'Téléchargement...' : 'Charger un fichier SATIM'}
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Data table */}
