@@ -349,6 +349,34 @@ async function eventsRoutes(fastify) {
 
     const prochainNumero = await redis.get(`bib:next:${event.id}`);
 
+    // Build the list of GAPS only — holes inside [bibStart..maxAssigned] that aren't taken.
+    // The unused sequential tail [maxAssigned+1..bibEnd] is excluded; those are "à venir"
+    // and will be filled by normal assignment order, not gap-first.
+    const takenRows = await prisma.registration.findMany({
+      where: { eventId: event.id, bibNumber: { gte: event.bibStart, lte: event.bibEnd } },
+      select: { bibNumber: true },
+    });
+    const taken = new Set(takenRows.map((r) => r.bibNumber));
+
+    const GAP_LIST_CAP = 2000;
+    const gapBibsList = [];
+    let gapBibsCount = 0;
+    let maxAssigned = null;
+    if (taken.size > 0) {
+      for (const b of taken) {
+        if (maxAssigned === null || b > maxAssigned) maxAssigned = b;
+      }
+      // All taken bibs are <= maxAssigned by definition (taken is bounded by bibEnd above)
+      gapBibsCount = (maxAssigned - event.bibStart + 1) - taken.size;
+      for (let b = event.bibStart; b <= maxAssigned; b++) {
+        if (!taken.has(b)) {
+          gapBibsList.push(b);
+          if (gapBibsList.length >= GAP_LIST_CAP) break;
+        }
+      }
+    }
+    const gapBibsTruncated = gapBibsList.length >= GAP_LIST_CAP && gapBibsCount > GAP_LIST_CAP;
+
     return {
       stockTotal,
       bibsAttribues: bibsTotal,
@@ -360,6 +388,10 @@ async function eventsRoutes(fastify) {
       tauxOccupation: Math.round((bibsAutoRange / stockTotal) * 100),
       prochainNumero: parseInt(prochainNumero, 10) || event.bibStart,
       bibRangeLocked: event.bibRangeLocked,
+      gapBibsCount,
+      gapBibsList,
+      gapBibsTruncated,
+      maxAssigned,
     };
   });
 }

@@ -12,7 +12,7 @@ async function adminRoutes(fastify) {
   const { prisma } = fastify;
 
   fastify.addHook('preHandler', authenticate);
-  fastify.addHook('preHandler', authorize('scanner', 'admin', 'super_admin'));
+  fastify.addHook('preHandler', authorize('scanner', 'admin', 'super_admin', 'reconciliation_specialist'));
 
   /**
    * Helper: resolve eventId from query param or default to active event
@@ -307,6 +307,102 @@ async function adminRoutes(fastify) {
     });
 
     return { data: updated };
+  });
+
+  // POST /api/admin/runners/:id/refund — super_admin + reconciliation_specialist
+  // Frees the bib + qrToken, marks the registration paymentStatus='refunded',
+  // and creates/updates a SatimReconciliation row with status='refund_pending'.
+  // The row then appears in Réconciliation → Validations tab where another admin
+  // confirms the SATIM portal refund was processed (→ status='refunded' → Remboursés tab).
+  // No email is sent at any step — actual SATIM refund happens externally on the merchant portal.
+  fastify.post('/runners/:id/refund', { preHandler: authorize('super_admin', 'reconciliation_specialist') }, async (request) => {
+    const { id } = request.params;
+
+    const registration = await prisma.registration.findUnique({
+      where: { id },
+      include: { satimReconciliation: true, event: { select: { id: true, name: true } } },
+    });
+    if (!registration) throw new AppError(404, 'Coureur non trouvé', 'NOT_FOUND');
+    if (registration.bibNumber == null) {
+      throw new AppError(400, 'Ce coureur n\'a pas de dossard à libérer', 'NO_BIB');
+    }
+    if (registration.paymentStatus === 'refunded') {
+      throw new AppError(400, 'Ce coureur a déjà été remboursé', 'ALREADY_REFUNDED');
+    }
+
+    const freedBib = registration.bibNumber;
+    const cardholderName = `${registration.firstName} ${registration.lastName}`.trim().toUpperCase();
+
+    // Resolve existing SatimReconciliation row: first by FK link, then by (eventId, orderNumber)
+    // — guards against the case where a SATIM CSV upload created an unlinked row for this orderNumber
+    let existingRecon = registration.satimReconciliation;
+    if (!existingRecon && registration.orderNumber) {
+      existingRecon = await prisma.satimReconciliation.findUnique({
+        where: { eventId_orderNumber: { eventId: registration.eventId, orderNumber: registration.orderNumber } },
+      });
+    }
+
+    const txOps = [
+      prisma.registration.update({
+        where: { id },
+        data: {
+          bibNumber: null,
+          qrToken: null,
+          paymentStatus: 'refunded',
+        },
+      }),
+    ];
+
+    if (existingRecon) {
+      // Flip existing row to refund_pending; ensure it links to this registration
+      // and clear any active outreach token (no public submission allowed once refund is in flight)
+      txOps.push(prisma.satimReconciliation.update({
+        where: { id: existingRecon.id },
+        data: {
+          status: 'refund_pending',
+          registrationId: registration.id,
+          linkToken: null,
+          linkExpiresAt: null,
+        },
+      }));
+    } else {
+      // No existing row → create a Validations-tab entry awaiting refund confirmation
+      // Fall back to synthetic orderNumber for manual VIPs that never had a SATIM order
+      const orderNumber = registration.orderNumber || `MANUAL-${registration.id.slice(0, 8)}`;
+      txOps.push(prisma.satimReconciliation.create({
+        data: {
+          eventId: registration.eventId,
+          paymentStatus: 'Déposé',
+          orderNumber,
+          paymentDate: registration.paymentDate || null,
+          depositDate: null,
+          approvedAmount: registration.paymentAmount || 0,
+          cardholderName,
+          cardPan: registration.cardPan || '0000',
+          cardFirst4: null,
+          status: 'refund_pending',
+          registrationId: registration.id,
+          uploadedBy: 'admin-coureur-refund',
+        },
+      }));
+    }
+
+    await prisma.$transaction(txOps);
+
+    await logActivity({
+      action: 'coureur_refunded',
+      adminUsername: request.user.username,
+      targetType: 'registration',
+      targetId: id,
+      details: {
+        orderNumber: registration.orderNumber || null,
+        bibNumber: freedBib,
+        runnerEmail: registration.email,
+        eventId: registration.eventId,
+      },
+    });
+
+    return { refunded: true, freedBib };
   });
 
   // GET /api/admin/runners/export/csv — admin only

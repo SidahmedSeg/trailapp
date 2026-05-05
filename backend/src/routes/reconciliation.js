@@ -139,9 +139,9 @@ async function reconciliationRoutes(fastify) {
 
       const where = { eventId };
       const tabStatuses = tab === 'satim'
-        ? ['pending', 'link_generated', 'expired', 'cancelled', 'refund_pending']
+        ? ['pending', 'link_generated', 'expired', 'cancelled']
         : tab === 'validations'
-          ? ['submitted_matched', 'submitted_unmatched', 'approved']
+          ? ['submitted_matched', 'submitted_unmatched', 'approved', 'refund_pending']
           : tab === 'refunds'
             ? ['refunded']
             : null;
@@ -561,6 +561,43 @@ async function reconciliationRoutes(fastify) {
         : "Inscription enregistrée. Notre équipe vous contactera pour finaliser la vérification de votre paiement.",
     };
   });
+
+  // GET /api/admin/reconciliation/:id/bib-preview
+  // Returns the bib that would be assigned on approve, and whether it's
+  // a "gap" fill (filling a hole inside the assigned sequence) or "sequential"
+  // (the next bib at the tail of the assigned sequence).
+  fastify.get(
+    '/admin/reconciliation/:id/bib-preview',
+    { preHandler: [authenticate, authorize(...RECONCILIATION_ROLES)] },
+    async (request) => {
+      const row = await prisma.satimReconciliation.findUnique({
+        where: { id: request.params.id },
+        include: { event: true },
+      });
+      if (!row) throw new AppError(404, 'Ligne introuvable', 'NOT_FOUND');
+      if (row.status !== 'submitted_matched') {
+        throw new AppError(409, 'Aperçu disponible uniquement pour les lignes en attente de validation', 'INVALID_STATE');
+      }
+
+      const bibNumber = await pickGapFirstBib(prisma, row.event);
+      if (bibNumber === null) {
+        return { bibNumber: null, type: 'exhausted', maxAssigned: null };
+      }
+
+      // Highest bib assigned in the event's auto-range. If null, no bibs yet → first sequential.
+      const maxAgg = await prisma.registration.aggregate({
+        where: {
+          eventId: row.event.id,
+          bibNumber: { gte: row.event.bibStart, lte: row.event.bibEnd },
+        },
+        _max: { bibNumber: true },
+      });
+      const maxAssigned = maxAgg._max.bibNumber;
+      const type = maxAssigned == null || bibNumber > maxAssigned ? 'sequential' : 'gap';
+
+      return { bibNumber, type, maxAssigned };
+    }
+  );
 
   // POST /api/admin/reconciliation/:id/approve
   // Admin approves a matched submission → assign bib, send email, mark approved.

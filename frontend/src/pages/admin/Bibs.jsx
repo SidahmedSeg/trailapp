@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { RefreshCw, Search } from 'lucide-react';
 import { get, put } from '../../lib/api';
 import { useEvent } from '../../hooks/useEvent';
 import Sidebar from '../../components/ui/Sidebar';
@@ -30,7 +31,9 @@ export default function Bibs() {
   const [eventData, setEventData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [refreshingFree, setRefreshingFree] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [freeBibsSearch, setFreeBibsSearch] = useState('');
 
   const fetchData = useCallback(async () => {
     if (!selectedEventId) return;
@@ -50,11 +53,41 @@ export default function Bibs() {
         e.bibsManualUsed = bibStatsRes.bibsManualUsed ?? 0;
         e.bibsManualRestants = bibStatsRes.bibsManualRestants ?? 0;
         e.prochainNumero = bibStatsRes.prochainNumero;
+        e.gapBibsCount = bibStatsRes.gapBibsCount ?? 0;
+        e.gapBibsList = bibStatsRes.gapBibsList ?? [];
+        e.gapBibsTruncated = bibStatsRes.gapBibsTruncated ?? false;
+        e.maxAssigned = bibStatsRes.maxAssigned ?? null;
       }
       setEventData(e);
     } catch { /* ignore */ }
     setLoading(false);
   }, [selectedEventId]);
+
+  const refreshFreeBibs = useCallback(async () => {
+    if (!selectedEventId) return;
+    setRefreshingFree(true);
+    try {
+      const bibStatsRes = await get(`/admin/events/${selectedEventId}/bib-stats`);
+      setEventData((prev) => prev && ({
+        ...prev,
+        bibsAutoUsed: bibStatsRes.bibsAutoRange ?? prev.bibsAutoUsed,
+        bibsRemaining: bibStatsRes.bibsRestants ?? prev.bibsRemaining,
+        bibsOccupation: bibStatsRes.tauxOccupation ?? prev.bibsOccupation,
+        gapBibsCount: bibStatsRes.gapBibsCount ?? 0,
+        gapBibsList: bibStatsRes.gapBibsList ?? [],
+        gapBibsTruncated: bibStatsRes.gapBibsTruncated ?? false,
+        maxAssigned: bibStatsRes.maxAssigned ?? null,
+      }));
+    } catch { /* ignore */ }
+    setRefreshingFree(false);
+  }, [selectedEventId]);
+
+  const filteredGapBibs = useMemo(() => {
+    const list = eventData?.gapBibsList || [];
+    const q = freeBibsSearch.trim();
+    if (!q) return list;
+    return list.filter((b) => String(b).includes(q));
+  }, [eventData?.gapBibsList, freeBibsSearch]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -107,6 +140,7 @@ export default function Bibs() {
         )}
 
         {eventData && (
+          <>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left — Configuration */}
             <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
@@ -175,6 +209,82 @@ export default function Bibs() {
               </div>
             </div>
           </div>
+
+          {/* Dossards libres (trous) — full width below */}
+          <div className="mt-6 bg-white border border-gray-200 rounded-xl p-6">
+            <div className="flex items-start justify-between gap-4 pb-3 mb-4 border-b border-gray-100">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Dossards libres (trous)</h3>
+                <p className="text-xs text-gray-400 mt-1">
+                  {eventData.maxAssigned != null
+                    ? <>Trous dans la séquence attribuée ({eventData.bibStart}–{eventData.maxAssigned}). Les dossards à venir ({eventData.maxAssigned + 1}–{eventData.bibEnd}) sont attribués séquentiellement.</>
+                    : <>Aucun dossard attribué pour le moment — les trous apparaîtront ici dès qu'un dossard sera libéré.</>}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-xs text-gray-400">Trous</p>
+                  <p className="text-2xl font-bold text-[#C42826]">{eventData.gapBibsCount ?? 0}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={refreshFreeBibs}
+                  disabled={refreshingFree}
+                  className="rounded-lg border border-gray-200 bg-white p-2 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition cursor-pointer"
+                  title="Actualiser"
+                >
+                  <RefreshCw size={16} className={refreshingFree ? 'animate-spin' : ''} />
+                </button>
+              </div>
+            </div>
+
+            <div className="relative mb-4">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <input
+                type="text"
+                inputMode="numeric"
+                value={freeBibsSearch}
+                onChange={(e) => setFreeBibsSearch(e.target.value)}
+                placeholder="Rechercher un trou… (ex. 4087)"
+                className={`${inputClass} pl-9`}
+              />
+            </div>
+
+            {eventData.gapBibsTruncated && (
+              <div className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                Affichage des 2 000 premiers trous — affinez avec la recherche pour trouver un numéro spécifique.
+              </div>
+            )}
+
+            {filteredGapBibs.length === 0 ? (
+              <div className="py-8 text-center text-sm text-gray-400">
+                {freeBibsSearch
+                  ? 'Aucun trou ne correspond à votre recherche.'
+                  : eventData.maxAssigned == null
+                    ? 'Aucun dossard attribué — pas de trous possibles.'
+                    : 'Aucun trou dans la séquence attribuée — la plage est entièrement remplie jusqu\'au dernier dossard.'}
+              </div>
+            ) : (
+              <div className="max-h-[420px] overflow-y-auto rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <div className="flex flex-wrap gap-1.5">
+                  {filteredGapBibs.map((b) => (
+                    <span
+                      key={b}
+                      className="inline-flex items-center rounded-md border border-amber-200 bg-amber-50 px-2 py-1 font-mono text-xs text-amber-800 tabular-nums"
+                    >
+                      {b}
+                    </span>
+                  ))}
+                </div>
+                {freeBibsSearch && filteredGapBibs.length > 0 && (
+                  <p className="mt-3 text-xs text-gray-400 text-right">
+                    {filteredGapBibs.length.toLocaleString('fr-FR')} résultat{filteredGapBibs.length > 1 ? 's' : ''}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+          </>
         )}
       </main>
     </div>

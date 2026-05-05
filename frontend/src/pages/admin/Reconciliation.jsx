@@ -43,7 +43,7 @@ function StatusBadge({ status }) {
     submitted_unmatched:  { label: 'Non concordant',            cls: 'bg-red-100 text-red-700',       Icon: AlertCircle },
     expired:              { label: 'Expiré',                    cls: 'bg-amber-100 text-amber-700',   Icon: Clock },
     cancelled:            { label: 'Annulé',                    cls: 'bg-gray-100 text-gray-500',     Icon: X },
-    refund_pending:       { label: 'Remboursement en cours',    cls: 'bg-orange-100 text-orange-700', Icon: RefreshCcw },
+    refund_pending:       { label: 'En attente de remboursement', cls: 'bg-orange-100 text-orange-700', Icon: RefreshCcw },
     refunded:             { label: 'Remboursé',                 cls: 'bg-blue-100 text-blue-700',     Icon: Banknote },
   };
   const def = map[status] || { label: status, cls: 'bg-gray-100 text-gray-700', Icon: Clock };
@@ -343,11 +343,17 @@ export default function Reconciliation() {
     }
   }
 
-  function openApproveModal(row) {
+  async function openApproveModal(row) {
     const runnerName = row.registration
       ? `${row.registration.firstName} ${row.registration.lastName}`
       : row.cardholderName;
-    setApproveModal({ row, runnerName, submitting: false });
+    setApproveModal({ row, runnerName, submitting: false, preview: null, previewLoading: true, previewError: '' });
+    try {
+      const preview = await get(`/admin/reconciliation/${row.id}/bib-preview`);
+      setApproveModal((m) => m && { ...m, preview, previewLoading: false });
+    } catch (err) {
+      setApproveModal((m) => m && { ...m, previewLoading: false, previewError: err.message || 'Impossible de prévisualiser le dossard' });
+    }
   }
 
   async function confirmApprove() {
@@ -431,11 +437,11 @@ export default function Reconciliation() {
                   { value: 'link_generated', label: 'Lien généré' },
                   { value: 'expired',        label: 'Expiré' },
                   { value: 'cancelled',      label: 'Annulé' },
-                  { value: 'refund_pending', label: 'Remboursement en cours' },
                 ];
                 if (tab === 'validations') return [
                   { value: 'all',                 label: 'Tous les statuts' },
                   { value: 'submitted_matched',   label: 'En attente de validation' },
+                  { value: 'refund_pending',      label: 'En attente de remboursement' },
                   { value: 'approved',            label: 'Approuvé' },
                   { value: 'submitted_unmatched', label: 'Non concordant' },
                 ];
@@ -449,11 +455,11 @@ export default function Reconciliation() {
                     { value: 'link_generated', label: 'Lien généré' },
                     { value: 'expired', label: 'Expiré' },
                     { value: 'cancelled', label: 'Annulé' },
-                    { value: 'refund_pending', label: 'Remboursement en cours' },
                   ]
                   : tab === 'validations' ? [
                     { value: 'all', label: 'Tous les statuts' },
                     { value: 'submitted_matched', label: 'En attente de validation' },
+                    { value: 'refund_pending', label: 'En attente de remboursement' },
                     { value: 'approved', label: 'Approuvé' },
                     { value: 'submitted_unmatched', label: 'Non concordant' },
                   ]
@@ -552,21 +558,7 @@ export default function Reconciliation() {
                       )}
                       <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
                       <td className="px-4 py-3 text-right">
-                        {tab === 'satim' && r.status === 'refund_pending' ? (
-                          <div className="flex items-center justify-end gap-2 flex-wrap">
-                            <button onClick={() => openRefundModal(r, 'confirm')}
-                              title="Valider — confirmer que le remboursement a été effectué"
-                              className="inline-flex items-center gap-1 rounded-md bg-emerald-600 text-white px-3 py-1.5 text-xs font-medium hover:bg-emerald-700 cursor-pointer">
-                              <CheckCircle size={12} />
-                              Valider
-                            </button>
-                            <button onClick={() => openRefundModal(r, 'cancel')}
-                              title="Annuler le remboursement, remettre la ligne en attente"
-                              className="inline-flex items-center gap-1 rounded-md text-gray-500 hover:bg-gray-50 px-2 py-1 text-xs cursor-pointer">
-                              <X size={12} />
-                            </button>
-                          </div>
-                        ) : tab === 'satim' && r.status !== 'cancelled' && r.status !== 'submitted_matched' && r.status !== 'submitted_unmatched' && (
+                        {tab === 'satim' && r.status !== 'cancelled' && r.status !== 'submitted_matched' && r.status !== 'submitted_unmatched' && (
                           <div className="flex items-center justify-end gap-2 flex-wrap">
                             <button onClick={() => openLinkModal(r)} title="Générer / voir le lien"
                               className="inline-flex items-center gap-1 rounded-md bg-[#C42826] text-white px-3 py-1.5 text-xs font-medium hover:bg-[#a82220] cursor-pointer">
@@ -601,6 +593,22 @@ export default function Reconciliation() {
                                 <CheckCircle size={12} />
                                 Valider
                               </button>
+                            ) : r.status === 'refund_pending' ? (
+                              <>
+                                <button onClick={() => openRefundModal(r, 'confirm')}
+                                  title="Valider — confirmer que le remboursement a été effectué sur le portail SATIM"
+                                  className="inline-flex items-center gap-1 rounded-md bg-emerald-600 text-white px-3 py-1.5 text-xs font-medium hover:bg-emerald-700 cursor-pointer">
+                                  <CheckCircle size={12} />
+                                  Valider
+                                </button>
+                                {!(r.registration && r.registration.paymentStatus === 'refunded') && (
+                                  <button onClick={() => openRefundModal(r, 'cancel')}
+                                    title="Annuler le remboursement, remettre la ligne en attente"
+                                    className="inline-flex items-center gap-1 rounded-md text-gray-500 hover:bg-gray-50 px-2 py-1 text-xs cursor-pointer">
+                                    <X size={12} />
+                                  </button>
+                                )}
+                              </>
                             ) : null}
                             {r.registration && (
                               <button onClick={() => navigate(`/admin/runners?search=${encodeURIComponent(r.registration.email)}`)}
@@ -791,9 +799,58 @@ export default function Reconciliation() {
                 Carte : {approveModal.row.cardFirst4 || '????'}**{approveModal.row.cardPan}
               </p>
             </div>
+
+            {/* Bib preview */}
+            <div className="mb-4">
+              {approveModal.previewLoading ? (
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-500">
+                  Chargement du dossard à attribuer…
+                </div>
+              ) : approveModal.previewError ? (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  {approveModal.previewError}
+                </div>
+              ) : approveModal.preview && approveModal.preview.bibNumber != null ? (
+                <div className={`rounded-lg border p-3 ${
+                  approveModal.preview.type === 'gap'
+                    ? 'border-amber-200 bg-amber-50'
+                    : 'border-blue-200 bg-blue-50'
+                }`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-gray-500">Dossard à attribuer</p>
+                      <p className="text-2xl font-bold text-gray-900 font-mono mt-0.5">
+                        #{approveModal.preview.bibNumber}
+                      </p>
+                    </div>
+                    {approveModal.preview.type === 'gap' ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-800 px-2.5 py-1 text-xs font-medium border border-amber-300">
+                        <RefreshCcw size={12} />
+                        Gap-fill (trou comblé)
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 text-blue-800 px-2.5 py-1 text-xs font-medium border border-blue-300">
+                        <ChevronRight size={12} />
+                        Séquentiel (suite normale)
+                      </span>
+                    )}
+                  </div>
+                  {approveModal.preview.type === 'gap' && approveModal.preview.maxAssigned != null && (
+                    <p className="text-xs text-amber-700 mt-2">
+                      Ce numéro est avant le dernier dossard attribué (#{approveModal.preview.maxAssigned}). L'attribution comble un trou laissé par un dossard libéré ou non utilisé.
+                    </p>
+                  )}
+                </div>
+              ) : approveModal.preview?.type === 'exhausted' ? (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  Aucun dossard disponible — la plage automatique est épuisée.
+                </div>
+              ) : null}
+            </div>
+
             <p className="text-sm text-gray-600 mb-1">Cette action va :</p>
             <ul className="text-sm text-gray-600 space-y-1 mb-5 ms-4 list-disc">
-              <li>Attribuer un dossard (gap-first)</li>
+              <li>Attribuer le dossard ci-dessus</li>
               <li>Envoyer l'email de confirmation avec le PDF</li>
               <li>Ajouter le coureur à la liste des Coureurs</li>
             </ul>
@@ -803,7 +860,13 @@ export default function Reconciliation() {
                 className="rounded-lg bg-gray-100 text-gray-700 px-4 py-2 text-sm font-medium hover:bg-gray-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
                 Annuler
               </button>
-              <button onClick={confirmApprove} disabled={approveModal.submitting}
+              <button onClick={confirmApprove}
+                disabled={
+                  approveModal.submitting ||
+                  approveModal.previewLoading ||
+                  !approveModal.preview ||
+                  approveModal.preview.bibNumber == null
+                }
                 className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-700 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
                 <CheckCircle size={14} />
                 {approveModal.submitting ? 'Validation...' : 'Valider'}

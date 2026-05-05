@@ -5,7 +5,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useEvent } from '../../hooks/useEvent';
 import Sidebar from '../../components/ui/Sidebar';
 import Select from 'react-select';
-import { ChevronDown, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { ChevronDown, ArrowUp, ArrowDown, ArrowUpDown, ChevronRight, RotateCcw } from 'lucide-react';
 import {
   flagUrl, COUNTRIES_DATA, PHONE_CODES, WILAYAS, COMMUNES_MAP,
   TSHIRT_SIZES, selectStyles, phoneSelectStyles,
@@ -530,6 +530,95 @@ function RunnerCreateModal({ open, onClose, onCreated, event }) {
   );
 }
 
+/* ─── Slide to Confirm (with customizable labels) ─── */
+function SlideToConfirm({ onConfirm, idleLabel = 'Glisser pour confirmer', doneLabel = 'Confirmé' }) {
+  const trackRef = useRef(null);
+  const [dragging, setDragging] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const [confirmed, setConfirmed] = useState(false);
+  const thumbWidth = 48;
+
+  const getMaxOffset = useCallback(() => {
+    if (!trackRef.current) return 200;
+    return trackRef.current.offsetWidth - thumbWidth - 8;
+  }, []);
+
+  const handleStart = () => {
+    if (confirmed) return;
+    setDragging(true);
+  };
+
+  const handleMove = useCallback((clientX) => {
+    if (!dragging || confirmed || !trackRef.current) return;
+    const rect = trackRef.current.getBoundingClientRect();
+    const newOffset = Math.max(0, Math.min(clientX - rect.left - thumbWidth / 2 - 4, getMaxOffset()));
+    setOffset(newOffset);
+  }, [dragging, confirmed, getMaxOffset]);
+
+  const handleEnd = useCallback(() => {
+    if (!dragging) return;
+    setDragging(false);
+    const max = getMaxOffset();
+    if (offset >= max * 0.9) {
+      setOffset(max);
+      setConfirmed(true);
+      setTimeout(() => onConfirm(), 300);
+    } else {
+      setOffset(0);
+    }
+  }, [dragging, offset, getMaxOffset, onConfirm]);
+
+  useEffect(() => {
+    if (!dragging) return;
+    const onMouseMove = (e) => handleMove(e.clientX);
+    const onTouchMove = (e) => handleMove(e.touches[0].clientX);
+    const onEnd = () => handleEnd();
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onEnd);
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchend', onEnd);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onEnd);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onEnd);
+    };
+  }, [dragging, handleMove, handleEnd]);
+
+  const max = getMaxOffset();
+  const progress = max > 0 ? offset / max : 0;
+
+  return (
+    <div
+      ref={trackRef}
+      className={`relative h-14 rounded-xl select-none overflow-hidden transition-colors ${
+        confirmed ? 'bg-red-500' : 'bg-gray-100'
+      }`}
+    >
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <span
+          className={`text-sm font-medium transition-opacity ${confirmed ? 'text-white opacity-100' : 'text-gray-400'}`}
+          style={{ opacity: confirmed ? 1 : Math.max(0, 1 - progress * 2) }}
+        >
+          {confirmed ? doneLabel : idleLabel}
+        </span>
+      </div>
+
+      {!confirmed && (
+        <div
+          className="absolute top-1 left-1 w-12 h-12 rounded-lg bg-red-500 flex items-center justify-center cursor-grab active:cursor-grabbing shadow-lg transition-transform"
+          style={{ transform: `translateX(${offset}px)` }}
+          onMouseDown={(e) => { e.preventDefault(); handleStart(); }}
+          onTouchStart={() => handleStart()}
+        >
+          <ChevronRight size={20} className="text-white" />
+          <ChevronRight size={20} className="text-white -ml-3" />
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Detail Panel (with edit mode) ─── */
 function ResendEmailButton({ registrationId }) {
   const [sending, setSending] = useState(false);
@@ -563,6 +652,7 @@ function DetailPanel({ runner, onClose, onUpdated }) {
   const { user } = useAuth();
   const { selectedEvent } = useEvent();
   const isSuperAdmin = user?.role === 'super_admin';
+  const canRefund = user?.role === 'super_admin' || user?.role === 'reconciliation_specialist';
   const eventLevels = selectedEvent?.runnerLevels?.length
     ? selectedEvent.runnerLevels
     : ['Débutant', 'Confirmé', 'Elite'];
@@ -573,6 +663,9 @@ function DetailPanel({ runner, onClose, onUpdated }) {
   const [error, setError] = useState('');
   const [showCancelDistModal, setShowCancelDistModal] = useState(false);
   const [cancellingDist, setCancellingDist] = useState(false);
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [refundError, setRefundError] = useState('');
+  const [refundSuccess, setRefundSuccess] = useState('');
 
   const handleCancelDistribution = async () => {
     setCancellingDist(true);
@@ -584,6 +677,19 @@ function DetailPanel({ runner, onClose, onUpdated }) {
       alert(err.message || 'Erreur lors de l\'annulation');
     }
     setCancellingDist(false);
+  };
+
+  const handleRefund = async () => {
+    setRefundError('');
+    try {
+      const res = await post(`/admin/runners/${runner.id}/refund`);
+      setShowRefundModal(false);
+      setRefundSuccess(`Dossard #${res.freedBib} libéré — ligne ajoutée à Validations en attente de confirmation.`);
+      setTimeout(() => setRefundSuccess(''), 5000);
+      onUpdated();
+    } catch (err) {
+      setRefundError(err.message || 'Erreur lors du remboursement');
+    }
   };
 
   useEffect(() => {
@@ -698,6 +804,11 @@ function DetailPanel({ runner, onClose, onUpdated }) {
         {/* Content */}
         <div className="p-6 space-y-4">
           {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2">{error}</p>}
+          {refundSuccess && (
+            <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2">
+              {refundSuccess}
+            </p>
+          )}
 
           {tab === 'profil' ? (
             <>
@@ -748,6 +859,15 @@ function DetailPanel({ runner, onClose, onUpdated }) {
                         Annuler la distribution
                       </button>
                     )}
+                    {canRefund && display.bibNumber && display.paymentStatus !== 'refunded' && (
+                      <button
+                        onClick={() => { setRefundError(''); setShowRefundModal(true); }}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-red-300 bg-red-50 text-red-700 px-3 py-2 text-xs hover:bg-red-100 transition cursor-pointer"
+                      >
+                        <RotateCcw size={13} />
+                        Rembourser
+                      </button>
+                    )}
                   </>
                 ) : (
                   <>
@@ -774,6 +894,66 @@ function DetailPanel({ runner, onClose, onUpdated }) {
           )}
         </div>
       </div>
+
+      {/* Refund Modal */}
+      {showRefundModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowRefundModal(false)} />
+          <div className="relative bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <RotateCcw size={20} className="text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Rembourser ce coureur</h3>
+            </div>
+
+            {refundError && (
+              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2 mb-4">
+                {refundError}
+              </p>
+            )}
+
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 mb-4">
+              <p className="text-sm font-semibold text-gray-900">
+                {display.firstName} {display.lastName}
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">{display.email}</p>
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
+                <span><span className="text-gray-400">Dossard :</span> <span className="font-mono text-[#C42826]">#{display.bibNumber}</span></span>
+                {display.orderNumber && (
+                  <span><span className="text-gray-400">Commande :</span> <span className="font-mono">{display.orderNumber}</span></span>
+                )}
+                {display.cardPan && (
+                  <span><span className="text-gray-400">Carte :</span> <span className="font-mono">****{display.cardPan}</span></span>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1.5 text-xs text-gray-600 mb-4">
+              <p>• Le dossard <strong>#{display.bibNumber}</strong> sera libéré immédiatement.</p>
+              <p>• Le coureur disparaîtra de la liste Coureurs (statut paiement → <strong>refunded</strong>).</p>
+              <p>• Une ligne <strong>« En attente de remboursement »</strong> apparaîtra dans <strong>Réconciliation → Validations</strong>. Un admin doit ensuite cliquer <strong>Valider</strong> après avoir effectué le remboursement sur le portail SATIM (la ligne ira alors dans Remboursés).</p>
+              <p>• <strong>Aucun email envoyé</strong> — le remboursement SATIM est traité manuellement.</p>
+            </div>
+
+            <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-3 mb-5">
+              Action irréversible. Le QR code de cet email ne sera plus valide.
+            </p>
+
+            <SlideToConfirm
+              onConfirm={handleRefund}
+              idleLabel="Glisser pour rembourser"
+              doneLabel="Remboursé"
+            />
+            <button
+              onClick={() => setShowRefundModal(false)}
+              className="w-full mt-3 rounded-lg border border-gray-200 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition cursor-pointer text-center"
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Cancel Distribution Modal */}
       {showCancelDistModal && (
