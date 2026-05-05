@@ -52,6 +52,9 @@ export default function Bibs() {
         e.bibsManualTotal = bibStatsRes.bibsManualTotal ?? 0;
         e.bibsManualUsed = bibStatsRes.bibsManualUsed ?? 0;
         e.bibsManualRestants = bibStatsRes.bibsManualRestants ?? 0;
+        e.bibsManualHighTotal = bibStatsRes.bibsManualHighTotal ?? 0;
+        e.bibsManualHighUsed = bibStatsRes.bibsManualHighUsed ?? 0;
+        e.bibsManualHighRestants = bibStatsRes.bibsManualHighRestants ?? 0;
         e.prochainNumero = bibStatsRes.prochainNumero;
         e.gapBibsCount = bibStatsRes.gapBibsCount ?? 0;
         e.gapBibsList = bibStatsRes.gapBibsList ?? [];
@@ -103,13 +106,22 @@ export default function Bibs() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Treat empty/0/null as "disabled" for the upper manual band
+      const upper = eventData.bibManualUpperEnd;
+      const upperVal =
+        upper === '' || upper == null || upper === 0
+          ? null
+          : (typeof upper === 'string' ? parseInt(upper, 10) : upper);
+
       await put(`/admin/events/${selectedEventId}`, {
         bibStart: eventData.bibStart,
         bibEnd: eventData.bibEnd,
+        bibManualUpperEnd: upperVal,
         bibPrefix: eventData.bibPrefix || null,
         autoCloseOnExhaustion: eventData.autoCloseOnExhaustion,
       });
       showMessage('success', 'Configuration des dossards sauvegardée.');
+      await fetchData();
     } catch (err) {
       showMessage('error', err.message || 'Erreur lors de la sauvegarde.');
     }
@@ -166,6 +178,26 @@ export default function Bibs() {
                   onChange={(e) => updateField('bibPrefix', e.target.value)} className={inputClass} />
               </FormField>
 
+              <FormField
+                label="Plafond plage manuelle haute (optionnel)"
+                hint={
+                  eventData.bibManualUpperEnd
+                    ? `Plage manuelle haute active : ${eventData.bibEnd + 1}–${eventData.bibManualUpperEnd}. Vide pour désactiver.`
+                    : `Numéro maximum pour les attributions manuelles au-dessus de la plage auto. Vide = désactivée.`
+                }
+              >
+                <input
+                  type="number"
+                  min={(eventData.bibEnd || 0) + 1}
+                  value={eventData.bibManualUpperEnd ?? ''}
+                  onChange={(e) =>
+                    updateField('bibManualUpperEnd', e.target.value === '' ? null : parseInt(e.target.value, 10) || null)
+                  }
+                  placeholder={`> ${eventData.bibEnd || ''}`}
+                  className={inputClass}
+                />
+              </FormField>
+
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-700">Fermeture automatique</p>
@@ -198,7 +230,7 @@ export default function Bibs() {
 
               <div className="bg-white border border-gray-200 rounded-xl p-6">
                 <h3 className="text-lg font-semibold text-gray-900 pb-3 mb-4 border-b border-gray-100">
-                  Plage manuelle
+                  Plage manuelle {eventData.bibManualUpperEnd ? 'basse' : ''}
                   <span className="text-sm font-normal text-gray-400 ms-2">(1–{(eventData.bibStart || 101) - 1})</span>
                 </h3>
                 <div className="grid grid-cols-3 gap-4">
@@ -207,6 +239,20 @@ export default function Bibs() {
                   <BibStatCard label="Restants" value={eventData.bibsManualRestants ?? '—'} color="purple" />
                 </div>
               </div>
+
+              {eventData.bibManualUpperEnd && (
+                <div className="bg-white border border-gray-200 rounded-xl p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 pb-3 mb-4 border-b border-gray-100">
+                    Plage manuelle haute
+                    <span className="text-sm font-normal text-gray-400 ms-2">({eventData.bibEnd + 1}–{eventData.bibManualUpperEnd})</span>
+                  </h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    <BibStatCard label="Total" value={eventData.bibsManualHighTotal ?? '—'} color="purple" />
+                    <BibStatCard label="Utilisés" value={eventData.bibsManualHighUsed ?? '—'} color="purple" />
+                    <BibStatCard label="Restants" value={eventData.bibsManualHighRestants ?? '—'} color="purple" />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

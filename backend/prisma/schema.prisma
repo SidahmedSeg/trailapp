@@ -47,10 +47,11 @@ model Event {
   autoCloseOnExhaustion Boolean   @default(true)
 
   // Bib config
-  bibStart       Int     @default(101)
-  bibEnd         Int     @default(1500)
-  bibPrefix      String?
-  bibRangeLocked Boolean @default(false)
+  bibStart           Int     @default(101)
+  bibEnd             Int     @default(1500)
+  bibManualUpperEnd  Int?    // optional ceiling for the upper manual band (bibEnd+1..bibManualUpperEnd)
+  bibPrefix          String?
+  bibRangeLocked     Boolean @default(false)
 
   // Pricing
   priceInCentimes Int  @default(200000)

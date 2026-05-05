@@ -44,7 +44,7 @@ const initialForm = {
   contactEmail: '', contactPhone: '', contactLabel: '',
   registrationOpen: true, registrationDeadline: '', maxCapacity: '',
   autoCloseOnExhaustion: true,
-  bibStart: 101, bibEnd: 1500, bibPrefix: '',
+  bibStart: 101, bibEnd: 1500, bibManualUpperEnd: '', bibPrefix: '',
   priceInCentimes: 200000, photoPackPrice: '',
   termsText: '',
   distances: [],
@@ -121,6 +121,7 @@ export default function Events() {
         autoCloseOnExhaustion: e.autoCloseOnExhaustion,
         bibStart: e.bibStart,
         bibEnd: e.bibEnd,
+        bibManualUpperEnd: e.bibManualUpperEnd ?? '',
         bibPrefix: e.bibPrefix || '',
         priceInCentimes: e.priceInCentimes,
         photoPackPrice: e.photoPackPrice ?? '',
@@ -159,6 +160,10 @@ export default function Events() {
         photoPackPrice: form.photoPackPrice ? parseInt(form.photoPackPrice, 10) : null,
         bibStart: parseInt(form.bibStart, 10),
         bibEnd: parseInt(form.bibEnd, 10),
+        bibManualUpperEnd:
+          form.bibManualUpperEnd === '' || form.bibManualUpperEnd == null
+            ? null
+            : parseInt(form.bibManualUpperEnd, 10) || null,
       };
 
       let eventId;
@@ -633,6 +638,21 @@ export default function Events() {
                         <label className={label}>Préfixe</label>
                         <input className={input} value={form.bibPrefix} onChange={e => u('bibPrefix', e.target.value)} placeholder="TMO" />
                       </div>
+                    </div>
+                    <div className="mt-4">
+                      <label className={label}>Plafond plage manuelle haute (optionnel)</label>
+                      <input
+                        type="number"
+                        className={input}
+                        value={form.bibManualUpperEnd}
+                        onChange={e => u('bibManualUpperEnd', e.target.value)}
+                        placeholder={form.bibEnd ? `> ${form.bibEnd}` : ''}
+                      />
+                      <p className="text-[11px] text-gray-400 mt-1">
+                        {form.bibManualUpperEnd
+                          ? `Plage manuelle haute active : ${(parseInt(form.bibEnd, 10) || 0) + 1}–${form.bibManualUpperEnd}.`
+                          : 'Numéro maximum pour les attributions manuelles au-dessus de la plage auto. Vide = désactivée.'}
+                      </p>
                     </div>
                   </div>
                 </div>

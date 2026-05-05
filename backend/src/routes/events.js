@@ -74,6 +74,7 @@ async function eventsRoutes(fastify) {
         autoCloseOnExhaustion: body.autoCloseOnExhaustion ?? true,
         bibStart: body.bibStart ?? 101,
         bibEnd: body.bibEnd ?? 1500,
+        bibManualUpperEnd: body.bibManualUpperEnd ?? null,
         bibPrefix: body.bibPrefix || null,
         priceInCentimes: body.priceInCentimes ?? 200000,
         photoPackPrice: body.photoPackPrice ?? null,
@@ -118,7 +119,7 @@ async function eventsRoutes(fastify) {
             'BIB_END_DECREASE'
           );
         }
-        // Cannot decrease below highest assigned bib
+        // Cannot decrease below highest assigned bib in the auto range
         const maxBib = await prisma.registration.aggregate({
           where: { eventId: event.id, bibNumber: { not: null } },
           _max: { bibNumber: true },
@@ -132,6 +133,58 @@ async function eventsRoutes(fastify) {
       }
     }
 
+    // bibEnd increase must not swallow a high-band manual bib that's already assigned
+    if (body.bibEnd !== undefined && body.bibEnd > event.bibEnd) {
+      const overlap = await prisma.registration.findFirst({
+        where: {
+          eventId: event.id,
+          bibNumber: { gt: event.bibEnd, lte: body.bibEnd },
+        },
+        select: { bibNumber: true },
+      });
+      if (overlap) {
+        throw new AppError(400,
+          `bibEnd ne peut pas être augmenté à ${body.bibEnd} : un dossard manuel haut (#${overlap.bibNumber}) chevaucherait la plage auto`,
+          'BIB_END_OVERLAPS_MANUAL_HIGH'
+        );
+      }
+    }
+
+    // bibManualUpperEnd validation
+    if (body.bibManualUpperEnd !== undefined && body.bibManualUpperEnd !== null) {
+      const targetBibEnd = body.bibEnd ?? event.bibEnd;
+      if (!Number.isInteger(body.bibManualUpperEnd) || body.bibManualUpperEnd <= targetBibEnd) {
+        throw new AppError(400,
+          `Le plafond manuel haut doit être supérieur à la fin de plage auto (${targetBibEnd})`,
+          'BIB_MANUAL_UPPER_INVALID'
+        );
+      }
+      // Cannot lower below the highest assigned high-band bib
+      const maxHigh = await prisma.registration.aggregate({
+        where: { eventId: event.id, bibNumber: { gt: targetBibEnd } },
+        _max: { bibNumber: true },
+      });
+      if (maxHigh._max.bibNumber && body.bibManualUpperEnd < maxHigh._max.bibNumber) {
+        throw new AppError(400,
+          `Le plafond manuel haut ne peut pas être inférieur au plus grand dossard manuel haut attribué (${maxHigh._max.bibNumber})`,
+          'BIB_MANUAL_UPPER_BELOW_MAX'
+        );
+      }
+    } else if (body.bibManualUpperEnd === null && event.bibManualUpperEnd != null) {
+      // Clearing the ceiling — refuse if any high-band bibs exist (clearing would orphan them)
+      const targetBibEnd = body.bibEnd ?? event.bibEnd;
+      const existingHigh = await prisma.registration.findFirst({
+        where: { eventId: event.id, bibNumber: { gt: targetBibEnd } },
+        select: { bibNumber: true },
+      });
+      if (existingHigh) {
+        throw new AppError(400,
+          `Impossible de désactiver la plage manuelle haute : un dossard (#${existingHigh.bibNumber}) y est déjà attribué`,
+          'BIB_MANUAL_UPPER_HAS_BIBS'
+        );
+      }
+    }
+
     const allowedFields = [
       'name', 'type', 'description', 'date', 'location',
       'primaryColor', 'logoPath', 'coverImagePath',
@@ -139,7 +192,7 @@ async function eventsRoutes(fastify) {
       'contactEmail', 'contactPhone', 'contactLabel',
       'distances', 'runnerLevels', 'faq',
       'registrationOpen', 'registrationDeadline', 'maxCapacity', 'autoCloseOnExhaustion',
-      'bibStart', 'bibEnd', 'bibPrefix',
+      'bibStart', 'bibEnd', 'bibManualUpperEnd', 'bibPrefix',
       'priceInCentimes', 'photoPackPrice',
       'optionalFields', 'termsText',
     ];
@@ -334,8 +387,10 @@ async function eventsRoutes(fastify) {
 
     const stockTotal = event.bibEnd - event.bibStart + 1;
     const manualMax = event.bibStart - 1;
+    const hasUpperBand = event.bibManualUpperEnd != null && event.bibManualUpperEnd > event.bibEnd;
+    const manualHighTotal = hasUpperBand ? event.bibManualUpperEnd - event.bibEnd : 0;
 
-    const [bibsAutoRange, bibsTotal, bibsManualUsed] = await Promise.all([
+    const [bibsAutoRange, bibsTotal, bibsManualUsed, bibsManualHighUsed] = await Promise.all([
       prisma.registration.count({
         where: { eventId: event.id, bibNumber: { gte: event.bibStart, lte: event.bibEnd } },
       }),
@@ -345,6 +400,11 @@ async function eventsRoutes(fastify) {
       prisma.registration.count({
         where: { eventId: event.id, bibNumber: { gte: 1, lt: event.bibStart } },
       }),
+      hasUpperBand
+        ? prisma.registration.count({
+            where: { eventId: event.id, bibNumber: { gt: event.bibEnd, lte: event.bibManualUpperEnd } },
+          })
+        : Promise.resolve(0),
     ]);
 
     const prochainNumero = await redis.get(`bib:next:${event.id}`);
@@ -385,6 +445,11 @@ async function eventsRoutes(fastify) {
       bibsManualTotal: manualMax,
       bibsManualUsed,
       bibsManualRestants: manualMax - bibsManualUsed,
+      // Upper manual band — only meaningful when bibManualUpperEnd is set
+      bibManualUpperEnd: event.bibManualUpperEnd,
+      bibsManualHighTotal: manualHighTotal,
+      bibsManualHighUsed,
+      bibsManualHighRestants: hasUpperBand ? manualHighTotal - bibsManualHighUsed : 0,
       tauxOccupation: Math.round((bibsAutoRange / stockTotal) * 100),
       prochainNumero: parseInt(prochainNumero, 10) || event.bibStart,
       bibRangeLocked: event.bibRangeLocked,

@@ -122,8 +122,8 @@ async function adminRoutes(fastify) {
       throw new AppError(400, optErrors[0].message, 'VALIDATION_ERROR');
     }
 
-    // Validate manual bib
-    await validateManualBib(prisma, bibNumber, event.bibStart, event.bibEnd);
+    // Validate manual bib (lower or upper manual band)
+    await validateManualBib(prisma, bibNumber, event);
 
     const phone = buildE164(body.phoneCountryCode, body.phoneNumber);
     const emergencyPhone = buildE164(body.emergencyPhoneCountryCode, body.emergencyPhoneNumber);

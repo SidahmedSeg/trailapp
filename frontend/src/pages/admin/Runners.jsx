@@ -337,7 +337,12 @@ function RunnerCreateModal({ open, onClose, onCreated, event }) {
 
   const bibStart = event?.bibStart || 101;
   const bibEnd = event?.bibEnd || 1500;
+  const bibManualUpperEnd = event?.bibManualUpperEnd ?? null;
   const manualMax = bibStart - 1;
+  const hasUpperBand = bibManualUpperEnd != null && bibManualUpperEnd > bibEnd;
+  const manualRangeLabel = hasUpperBand
+    ? `1 — ${manualMax}  ou  ${bibEnd + 1} — ${bibManualUpperEnd}`
+    : `1 — ${manualMax}`;
   const eventLevels = event?.runnerLevels || ['Débutant', 'Confirmé', 'Elite'];
   const levelOptions = eventLevels.map(l => ({ value: l, label: l }));
 
@@ -345,8 +350,14 @@ function RunnerCreateModal({ open, onClose, onCreated, event }) {
     e.preventDefault();
     setError('');
     const bib = Number(form.bibNumber);
-    if (!bib || bib < 1 || bib > manualMax) {
-      setError(`Le dossard doit être entre 1 et ${manualMax} (plage manuelle).`);
+    const inLower = bib >= 1 && bib <= manualMax;
+    const inUpper = hasUpperBand && bib > bibEnd && bib <= bibManualUpperEnd;
+    if (!bib || (!inLower && !inUpper)) {
+      setError(
+        hasUpperBand
+          ? `Le dossard doit être dans 1–${manualMax} ou ${bibEnd + 1}–${bibManualUpperEnd}.`
+          : `Le dossard doit être entre 1 et ${manualMax} (plage manuelle).`
+      );
       return;
     }
     setSaving(true);
@@ -381,9 +392,19 @@ function RunnerCreateModal({ open, onClose, onCreated, event }) {
           {/* Bib */}
           <div>
             <label className={labelCls}>Numero de dossard *</label>
-            <input type="number" required min="1" max={manualMax} value={form.bibNumber} onChange={(e) => set('bibNumber', e.target.value)}
-              placeholder={`1 — ${manualMax}`} className={INPUT_CLS} />
-            <p className="text-xs text-gray-400 mt-1">Plage manuelle : 1 à {manualMax} (plage auto : {bibStart}–{bibEnd})</p>
+            <input
+              type="number"
+              required
+              min="1"
+              max={hasUpperBand ? bibManualUpperEnd : manualMax}
+              value={form.bibNumber}
+              onChange={(e) => set('bibNumber', e.target.value)}
+              placeholder={manualRangeLabel}
+              className={INPUT_CLS}
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Plage manuelle : {manualRangeLabel} (plage auto : {bibStart}–{bibEnd})
+            </p>
           </div>
 
           {/* Personal info */}
