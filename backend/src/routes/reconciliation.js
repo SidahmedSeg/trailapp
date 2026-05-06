@@ -218,8 +218,12 @@ async function reconciliationRoutes(fastify) {
     async (request) => {
       const row = await prisma.satimReconciliation.findUnique({ where: { id: request.params.id } });
       if (!row) throw new AppError(404, 'Ligne introuvable', 'NOT_FOUND');
-      if (['submitted_matched', 'submitted_unmatched'].includes(row.status)) {
-        throw new AppError(409, 'Inscription déjà soumise', 'ALREADY_SUBMITTED');
+      // submitted_matched is terminal (awaiting Valider) — refuse to regenerate.
+      // submitted_unmatched is allowed: regenerating gives the runner another
+      // chance to enter the correct card halves. The update below flips status
+      // back to 'link_generated' and issues a fresh token.
+      if (row.status === 'submitted_matched') {
+        throw new AppError(409, 'Inscription déjà validée', 'ALREADY_SUBMITTED');
       }
 
       const token = uuidv4();

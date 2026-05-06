@@ -587,11 +587,13 @@ export default function Reconciliation() {
                                 Valider
                               </button>
                             ) : r.status === 'submitted_unmatched' ? (
-                              <button disabled
-                                title="Cartes non concordantes — régénérer un lien si besoin"
-                                className="inline-flex items-center gap-1 rounded-md bg-gray-100 text-gray-400 px-3 py-1.5 text-xs font-medium cursor-not-allowed">
-                                <CheckCircle size={12} />
-                                Valider
+                              <button
+                                onClick={() => openLinkModal(r, true)}
+                                title="Régénérer un lien — le runner pourra retenter avec les bons chiffres de carte"
+                                className="inline-flex items-center gap-1 rounded-md bg-[#C42826] text-white px-3 py-1.5 text-xs font-medium hover:bg-[#a82220] cursor-pointer"
+                              >
+                                <Link2 size={12} />
+                                Régénérer le lien
                               </button>
                             ) : r.status === 'refund_pending' ? (
                               <>
