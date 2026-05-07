@@ -250,9 +250,10 @@ model SatimReconciliation {
   linkSentAt      DateTime?
 
   // Resulting registration (filled on submit)
-  registrationId String?       @unique
-  registration   Registration? @relation(fields: [registrationId], references: [id])
-  enteredCardPan String? // what the runner typed (for audit, even on mismatch)
+  registrationId    String?       @unique
+  registration      Registration? @relation(fields: [registrationId], references: [id])
+  enteredCardPan    String? // last 4 digits the runner typed (audit, even on mismatch)
+  enteredCardFirst4 String? // first 4 digits the runner typed (audit, even on mismatch)
 
   // Audit
   uploadedBy String // admin username

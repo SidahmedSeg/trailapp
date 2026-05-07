@@ -529,6 +529,7 @@ async function reconciliationRoutes(fastify) {
         status: newStatus,
         registrationId: registration.id,
         enteredCardPan,
+        enteredCardFirst4: enteredCardFirst4 || null,
         // consume token
         linkToken: null,
         linkExpiresAt: null,

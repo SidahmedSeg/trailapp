@@ -105,6 +105,31 @@ export default function Reconciliation() {
   const [modal, setModal] = useState(null); // { row, link, expiresAt, emailValue, sending, copied }
   const [approveModal, setApproveModal] = useState(null); // { row, runnerName, submitting }
   const [refundModal, setRefundModal] = useState(null); // { row, action: 'mark'|'confirm'|'cancel', submitting }
+  const [reasonModal, setReasonModal] = useState(null); // SatimReconciliation row for non-concordant explanation
+  const [regenArmedId, setRegenArmedId] = useState(null); // row id whose Régénérer button is armed (first tap)
+  const regenTimerRef = useRef(null);
+
+  // Two-tap confirm for "Régénérer le lien": first click arms the button (label
+  // becomes "Confirmer ?"), second click within 3.5s fires the regenerate.
+  function handleRegenerateClick(row) {
+    if (regenArmedId === row.id) {
+      // Second tap — confirmed, fire it
+      if (regenTimerRef.current) {
+        clearTimeout(regenTimerRef.current);
+        regenTimerRef.current = null;
+      }
+      setRegenArmedId(null);
+      openLinkModal(row, true);
+    } else {
+      // First tap — arm it (auto-disarm after 3.5s)
+      setRegenArmedId(row.id);
+      if (regenTimerRef.current) clearTimeout(regenTimerRef.current);
+      regenTimerRef.current = setTimeout(() => {
+        setRegenArmedId((current) => (current === row.id ? null : current));
+        regenTimerRef.current = null;
+      }, 3500);
+    }
+  }
   const fileInputRef = useRef(null);
 
   // Reset filters when tab changes
@@ -587,14 +612,25 @@ export default function Reconciliation() {
                                 Valider
                               </button>
                             ) : r.status === 'submitted_unmatched' ? (
-                              <button
-                                onClick={() => openLinkModal(r, true)}
-                                title="Régénérer un lien — le runner pourra retenter avec les bons chiffres de carte"
-                                className="inline-flex items-center gap-1 rounded-md bg-[#C42826] text-white px-3 py-1.5 text-xs font-medium hover:bg-[#a82220] cursor-pointer"
-                              >
-                                <Link2 size={12} />
-                                Régénérer le lien
-                              </button>
+                              regenArmedId === r.id ? (
+                                <button
+                                  onClick={() => handleRegenerateClick(r)}
+                                  title="Cliquer à nouveau pour confirmer la régénération du lien"
+                                  className="inline-flex items-center gap-1 rounded-md bg-amber-500 text-white px-3 py-1.5 text-xs font-medium hover:bg-amber-600 cursor-pointer animate-pulse"
+                                >
+                                  <AlertCircle size={12} />
+                                  Confirmer ?
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleRegenerateClick(r)}
+                                  title="Régénérer un lien — le runner pourra retenter avec les bons chiffres de carte"
+                                  className="inline-flex items-center gap-1 rounded-md bg-[#C42826] text-white px-3 py-1.5 text-xs font-medium hover:bg-[#a82220] cursor-pointer"
+                                >
+                                  <Link2 size={12} />
+                                  Régénérer le lien
+                                </button>
+                              )
                             ) : r.status === 'refund_pending' ? (
                               <>
                                 <button onClick={() => openRefundModal(r, 'confirm')}
@@ -612,12 +648,18 @@ export default function Reconciliation() {
                                 )}
                               </>
                             ) : null}
-                            {r.registration && (
+                            {r.status === 'submitted_unmatched' ? (
+                              <button onClick={() => setReasonModal(r)}
+                                className="inline-flex items-center gap-1 text-xs text-gray-600 hover:text-[#C42826] cursor-pointer"
+                                title="Voir la raison du non-concordance">
+                                Raison <ChevronRight size={12} />
+                              </button>
+                            ) : r.registration ? (
                               <button onClick={() => navigate(`/admin/runners?search=${encodeURIComponent(r.registration.email)}`)}
                                 className="inline-flex items-center gap-1 text-xs text-gray-600 hover:text-[#C42826] cursor-pointer">
                                 Voir <ChevronRight size={12} />
                               </button>
-                            )}
+                            ) : null}
                           </div>
                         )}
                       </td>
@@ -877,6 +919,102 @@ export default function Reconciliation() {
           </div>
         </div>
       )}
+
+      {/* Reason Modal — explains why a submitted_unmatched row failed */}
+      {reasonModal && (() => {
+        const r = reasonModal;
+        const expectedFirst4 = r.cardFirst4 || null;
+        const expectedLast4  = r.cardPan || null;
+        const enteredFirst4  = r.enteredCardFirst4 || null;
+        const enteredLast4   = r.enteredCardPan || null;
+        const lastOk  = !!expectedLast4  && enteredLast4  === expectedLast4;
+        const firstOk = !!expectedFirst4 && enteredFirst4 === expectedFirst4;
+        const haveData = enteredFirst4 != null || enteredLast4 != null;
+
+        return (
+          <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center px-4"
+            onClick={() => setReasonModal(null)}>
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6"
+              onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                    <AlertCircle size={20} className="text-red-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Cartes non concordantes</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">N° commande {r.orderNumber}</p>
+                  </div>
+                </div>
+                <button onClick={() => setReasonModal(null)}
+                  className="text-gray-400 hover:text-gray-600 cursor-pointer p-1">
+                  <X size={20} />
+                </button>
+              </div>
+
+              {!haveData ? (
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
+                  Raison non disponible pour cette ligne (avant la mise à jour du suivi).
+                  Voir les logs d'activité (<span className="font-mono">reconciliation_submitted_unmatched</span>) pour les détails.
+                </div>
+              ) : (
+                <>
+                  <div className="rounded-lg border border-gray-200 overflow-hidden mb-4">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
+                        <tr>
+                          <th className="px-3 py-2 text-left">&nbsp;</th>
+                          <th className="px-3 py-2 text-left">Attendu</th>
+                          <th className="px-3 py-2 text-left">Saisi</th>
+                          <th className="px-3 py-2 text-center">&nbsp;</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        <tr>
+                          <td className="px-3 py-2 text-gray-700">4 premiers (BIN)</td>
+                          <td className="px-3 py-2 font-mono">{expectedFirst4 || '—'}</td>
+                          <td className={`px-3 py-2 font-mono ${firstOk ? '' : 'text-red-700 font-semibold'}`}>{enteredFirst4 || '—'}</td>
+                          <td className="px-3 py-2 text-center">
+                            {firstOk ? <CheckCircle size={14} className="text-emerald-600 inline" /> : <X size={14} className="text-red-600 inline" />}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="px-3 py-2 text-gray-700">4 derniers (PAN)</td>
+                          <td className="px-3 py-2 font-mono">{expectedLast4 || '—'}</td>
+                          <td className={`px-3 py-2 font-mono ${lastOk ? '' : 'text-red-700 font-semibold'}`}>{enteredLast4 || '—'}</td>
+                          <td className="px-3 py-2 text-center">
+                            {lastOk ? <CheckCircle size={14} className="text-emerald-600 inline" /> : <X size={14} className="text-red-600 inline" />}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600 mb-2">
+                    <p><span className="text-gray-500">Titulaire de la carte :</span> <span className="font-medium text-gray-900">{r.cardholderName}</span></p>
+                    {r.registration && (
+                      <p className="mt-0.5"><span className="text-gray-500">Coureur soumis :</span> <span className="font-medium text-gray-900">{r.registration.firstName} {r.registration.lastName}</span> — {r.registration.email}</p>
+                    )}
+                  </div>
+
+                  {firstOk === false && lastOk && enteredFirst4 === enteredLast4 && (
+                    <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                      Le runner a saisi les mêmes 4 chiffres ({enteredFirst4}) dans les deux groupes — il ne connaît probablement pas les 4 premiers chiffres de la carte (BIN).
+                    </p>
+                  )}
+                </>
+              )}
+
+              <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-gray-100">
+                <button onClick={() => setReasonModal(null)}
+                  className="rounded-lg bg-gray-100 text-gray-700 px-4 py-2 text-sm font-medium hover:bg-gray-200 cursor-pointer">
+                  Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
