@@ -4,7 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useEvent } from '../../hooks/useEvent';
 import {
   LayoutDashboard, ScanLine, ClipboardList, Users, UserCheck,
-  Settings, Ticket, LogOut, ChevronDown, Menu, X, Calendar, Eye, Plus, Shuffle,
+  Settings, Ticket, LogOut, ChevronDown, Menu, X, Calendar, Eye, Plus, Shuffle, Clock,
 } from 'lucide-react';
 
 const navItems = [
@@ -14,6 +14,7 @@ const navItems = [
   { to: '/admin/bibs', icon: Ticket, label: 'Dossards' },
   { to: '/admin/events', icon: Calendar, label: 'Événements' },
   { to: '/admin/reconciliation', icon: Shuffle, label: 'Réconciliation', roles: ['super_admin', 'reconciliation_specialist'] },
+  { to: '/admin/late-registration', icon: Clock, label: 'Inscriptions tardives', roles: ['super_admin', 'reconciliation_specialist'] },
   { to: '/admin/activity', icon: ClipboardList, label: 'Activité' },
   { to: '/admin/users', icon: Users, label: 'Utilisateurs', superOnly: true },
   { to: '/admin/settings', icon: Settings, label: 'Paramètres' },

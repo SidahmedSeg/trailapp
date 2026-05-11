@@ -112,7 +112,7 @@ async function paymentRoutes(fastify) {
         // SUCCESS — assign bib and store card info
         const registration = await prisma.registration.findUnique({
           where: { id: registrationId },
-          include: { event: true },
+          include: { event: true, lateRegistrationLink: true },
         });
 
         // Skip if already successfully processed (late SATIM retry)
@@ -121,7 +121,16 @@ async function paymentRoutes(fastify) {
         }
 
         const event = registration.event;
-        const bibNumber = await getNextBib(redis, event.id, event.bibEnd);
+
+        // Bib selection: late-registration uses the admin-reserved bib from the
+        // linked LateRegistrationLink. Normal flow uses Redis INCR (forward-only).
+        let bibNumber;
+        const lateLink = registration.lateRegistrationLink;
+        if (lateLink && lateLink.status === 'used' && Number.isInteger(lateLink.bibNumber)) {
+          bibNumber = lateLink.bibNumber;
+        } else {
+          bibNumber = await getNextBib(redis, event.id, event.bibEnd);
+        }
         const qrToken = uuidv4();
 
         // Extract last 4 digits of card PAN

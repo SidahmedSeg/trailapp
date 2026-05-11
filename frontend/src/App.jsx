@@ -22,6 +22,8 @@ import Terms from './pages/public/Terms';
 import LegalNotice from './pages/public/LegalNotice';
 import ReconciliationRegister from './pages/public/ReconciliationRegister';
 import ReconciliationRecap from './pages/public/ReconciliationRecap';
+import LateRegister from './pages/public/LateRegister';
+import LateRecap from './pages/public/LateRecap';
 
 // Admin pages (lazy loaded)
 const Login = lazy(() => import('./pages/admin/Login'));
@@ -34,6 +36,7 @@ const Activity = lazy(() => import('./pages/admin/Activity'));
 const UserManagement = lazy(() => import('./pages/admin/UserManagement'));
 const Events = lazy(() => import('./pages/admin/Events'));
 const Reconciliation = lazy(() => import('./pages/admin/Reconciliation'));
+const LateRegistration = lazy(() => import('./pages/admin/LateRegistration'));
 
 function AdminRoute({ children }) {
   const token = localStorage.getItem('access_token');
@@ -69,6 +72,8 @@ export default function App() {
           <Route path="/faq" element={<FAQ />} />
           <Route path="/reconciliation/:token" element={<ReconciliationRegister />} />
           <Route path="/reconciliation/:token/recap" element={<ReconciliationRecap />} />
+          <Route path="/late-register/:token" element={<LateRegister />} />
+          <Route path="/late-register/:token/recap" element={<LateRecap />} />
 
           {/* Admin routes */}
           <Route path="/admin/login" element={<Login />} />
@@ -81,6 +86,7 @@ export default function App() {
           <Route path="/admin/users" element={<AdminRoute><UserManagement /></AdminRoute>} />
           <Route path="/admin/events" element={<AdminRoute><Events /></AdminRoute>} />
           <Route path="/admin/reconciliation" element={<AdminRoute><Reconciliation /></AdminRoute>} />
+          <Route path="/admin/late-registration" element={<AdminRoute><LateRegistration /></AdminRoute>} />
         </Routes>
       </Suspense>
     </AuthProvider>

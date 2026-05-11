@@ -192,4 +192,47 @@ async function sendReconciliationInvitation({ toEmail, cardholderName, cardPan, 
   }
 }
 
-module.exports = { sendConfirmationEmail, sendInvitationEmail, sendOtpEmail, sendReconciliationInvitation };
+/**
+ * Late registration invitation — admin pre-reserved a bib for a runner.
+ * Unlike reconciliation (no payment needed), late registration requires the
+ * runner to complete payment via SATIM. Email copy reflects that.
+ */
+async function sendLateRegistrationInvitation({ toEmail, eventName, bibNumber, link, expiresAt }) {
+  const expiryStr = expiresAt
+    ? new Date(expiresAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '';
+
+  const subject = `Inscription tardive — ${eventName || 'Événement'} (Dossard #${bibNumber})`;
+  const body = `<div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
+    <h2 style="color: #C42826; margin-bottom: 8px;">Inscription tardive</h2>
+    <p style="color: #444;">Bonjour,</p>
+    <p style="color: #444;">L'organisation de <strong>${eventName || 'l\'événement'}</strong> vous propose une inscription tardive avec le dossard <strong>#${bibNumber}</strong>.</p>
+    <p style="color: #444;">Cliquez sur le bouton ci-dessous pour compléter votre inscription et procéder au paiement :</p>
+    <p style="text-align: center; margin: 28px 0;">
+      <a href="${link}" style="background:#C42826;color:#fff;text-decoration:none;padding:14px 28px;border-radius:10px;font-weight:bold;display:inline-block;">Finaliser mon inscription</a>
+    </p>
+    <p style="color: #777; font-size: 13px;">Ce lien est valable jusqu'au <strong>${expiryStr}</strong> et ne peut être utilisé qu'une seule fois.</p>
+    <p style="color: #999; font-size: 12px; margin-top: 24px;">Si ce n'est pas vous, ignorez simplement cet email.</p>
+  </div>`;
+
+  const msg = {
+    to: toEmail,
+    from: { email: env.SENDGRID_FROM_EMAIL, name: env.SENDGRID_FROM_NAME },
+    subject,
+    html: body,
+    trackingSettings: {
+      clickTracking: { enable: false, enableText: false },
+      openTracking: { enable: false },
+    },
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log(`Late registration invitation sent to ${toEmail}`);
+  } catch (err) {
+    console.error('SendGrid error (late registration):', err.response?.body?.errors || err.message);
+    throw new Error('Erreur lors de l\'envoi de l\'invitation');
+  }
+}
+
+module.exports = { sendConfirmationEmail, sendInvitationEmail, sendOtpEmail, sendReconciliationInvitation, sendLateRegistrationInvitation };

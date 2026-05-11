@@ -71,8 +71,9 @@ model Event {
   status String  @default("upcoming") // upcoming | active | archived
 
   // Relations
-  registrations        Registration[]
-  satimReconciliations SatimReconciliation[]
+  registrations          Registration[]
+  satimReconciliations   SatimReconciliation[]
+  lateRegistrationLinks  LateRegistrationLink[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -156,8 +157,9 @@ model Registration {
   photoPack              Boolean?
 
   // Relations
-  emailsSent          EmailLog[]
-  satimReconciliation SatimReconciliation?
+  emailsSent           EmailLog[]
+  satimReconciliation  SatimReconciliation?
+  lateRegistrationLink LateRegistrationLink?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -263,4 +265,38 @@ model SatimReconciliation {
   @@unique([eventId, orderNumber])
   @@index([eventId, status])
   @@index([linkToken])
+}
+
+model LateRegistrationLink {
+  id      String @id @default(uuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  // Reserved bib (must be a gap inside the event auto range)
+  bibNumber Int
+
+  // Token / outreach
+  token         String   @unique
+  expiresAt     DateTime
+  status        String   @default("pending") // pending | used | expired | cancelled
+  sentToEmail   String?
+  sentAt        DateTime?
+
+  // Linked when consumed (runner submits the form)
+  registrationId String?       @unique
+  registration   Registration? @relation(fields: [registrationId], references: [id])
+  usedAt         DateTime?
+
+  // Audit
+  createdBy   String
+  cancelledAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Only one pending reservation per (event, bib) — multiple historical rows
+  // (used/expired/cancelled) for the same bib are allowed.
+  @@unique([eventId, bibNumber, status])
+  @@index([token])
+  @@index([eventId, status])
 }
