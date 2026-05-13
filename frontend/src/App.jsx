@@ -24,6 +24,7 @@ import ReconciliationRegister from './pages/public/ReconciliationRegister';
 import ReconciliationRecap from './pages/public/ReconciliationRecap';
 import LateRegister from './pages/public/LateRegister';
 import LateRecap from './pages/public/LateRecap';
+import VolunteerRegister from './pages/public/VolunteerRegister';
 
 // Admin pages (lazy loaded)
 const Login = lazy(() => import('./pages/admin/Login'));
@@ -37,6 +38,8 @@ const UserManagement = lazy(() => import('./pages/admin/UserManagement'));
 const Events = lazy(() => import('./pages/admin/Events'));
 const Reconciliation = lazy(() => import('./pages/admin/Reconciliation'));
 const LateRegistration = lazy(() => import('./pages/admin/LateRegistration'));
+const Volunteers = lazy(() => import('./pages/admin/Volunteers'));
+const CheckIn = lazy(() => import('./pages/admin/CheckIn'));
 
 function AdminRoute({ children }) {
   const token = localStorage.getItem('access_token');
@@ -74,12 +77,14 @@ export default function App() {
           <Route path="/reconciliation/:token/recap" element={<ReconciliationRecap />} />
           <Route path="/late-register/:token" element={<LateRegister />} />
           <Route path="/late-register/:token/recap" element={<LateRecap />} />
+          <Route path="/benevoles/:slug" element={<VolunteerRegister />} />
 
           {/* Admin routes */}
           <Route path="/admin/login" element={<Login />} />
           <Route path="/admin" element={<AdminRoute><Dashboard /></AdminRoute>} />
           <Route path="/admin/runners" element={<AdminRoute><Runners /></AdminRoute>} />
           <Route path="/admin/scan" element={<AdminRoute><ScannerView /></AdminRoute>} />
+          <Route path="/admin/check-in" element={<AdminRoute><CheckIn /></AdminRoute>} />
           <Route path="/admin/settings" element={<AdminRoute><Settings /></AdminRoute>} />
           <Route path="/admin/bibs" element={<AdminRoute><Bibs /></AdminRoute>} />
           <Route path="/admin/activity" element={<AdminRoute><Activity /></AdminRoute>} />
@@ -87,6 +92,7 @@ export default function App() {
           <Route path="/admin/events" element={<AdminRoute><Events /></AdminRoute>} />
           <Route path="/admin/reconciliation" element={<AdminRoute><Reconciliation /></AdminRoute>} />
           <Route path="/admin/late-registration" element={<AdminRoute><LateRegistration /></AdminRoute>} />
+          <Route path="/admin/volunteers" element={<AdminRoute><Volunteers /></AdminRoute>} />
         </Routes>
       </Suspense>
     </AuthProvider>

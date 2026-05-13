@@ -4,17 +4,19 @@ import { useAuth } from '../../hooks/useAuth';
 import { useEvent } from '../../hooks/useEvent';
 import {
   LayoutDashboard, ScanLine, ClipboardList, Users, UserCheck,
-  Settings, Ticket, LogOut, ChevronDown, Menu, X, Calendar, Eye, Plus, Shuffle, Clock,
+  Settings, Ticket, LogOut, ChevronDown, Menu, X, Calendar, Eye, Plus, Shuffle, Clock, Heart, Flag,
 } from 'lucide-react';
 
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Tableau de bord' },
   { to: '/admin/runners', icon: UserCheck, label: 'Coureurs' },
   { to: '/admin/scan', icon: ScanLine, label: 'Scanner' },
+  { to: '/admin/check-in', icon: Flag, label: 'Check-in' },
   { to: '/admin/bibs', icon: Ticket, label: 'Dossards' },
   { to: '/admin/events', icon: Calendar, label: 'Événements' },
   { to: '/admin/reconciliation', icon: Shuffle, label: 'Réconciliation', roles: ['super_admin', 'reconciliation_specialist'] },
   { to: '/admin/late-registration', icon: Clock, label: 'Inscriptions tardives', roles: ['super_admin', 'reconciliation_specialist'] },
+  { to: '/admin/volunteers', icon: Heart, label: 'Bénévoles', roles: ['super_admin', 'admin'] },
   { to: '/admin/activity', icon: ClipboardList, label: 'Activité' },
   { to: '/admin/users', icon: Users, label: 'Utilisateurs', superOnly: true },
   { to: '/admin/settings', icon: Settings, label: 'Paramètres' },

@@ -235,4 +235,99 @@ async function sendLateRegistrationInvitation({ toEmail, eventName, bibNumber, l
   }
 }
 
-module.exports = { sendConfirmationEmail, sendInvitationEmail, sendOtpEmail, sendReconciliationInvitation, sendLateRegistrationInvitation };
+/**
+ * Volunteer interview proposal — admin sends 3 datetime slots; runner replies
+ * by email (reply-to staff@lassm.dz) to coordinate outside the app.
+ */
+async function sendVolunteerInterviewProposal({ toEmail, firstName, eventName, slots, adminNote }) {
+  const fmt = (iso) => new Date(iso).toLocaleString('fr-FR', {
+    weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
+  });
+
+  const slotItems = (slots || [])
+    .filter(Boolean)
+    .map((s) => `<li style="margin-bottom: 6px;">${fmt(s)}</li>`)
+    .join('');
+
+  const subject = `Entretien candidat bénévole — ${eventName || 'Événement'}`;
+  const body = `<div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
+    <h2 style="color: #C42826; margin-bottom: 8px;">Entretien bénévole</h2>
+    <p style="color: #444;">Bonjour ${firstName || ''},</p>
+    <p style="color: #444;">Merci pour votre candidature au sein de l'équipe bénévole de <strong>${eventName || 'l\'événement'}</strong>.</p>
+    <p style="color: #444;">Nous vous proposons les créneaux suivants pour un entretien :</p>
+    <ul style="color: #444; padding-left: 24px;">${slotItems}</ul>
+    ${adminNote ? `<p style="color: #444; background: #fff7ed; border-left: 3px solid #f59e0b; padding: 10px 14px;">${adminNote}</p>` : ''}
+    <p style="color: #444;">Merci de répondre à cet email pour confirmer le créneau qui vous convient.</p>
+    <p style="color: #999; font-size: 12px; margin-top: 24px;">À très bientôt,<br/>L'équipe LASSM</p>
+  </div>`;
+
+  const msg = {
+    to: toEmail,
+    from: { email: env.SENDGRID_FROM_EMAIL, name: env.SENDGRID_FROM_NAME },
+    replyTo: { email: 'staff@lassm.dz', name: 'Staff LASSM' },
+    subject,
+    html: body,
+    trackingSettings: {
+      clickTracking: { enable: false, enableText: false },
+      openTracking: { enable: false },
+    },
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log(`Volunteer interview proposal sent to ${toEmail}`);
+  } catch (err) {
+    console.error('SendGrid error (volunteer interview):', err.response?.body?.errors || err.message);
+    throw new Error('Erreur lors de l\'envoi de l\'email');
+  }
+}
+
+/**
+ * Volunteer validation — sent when admin approves the candidate. Includes their
+ * unique volunteer ID.
+ */
+async function sendVolunteerValidated({ toEmail, firstName, lastName, eventName, volunteerId }) {
+  const subject = `Bienvenue dans l'équipe — ${eventName || 'Événement'}`;
+  const body = `<div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
+    <h2 style="color: #C42826; margin-bottom: 8px;">Vous êtes officiellement bénévole</h2>
+    <p style="color: #444;">Bonjour ${firstName || ''} ${lastName || ''},</p>
+    <p style="color: #444;">Votre candidature pour <strong>${eventName || 'l\'événement'}</strong> a été validée. Bienvenue dans l'équipe !</p>
+    <div style="text-align: center; margin: 28px 0;">
+      <p style="color: #666; font-size: 13px; margin: 0 0 6px;">Votre identifiant bénévole</p>
+      <p style="font-family: monospace; font-size: 28px; font-weight: bold; color: #C42826; margin: 0; letter-spacing: 2px;">${volunteerId}</p>
+    </div>
+    <p style="color: #444;">Conservez cet identifiant — il vous sera demandé lors des briefings et le jour de l'événement.</p>
+    <p style="color: #444;">Pour toute question, répondez simplement à cet email.</p>
+    <p style="color: #999; font-size: 12px; margin-top: 24px;">À très bientôt,<br/>L'équipe LASSM</p>
+  </div>`;
+
+  const msg = {
+    to: toEmail,
+    from: { email: env.SENDGRID_FROM_EMAIL, name: env.SENDGRID_FROM_NAME },
+    replyTo: { email: 'staff@lassm.dz', name: 'Staff LASSM' },
+    subject,
+    html: body,
+    trackingSettings: {
+      clickTracking: { enable: false, enableText: false },
+      openTracking: { enable: false },
+    },
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log(`Volunteer validation sent to ${toEmail} (id=${volunteerId})`);
+  } catch (err) {
+    console.error('SendGrid error (volunteer validated):', err.response?.body?.errors || err.message);
+    throw new Error('Erreur lors de l\'envoi de l\'email');
+  }
+}
+
+module.exports = {
+  sendConfirmationEmail,
+  sendInvitationEmail,
+  sendOtpEmail,
+  sendReconciliationInvitation,
+  sendLateRegistrationInvitation,
+  sendVolunteerInterviewProposal,
+  sendVolunteerValidated,
+};

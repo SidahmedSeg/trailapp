@@ -46,6 +46,10 @@ model Event {
   maxCapacity           Int?
   autoCloseOnExhaustion Boolean   @default(true)
 
+  // Volunteer ("Bénévoles") module — when true, public can submit a volunteer
+  // application via /benevoles/<eventSlug>. Independent of registrationOpen.
+  volunteersOpen        Boolean   @default(false)
+
   // Bib config
   bibStart           Int     @default(101)
   bibEnd             Int     @default(1500)
@@ -74,6 +78,7 @@ model Event {
   registrations          Registration[]
   satimReconciliations   SatimReconciliation[]
   lateRegistrationLinks  LateRegistrationLink[]
+  volunteers             Volunteer[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -140,6 +145,10 @@ model Registration {
   status        String    @default("en_attente") // en_attente | distribue
   distributedAt DateTime?
   distributedBy String?
+
+  // Event-day check-in (additional event after distribution; independent of `status`)
+  checkedInAt   DateTime?
+  checkedInBy   String?
 
   // Source
   source    String  @default("public") // public | admin
@@ -298,5 +307,67 @@ model LateRegistrationLink {
   // (used/expired/cancelled) for the same bib are allowed.
   @@unique([eventId, bibNumber, status])
   @@index([token])
+  @@index([eventId, status])
+}
+
+model Volunteer {
+  id      String @id @default(uuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  // Per-event volunteer identifier (e.g. "TMO4827" — event initials + 4 random digits)
+  volunteerId String?
+
+  // Personal info
+  lastName    String
+  firstName   String
+  email       String
+  phone       String  // E.164
+  birthDate   DateTime?
+  gender      String?
+  nationality String?
+
+  // Free-text motivation / availability
+  motivation  String? @db.Text
+
+  // Availability & skills
+  availableRaceDay      Boolean  @default(false) // ok to work race day
+  canArriveEarly        Boolean  @default(false) // ok to arrive before main shift
+  previousExperience    String?  @db.Text         // describes past events (empty = none)
+  languagesSpoken       String?                   // free text, comma-separated
+  canStandLongTime      Boolean  @default(false) // can stand for long periods
+  tshirtSize            String?                   // S | M | L | XL | XXL
+
+  // Emergency contact
+  emergencyContactName  String?
+  emergencyContactPhone String?
+
+  // Required agreements (validated at submit; stored for audit)
+  agreedInstructions    Boolean  @default(false)
+  agreedBriefing        Boolean  @default(false)
+
+  // Uploaded files (relative paths under /uploads/volunteers/<eventId>/<id>/)
+  cvPath      String?
+  idPath      String?
+
+  // Lifecycle
+  status      String   @default("en_attente") // en_attente | validee
+
+  // Interview workflow
+  interviewSlots   Json?     // Array of 3 datetime ISO strings proposed by admin
+  interviewSentAt  DateTime?
+  interviewSentTo  String?   // copy of email at time of send (audit)
+
+  // Validation
+  validatedAt   DateTime?
+  validatedBy   String?
+
+  // Audit
+  notes      String?  @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([eventId, volunteerId])
+  @@unique([eventId, email])
   @@index([eventId, status])
 }

@@ -61,6 +61,7 @@ fastify.register(require('./routes/payment'), { prefix: '/api' });
 fastify.register(require('./routes/emails'), { prefix: '/api' });
 fastify.register(require('./routes/reconciliation'), { prefix: '/api' });
 fastify.register(require('./routes/lateRegistration'), { prefix: '/api' });
+fastify.register(require('./routes/volunteers'), { prefix: '/api' });
 
 // Graceful shutdown
 const gracefulShutdown = async () => {

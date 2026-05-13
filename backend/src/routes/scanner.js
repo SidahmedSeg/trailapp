@@ -17,7 +17,8 @@ async function scannerRoutes(fastify) {
       select: {
         id: true, firstName: true, lastName: true,
         email: true, phone: true, bibNumber: true, qrToken: true,
-        status: true, tshirtSize: true, distributedAt: true,
+        status: true, tshirtSize: true, distributedAt: true, distributedBy: true,
+        checkedInAt: true, checkedInBy: true,
         eventId: true,
         event: { select: { name: true, slug: true } },
       },
@@ -87,6 +88,74 @@ async function scannerRoutes(fastify) {
     return { success: true };
   });
 
+  // POST /api/scan/:qrToken/check-in — record event-day check-in
+  // Required state: runner must already be distributed AND not yet checked-in.
+  fastify.post('/scan/:qrToken/check-in', async (request) => {
+    const { qrToken } = request.params;
+    const { eventId } = request.body || {};
+
+    const registration = await prisma.registration.findUnique({ where: { qrToken } });
+    if (!registration) {
+      throw new AppError(404, 'QR code invalide', 'NOT_FOUND');
+    }
+
+    if (eventId && registration.eventId !== eventId) {
+      throw new AppError(400,
+        'Ce coureur n\'appartient pas à l\'événement sélectionné',
+        'WRONG_EVENT'
+      );
+    }
+
+    // Must have picked up the bib first
+    if (registration.status !== 'distribué') {
+      throw new AppError(409,
+        `Dossard non distribué — le coureur doit d'abord récupérer son dossard au stand de retrait`,
+        'NOT_DISTRIBUTED'
+      );
+    }
+
+    if (registration.checkedInAt) {
+      throw new AppError(409,
+        `Déjà enregistré le ${new Date(registration.checkedInAt).toLocaleString('fr-FR')} par ${registration.checkedInBy}`,
+        'ALREADY_CHECKED_IN'
+      );
+    }
+
+    // Atomic conditional update — guards against concurrent check-ins
+    const now = new Date();
+    const result = await prisma.registration.updateMany({
+      where: { qrToken, status: 'distribué', checkedInAt: null },
+      data: {
+        checkedInAt: now,
+        checkedInBy: request.user.username,
+      },
+    });
+    if (result.count === 0) {
+      throw new AppError(409, 'Check-in déjà enregistré par un autre opérateur', 'ALREADY_CHECKED_IN');
+    }
+
+    await prisma.scannerSession.create({
+      data: {
+        operatorId: request.user.userId,
+        operatorName: request.user.username,
+        registrationId: registration.id,
+        bibNumber: registration.bibNumber,
+        runnerName: `${registration.firstName} ${registration.lastName}`,
+        method: 'qr-checkin',
+      },
+    });
+
+    await logActivity({
+      action: 'runner_checked_in',
+      adminUsername: request.user.username,
+      targetType: 'registration',
+      targetId: registration.id,
+      details: { bibNumber: registration.bibNumber, method: 'qr-checkin' },
+    });
+
+    return { success: true, checkedInAt: now };
+  });
+
   // GET /api/scan/manual/:bibNumber — lookup by bib, scoped by eventId
   fastify.get('/scan/manual/:bibNumber', async (request) => {
     const bibNumber = parseInt(request.params.bibNumber, 10);
@@ -107,7 +176,8 @@ async function scannerRoutes(fastify) {
       select: {
         id: true, firstName: true, lastName: true,
         email: true, phone: true, bibNumber: true, qrToken: true,
-        status: true, tshirtSize: true, distributedAt: true,
+        status: true, tshirtSize: true, distributedAt: true, distributedBy: true,
+        checkedInAt: true, checkedInBy: true,
         eventId: true,
         event: { select: { name: true, slug: true } },
       },

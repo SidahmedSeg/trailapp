@@ -15,7 +15,7 @@ async function eventsRoutes(fastify) {
       select: {
         id: true, slug: true, name: true, type: true,
         date: true, location: true, active: true, status: true,
-        registrationOpen: true, createdAt: true,
+        registrationOpen: true, volunteersOpen: true, createdAt: true,
         runnerLevels: true, distances: true, optionalFields: true,
         bibStart: true, bibEnd: true, primaryColor: true,
       },
@@ -192,6 +192,7 @@ async function eventsRoutes(fastify) {
       'contactEmail', 'contactPhone', 'contactLabel',
       'distances', 'runnerLevels', 'faq',
       'registrationOpen', 'registrationDeadline', 'maxCapacity', 'autoCloseOnExhaustion',
+      'volunteersOpen',
       'bibStart', 'bibEnd', 'bibManualUpperEnd', 'bibPrefix',
       'priceInCentimes', 'photoPackPrice',
       'optionalFields', 'termsText',
