@@ -41,9 +41,21 @@ const LateRegistration = lazy(() => import('./pages/admin/LateRegistration'));
 const Volunteers = lazy(() => import('./pages/admin/Volunteers'));
 const CheckIn = lazy(() => import('./pages/admin/CheckIn'));
 
+function decodeRole(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return payload.role || null;
+  } catch { return null; }
+}
+
 function AdminRoute({ children }) {
   const token = localStorage.getItem('access_token');
+  const location = useLocation();
   if (!token) return <Navigate to="/admin/login" replace />;
+  const role = decodeRole(token);
+  if (role === 'volunteers_manager' && location.pathname !== '/admin/volunteers') {
+    return <Navigate to="/admin/volunteers" replace />;
+  }
   return <EventProvider>{children}</EventProvider>;
 }
 

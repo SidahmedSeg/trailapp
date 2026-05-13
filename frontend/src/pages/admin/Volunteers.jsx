@@ -10,7 +10,7 @@ import {
   Mail, Phone, AlertCircle, Power, ExternalLink, Copy, CalendarCheck,
 } from 'lucide-react';
 
-const ALLOWED_ROLES = ['super_admin', 'admin'];
+const ALLOWED_ROLES = ['super_admin', 'admin', 'volunteers_manager'];
 
 const selectStyles = {
   control: (base, state) => ({
@@ -158,18 +158,20 @@ export default function Volunteers() {
                 Lorsqu'activées, le formulaire public est accessible à l'URL ci-dessous. Les candidats remplissent leur dossier (CV + pièce d'identité) et apparaissent dans la liste.
               </p>
             </div>
-            <button
-              onClick={toggleVolunteersOpen}
-              disabled={togglingOpen || !selectedEvent}
-              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition cursor-pointer disabled:opacity-50 ${
-                selectedEvent?.volunteersOpen
-                  ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  : 'bg-[#C42826] text-white hover:bg-[#a82220]'
-              }`}
-            >
-              <Power size={14} />
-              {selectedEvent?.volunteersOpen ? 'Désactiver' : 'Activer'}
-            </button>
+            {user?.role !== 'volunteers_manager' && (
+              <button
+                onClick={toggleVolunteersOpen}
+                disabled={togglingOpen || !selectedEvent}
+                className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition cursor-pointer disabled:opacity-50 ${
+                  selectedEvent?.volunteersOpen
+                    ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    : 'bg-[#C42826] text-white hover:bg-[#a82220]'
+                }`}
+              >
+                <Power size={14} />
+                {selectedEvent?.volunteersOpen ? 'Désactiver' : 'Activer'}
+              </button>
+            )}
           </div>
 
           {selectedEvent?.volunteersOpen && (

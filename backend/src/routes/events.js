@@ -6,7 +6,7 @@ async function eventsRoutes(fastify) {
   const { prisma, redis } = fastify;
 
   fastify.addHook('preHandler', authenticate);
-  fastify.addHook('preHandler', authorize('scanner', 'admin', 'super_admin'));
+  fastify.addHook('preHandler', authorize('scanner', 'admin', 'super_admin', 'volunteers_manager'));
 
   // GET /api/admin/events — readable by all roles
   fastify.get('/events', async () => {

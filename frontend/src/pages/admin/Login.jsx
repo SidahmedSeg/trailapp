@@ -43,7 +43,10 @@ export default function Login() {
     try {
       const result = await verifyOtp(userId, fullCode);
       const role = result?.role;
-      navigate(role === 'scanner' ? '/admin/scan' : '/admin', { replace: true });
+      const landing = role === 'scanner' ? '/admin/scan'
+        : role === 'volunteers_manager' ? '/admin/volunteers'
+        : '/admin';
+      navigate(landing, { replace: true });
     } catch (err) {
       setError(err.message || 'Code invalide.');
       setOtpCode(['', '', '', '', '', '']);

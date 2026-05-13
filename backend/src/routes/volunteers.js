@@ -22,7 +22,7 @@ const { logActivity } = require('../middleware/activityLogger');
 const { AppError } = require('../utils/errors');
 const { sendVolunteerInterviewProposal, sendVolunteerValidated } = require('../services/sendgrid');
 
-const VOLUNTEER_ROLES = ['super_admin', 'admin'];
+const VOLUNTEER_ROLES = ['super_admin', 'admin', 'volunteers_manager'];
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB per file
 const ALLOWED_MIME = {
   'application/pdf': '.pdf',
