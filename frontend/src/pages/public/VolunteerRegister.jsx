@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import Select from 'react-select';
-import { Loader2, AlertCircle, CheckCircle, User, Mail, Phone, FileText, IdCard, Heart, Upload, Shirt, Clock, Globe, Award, FileCheck, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle, User, Mail, Phone, FileText, IdCard, Heart, Upload, Shirt, Clock, Globe, Award, FileCheck, AlertTriangle, X } from 'lucide-react';
 import PublicLayout from '../../components/ui/PublicLayout';
-import { COUNTRIES_DATA, PHONE_CODES } from '../../data/formData';
+import { COUNTRIES_DATA, PHONE_CODES, WILAYAS, COMMUNES_MAP } from '../../data/formData';
+
+const SKILL_OPTIONS = ['Communication', 'Marketing', 'Leadership', 'Secourisme', 'Informatique'];
 
 const flagUrl = (code) => `https://flagcdn.com/w40/${code.toLowerCase()}.png`;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -160,6 +162,110 @@ function FileInput({ id, label, accept, file, onChange, error, required }) {
   );
 }
 
+/* ─── Règlement modal — scroll-to-bottom to enable Accept ─── */
+function RulesModal({ open, onClose, onAccept, eventName }) {
+  const bodyRef = useRef(null);
+  const [reachedBottom, setReachedBottom] = useState(false);
+
+  useEffect(() => {
+    if (!open) setReachedBottom(false);
+  }, [open]);
+
+  function handleScroll() {
+    const el = bodyRef.current;
+    if (!el) return;
+    // ~16px tolerance for sub-pixel rounding
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 16) {
+      setReachedBottom(true);
+    }
+  }
+
+  if (!open) return null;
+
+  const label = eventName || 'l\'événement';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">{eventName || 'Événement'}</h3>
+          <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-900 cursor-pointer">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div
+          ref={bodyRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto px-6 py-5 text-sm text-gray-700 leading-relaxed space-y-3"
+          style={{ minHeight: 0 }}
+        >
+          <p>En m'inscrivant comme bénévole à <strong>{label}</strong>, j'accepte les conditions et engagements suivants :</p>
+
+          <h4 className="font-semibold text-gray-900 pt-2">1. Engagement général</h4>
+          <p>Je m'engage à participer bénévolement à l'organisation de l'événement dans un esprit de collaboration, de respect et de solidarité.</p>
+          <p>Je reconnais que mon engagement est volontaire, non rémunéré, et ne constitue en aucun cas une relation de travail ou un contrat d'emploi.</p>
+
+          <h4 className="font-semibold text-gray-900 pt-2">2. Disponibilité et assiduité</h4>
+          <p>Je m'engage à :</p>
+          <ul className="list-disc ps-5 space-y-1">
+            <li>être présent(e) aux briefings obligatoires communiqués par l'organisation ;</li>
+            <li>respecter les horaires, missions et affectations qui me seront attribués ;</li>
+            <li>informer l'organisation dans les meilleurs délais en cas d'empêchement ou de désistement.</li>
+          </ul>
+          <p>Toute absence non signalée pourra entraîner l'exclusion de l'équipe bénévole pour l'édition en cours et les éditions futures.</p>
+
+          <h4 className="font-semibold text-gray-900 pt-2">3. Respect des consignes et sécurité</h4>
+          <p>Je m'engage à :</p>
+          <ul className="list-disc ps-5 space-y-1">
+            <li>respecter les consignes données par les coordinateurs et responsables de zone ;</li>
+            <li>adopter un comportement responsable vis-à-vis des participants, spectateurs, partenaires et autres bénévoles ;</li>
+            <li>signaler immédiatement toute situation anormale, incident ou risque identifié.</li>
+          </ul>
+          <p>Je comprends que les consignes de sécurité sont obligatoires et prioritaires.</p>
+
+          <h4 className="font-semibold text-gray-900 pt-2">4. Comportement et image de l'événement</h4>
+          <p>Je m'engage à adopter une attitude respectueuse, professionnelle et bienveillante.</p>
+          <p>Sont notamment interdits :</p>
+          <ul className="list-disc ps-5 space-y-1">
+            <li>tout comportement agressif, discriminatoire ou irrespectueux ;</li>
+            <li>consommation d'alcool ou de substances altérant les capacités pendant les missions ;</li>
+            <li>utilisation abusive du matériel ou des accès fournis.</li>
+          </ul>
+          <p>L'organisation se réserve le droit d'exclure immédiatement tout bénévole en cas de non-respect.</p>
+
+          <h4 className="font-semibold text-gray-900 pt-2">5. Droit à l'image</h4>
+          <p>J'autorise {label} et ses partenaires à utiliser, sans contrepartie financière, les photos ou vidéos prises dans le cadre de l'événement sur leurs supports de communication (web, réseaux sociaux, affiches, vidéos promotionnelles, etc.).</p>
+
+          <h4 className="font-semibold text-gray-900 pt-2">6. Données personnelles</h4>
+          <p>J'accepte que mes informations personnelles soient collectées et utilisées uniquement dans le cadre de la gestion des bénévoles et de l'organisation de l'événement.</p>
+
+          <h4 className="font-semibold text-gray-900 pt-2">7. Acceptation</h4>
+          <p>En validant mon inscription, je reconnais avoir lu, compris et accepté le présent règlement.</p>
+
+          {!reachedBottom && (
+            <p className="text-xs text-gray-400 italic pt-2">Faites défiler jusqu'en bas pour activer l'acceptation.</p>
+          )}
+        </div>
+
+        <div className="px-6 py-4 border-t border-gray-200 flex gap-3 justify-end">
+          <button type="button" onClick={onClose}
+            className="rounded-lg border border-gray-300 bg-white text-gray-700 px-4 py-2 text-sm font-medium hover:bg-gray-50 cursor-pointer">
+            Annuler
+          </button>
+          <button type="button"
+            disabled={!reachedBottom}
+            onClick={() => { onAccept(); onClose(); }}
+            className="rounded-lg bg-[#C42826] text-white px-4 py-2 text-sm font-medium hover:bg-[#a82220] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+            J'accepte
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function VolunteerRegister() {
   const { slug } = useParams();
   const [loading, setLoading] = useState(true);
@@ -174,24 +280,26 @@ export default function VolunteerRegister() {
     lastName: '', firstName: '', email: '',
     phoneCountryCode: '+213', phoneNumber: '',
     birthDate: '', gender: '', nationality: '',
+    wilaya: '', commune: '',
     motivation: '',
     // Availability & skills
     availableRaceDay: false,
     canArriveEarly: false,
     previousExperience: '',
     languagesSpoken: [], // array of language values (joined to comma-separated string on submit)
+    skills: [], // array of selected skill labels
+    otherSkills: '',
     canStandLongTime: '', // tri-state: '' / 'yes' / 'no' (required)
     tshirtSize: '',
     // Emergency contact
     emergencyContactName: '',
     emergencyContactPhoneCountryCode: '+213',
     emergencyContactPhoneNumber: '',
-    // Agreements
-    agreedInstructions: false,
-    agreedBriefing: false,
+    // Single consolidated règlement agreement
+    agreedRules: false,
   });
-  const [cvFile, setCvFile] = useState(null);
   const [idFile, setIdFile] = useState(null);
+  const [rulesModalOpen, setRulesModalOpen] = useState(false);
 
   useEffect(() => {
     fetch(`/api/volunteer/check/${slug}`)
@@ -233,15 +341,6 @@ export default function VolunteerRegister() {
     setForm((p) => ({ ...p, [field]: value }));
   }
 
-  function setCv(f) {
-    setFieldErrors((p) => { const n = { ...p }; delete n.cv; return n; });
-    if (f && f.size > MAX_FILE_BYTES) {
-      setFieldErrors((p) => ({ ...p, cv: 'Fichier trop volumineux (5 Mo max)' }));
-      return;
-    }
-    setCvFile(f);
-  }
-
   function setId(f) {
     setFieldErrors((p) => { const n = { ...p }; delete n.id; return n; });
     if (f && f.size > MAX_FILE_BYTES) {
@@ -262,7 +361,6 @@ export default function VolunteerRegister() {
     } else if (!form.phoneNumber || !/^\d+$/.test(form.phoneNumber)) {
       errs.phoneNumber = 'Numéro invalide';
     }
-    if (!cvFile) errs.cv = 'CV requis (PDF, JPG ou PNG)';
     if (!idFile) errs.id = 'Pièce d\'identité requise (PDF, JPG ou PNG)';
 
     // Availability & skills
@@ -278,9 +376,8 @@ export default function VolunteerRegister() {
       errs.emergencyContactPhoneNumber = 'Numéro invalide';
     }
 
-    // Agreements (also required)
-    if (!form.agreedInstructions) errs.agreedInstructions = 'Acceptation requise';
-    if (!form.agreedBriefing) errs.agreedBriefing = 'Acceptation requise';
+    // Single consolidated règlement (required)
+    if (!form.agreedRules) errs.agreedRules = 'Acceptation requise';
 
     return errs;
   }
@@ -306,6 +403,8 @@ export default function VolunteerRegister() {
       if (form.birthDate) fd.append('birthDate', form.birthDate);
       if (form.gender) fd.append('gender', form.gender);
       if (form.nationality) fd.append('nationality', form.nationality);
+      if (form.wilaya) fd.append('wilaya', form.wilaya);
+      if (form.commune) fd.append('commune', form.commune);
       if (form.motivation) fd.append('motivation', form.motivation);
 
       // Availability & skills
@@ -315,6 +414,10 @@ export default function VolunteerRegister() {
       if (Array.isArray(form.languagesSpoken) && form.languagesSpoken.length > 0) {
         fd.append('languagesSpoken', form.languagesSpoken.join(', '));
       }
+      if (Array.isArray(form.skills) && form.skills.length > 0) {
+        fd.append('skills', JSON.stringify(form.skills));
+      }
+      if (form.otherSkills) fd.append('otherSkills', form.otherSkills);
       fd.append('canStandLongTime', form.canStandLongTime === 'yes' ? 'true' : 'false');
       if (form.tshirtSize) fd.append('tshirtSize', form.tshirtSize);
 
@@ -323,11 +426,9 @@ export default function VolunteerRegister() {
       fd.append('emergencyContactName', form.emergencyContactName);
       fd.append('emergencyContactPhone', emergencyPhone);
 
-      // Agreements
-      fd.append('agreedInstructions', form.agreedInstructions ? 'true' : 'false');
-      fd.append('agreedBriefing', form.agreedBriefing ? 'true' : 'false');
+      // Single consolidated règlement
+      fd.append('agreedRules', form.agreedRules ? 'true' : 'false');
 
-      fd.append('cv', cvFile);
       fd.append('idDoc', idFile);
 
       const res = await fetch(`/api/volunteer/${slug}/register`, {
@@ -398,10 +499,13 @@ export default function VolunteerRegister() {
             <Heart className="text-[#C42826] flex-shrink-0 mt-0.5" size={22} />
             <div>
               <p className="font-semibold text-gray-900 mb-1">
-                Rejoignez l'équipe bénévole de {event?.name}
+                Rejoignez l'équipe des bénévoles de L'{event?.name}
+              </p>
+              <p className="text-sm text-gray-600 mb-2">
+                Remplissez le formulaire ci-dessous en joignant votre pièce d'identité.
               </p>
               <p className="text-sm text-gray-600">
-                Remplissez le formulaire ci-dessous avec votre CV et votre pièce d'identité. L'équipe vous contactera pour un entretien.
+                Si votre candidature est pré-sélectionnée, l'équipe d'organisation vous contactera pour un entretien.
               </p>
             </div>
           </div>
@@ -442,6 +546,25 @@ export default function VolunteerRegister() {
                     isClearable
                     filterOption={(opt, input) => opt.data.textLabel.toLowerCase().includes(input.toLowerCase())} />
                 </div>
+                <div>
+                  <label className={labelCls}>Wilaya</label>
+                  <Select styles={selectStyles} options={WILAYAS}
+                    value={WILAYAS.find((w) => w.value === form.wilaya) || null}
+                    onChange={(opt) => {
+                      update('wilaya', opt?.value || '');
+                      update('commune', ''); // reset commune when wilaya changes
+                    }}
+                    placeholder="Choisir" isClearable isSearchable />
+                </div>
+                <div>
+                  <label className={labelCls}>Commune</label>
+                  <Select styles={selectStyles}
+                    options={(COMMUNES_MAP[form.wilaya] || []).map((c) => ({ value: c, label: c }))}
+                    value={form.commune ? { value: form.commune, label: form.commune } : null}
+                    onChange={(opt) => update('commune', opt?.value || '')}
+                    placeholder={form.wilaya ? 'Choisir' : 'Choisir une wilaya d\'abord'}
+                    isClearable isSearchable isDisabled={!form.wilaya} />
+                </div>
               </div>
             </section>
 
@@ -474,11 +597,8 @@ export default function VolunteerRegister() {
 
             {/* Documents */}
             <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
-              <SectionHeader icon={FileText} title="Documents" />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FileInput id="vol-cv" label="CV" accept={ACCEPT} file={cvFile} onChange={setCv} error={fieldErrors.cv} required />
-                <FileInput id="vol-id" label="Pièce d'identité" accept={ACCEPT} file={idFile} onChange={setId} error={fieldErrors.id} required />
-              </div>
+              <SectionHeader icon={FileText} title="Document" />
+              <FileInput id="vol-id" label="Pièce d'identité" accept={ACCEPT} file={idFile} onChange={setId} error={fieldErrors.id} required />
             </section>
 
             {/* Availability & skills */}
@@ -489,7 +609,12 @@ export default function VolunteerRegister() {
                   <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[#C42826]"
                     checked={form.availableRaceDay} onChange={(e) => update('availableRaceDay', e.target.checked)} />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Disponible le jour de la course</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      Disponible le jour de la course
+                      {event?.date && (
+                        <span className="text-gray-500 font-normal"> (le {new Date(event.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })})</span>
+                      )}
+                    </p>
                     <p className="text-xs text-gray-500 mt-0.5">Je confirme être présent(e) pour l'événement</p>
                   </div>
                 </label>
@@ -498,7 +623,7 @@ export default function VolunteerRegister() {
                     checked={form.canArriveEarly} onChange={(e) => update('canArriveEarly', e.target.checked)} />
                   <div>
                     <p className="text-sm font-medium text-gray-900">Capable d'arriver tôt</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Le briefing matinal et l'installation démarrent avant l'aube</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Le briefing et l'installation démarrent tôt</p>
                   </div>
                 </label>
 
@@ -530,6 +655,32 @@ export default function VolunteerRegister() {
                     closeMenuOnSelect={false}
                     noOptionsMessage={() => 'Aucune langue'}
                   />
+                </div>
+
+                <div>
+                  <label className={labelCls}>Compétences utiles</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {SKILL_OPTIONS.map((skill) => {
+                      const checked = form.skills.includes(skill);
+                      return (
+                        <label key={skill} className="flex items-center gap-2 cursor-pointer rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2 hover:bg-gray-50">
+                          <input type="checkbox" className="h-4 w-4 accent-[#C42826]"
+                            checked={checked}
+                            onChange={(e) => {
+                              const next = e.target.checked
+                                ? [...form.skills, skill]
+                                : form.skills.filter((s) => s !== skill);
+                              update('skills', next);
+                            }} />
+                          <span className="text-sm text-gray-900">{skill}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <input type="text" className={`${inputCls} mt-2`}
+                    placeholder="Autres (merci de préciser)"
+                    value={form.otherSkills}
+                    onChange={(e) => update('otherSkills', e.target.value)} />
                 </div>
 
                 <div>
@@ -595,32 +746,34 @@ export default function VolunteerRegister() {
                 className={`${inputCls} resize-none`} />
             </section>
 
-            {/* Agreements */}
+            {/* Agreement */}
             <section className="bg-white rounded-2xl border-2 border-[#C42826]/30 shadow-sm p-6 md:p-8">
-              <SectionHeader icon={FileCheck} title="Engagements" />
-              <div className="space-y-3">
-                <label className="flex items-start gap-3 cursor-pointer rounded-lg p-3 hover:bg-gray-50">
-                  <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[#C42826]"
-                    checked={form.agreedInstructions}
-                    onChange={(e) => update('agreedInstructions', e.target.checked)} />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Je m'engage à suivre les instructions des responsables<span className="text-[#C42826] ms-0.5">*</span></p>
-                    <p className="text-xs text-gray-500 mt-0.5">Respect des consignes de sécurité et d'organisation tout au long de l'événement</p>
-                  </div>
-                </label>
-                <FieldError name="agreedInstructions" />
-
-                <label className="flex items-start gap-3 cursor-pointer rounded-lg p-3 hover:bg-gray-50">
-                  <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[#C42826]"
-                    checked={form.agreedBriefing}
-                    onChange={(e) => update('agreedBriefing', e.target.checked)} />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Je m'engage à assister au briefing bénévole<span className="text-[#C42826] ms-0.5">*</span></p>
-                    <p className="text-xs text-gray-500 mt-0.5">Présence obligatoire à la réunion d'information avant le jour de la course</p>
-                  </div>
-                </label>
-                <FieldError name="agreedBriefing" />
-              </div>
+              <SectionHeader icon={FileCheck} title="Engagement" />
+              <label className="flex items-start gap-3 cursor-pointer rounded-lg p-3 hover:bg-gray-50">
+                <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[#C42826]"
+                  checked={form.agreedRules}
+                  onChange={(e) => {
+                    if (e.target.checked && !form.agreedRules) {
+                      // Open the règlement modal — checkbox flips only on Accept inside the modal
+                      e.preventDefault();
+                      setRulesModalOpen(true);
+                    } else {
+                      update('agreedRules', e.target.checked);
+                    }
+                  }} />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    J'ai lu et j'accepte le règlement et les engagements du bénévole {event?.name}
+                    <span className="text-[#C42826] ms-0.5">*</span>
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    <button type="button" onClick={() => setRulesModalOpen(true)} className="text-[#C42826] hover:underline cursor-pointer">
+                      Lire le règlement
+                    </button>
+                  </p>
+                </div>
+              </label>
+              <FieldError name="agreedRules" />
             </section>
 
             {error && (
@@ -637,6 +790,13 @@ export default function VolunteerRegister() {
           </form>
         </div>
       </div>
+
+      <RulesModal
+        open={rulesModalOpen}
+        onClose={() => setRulesModalOpen(false)}
+        onAccept={() => update('agreedRules', true)}
+        eventName={event?.name}
+      />
     </PublicLayout>
   );
 }

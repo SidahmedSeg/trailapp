@@ -20,7 +20,7 @@ const { randomUUID } = require('crypto');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../middleware/activityLogger');
 const { AppError } = require('../utils/errors');
-const { sendVolunteerInterviewProposal, sendVolunteerValidated } = require('../services/sendgrid');
+const { sendVolunteerInterviewProposal, sendVolunteerValidated, sendVolunteerRejected } = require('../services/sendgrid');
 
 const VOLUNTEER_ROLES = ['super_admin', 'admin', 'volunteers_manager'];
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB per file
@@ -259,6 +259,59 @@ async function volunteerRoutes(fastify) {
     }
   );
 
+  // POST /api/admin/volunteers/:id/reject
+  // Marks the candidate as rejected and sends a rejection email.
+  fastify.post(
+    '/admin/volunteers/:id/reject',
+    { preHandler: [authenticate, authorize(...VOLUNTEER_ROLES)] },
+    async (request) => {
+      const row = await prisma.volunteer.findUnique({
+        where: { id: request.params.id },
+        include: { event: { select: { name: true } } },
+      });
+      if (!row) throw new AppError(404, 'Bénévole introuvable', 'NOT_FOUND');
+      if (row.status === 'validee') {
+        throw new AppError(409, 'Ce candidat est déjà validé, impossible de le rejeter', 'ALREADY_VALIDATED');
+      }
+      if (row.status === 'rejected') {
+        throw new AppError(409, 'Ce candidat est déjà rejeté', 'ALREADY_REJECTED');
+      }
+
+      await prisma.volunteer.update({
+        where: { id: row.id },
+        data: {
+          status: 'rejected',
+          rejectedAt: new Date(),
+          rejectedBy: request.user.username,
+        },
+      });
+
+      try {
+        await sendVolunteerRejected({
+          toEmail: row.email,
+          firstName: row.firstName,
+          eventName: row.event?.name || 'Événement',
+        });
+      } catch (err) {
+        request.log.error(err, 'Volunteer rejection email failed');
+        // Don't block status change if email fails — admin can manually contact the candidate
+      }
+
+      await logActivity({
+        action: 'volunteer_rejected',
+        adminUsername: request.user.username,
+        targetType: 'volunteer',
+        targetId: row.id,
+        details: {
+          eventId: row.eventId,
+          email: row.email,
+        },
+      });
+
+      return { rejected: true };
+    }
+  );
+
   // PUT /api/admin/volunteers/:id — admin notes only (light edit)
   fastify.put(
     '/admin/volunteers/:id',
@@ -377,15 +430,24 @@ async function volunteerRoutes(fastify) {
     if (!/^\S+@\S+\.\S+$/.test(fields.email)) {
       throw new AppError(400, 'Email invalide', 'VALIDATION_ERROR');
     }
-    if (!files.cv) throw new AppError(400, 'CV requis (PDF, JPG ou PNG)', 'CV_REQUIRED');
     if (!files.idDoc) throw new AppError(400, 'Pièce d\'identité requise (PDF, JPG ou PNG)', 'ID_REQUIRED');
 
-    // Required agreements — submitted as 'true' strings (FormData has no real booleans)
+    // Single consolidated règlement acknowledgment — submitted as 'true' string
+    // (FormData has no real booleans). Older accepted-engagements are kept on
+    // existing rows but the current form only requires this one.
     const asBool = (v) => v === true || v === 'true' || v === '1' || v === 'on';
-    const agreedInstructions = asBool(fields.agreedInstructions);
-    const agreedBriefing = asBool(fields.agreedBriefing);
-    if (!agreedInstructions || !agreedBriefing) {
-      throw new AppError(400, 'Vous devez accepter les deux engagements', 'AGREEMENTS_REQUIRED');
+    const agreedRules = asBool(fields.agreedRules);
+    if (!agreedRules) {
+      throw new AppError(400, 'Vous devez accepter le règlement et les engagements du bénévole', 'AGREEMENTS_REQUIRED');
+    }
+
+    // Parse skills JSON if present (frontend sends a JSON-encoded array)
+    let skills = null;
+    if (fields.skills) {
+      try {
+        const parsed = JSON.parse(fields.skills);
+        if (Array.isArray(parsed)) skills = parsed.filter((s) => typeof s === 'string').slice(0, 20);
+      } catch { /* ignore malformed input */ }
     }
 
     const emailLower = fields.email.toLowerCase().trim();
@@ -404,12 +466,9 @@ async function volunteerRoutes(fastify) {
     const dir = path.resolve(__dirname, `../../uploads/volunteers/${event.id}/${volunteerRowId}`);
     fs.mkdirSync(dir, { recursive: true });
 
-    const cvFilename = `cv${files.cv.ext}`;
     const idFilename = `id${files.idDoc.ext}`;
-    fs.writeFileSync(path.join(dir, cvFilename), files.cv.buffer);
     fs.writeFileSync(path.join(dir, idFilename), files.idDoc.buffer);
 
-    const cvPath = `/uploads/volunteers/${event.id}/${volunteerRowId}/${cvFilename}`;
     const idPath = `/uploads/volunteers/${event.id}/${volunteerRowId}/${idFilename}`;
 
     const volunteer = await prisma.volunteer.create({
@@ -423,6 +482,8 @@ async function volunteerRoutes(fastify) {
         birthDate: fields.birthDate ? new Date(fields.birthDate) : null,
         gender: fields.gender ? String(fields.gender) : null,
         nationality: fields.nationality ? String(fields.nationality) : null,
+        wilaya: fields.wilaya ? String(fields.wilaya).trim() : null,
+        commune: fields.commune ? String(fields.commune).trim() : null,
         motivation: fields.motivation ? String(fields.motivation) : null,
         // Availability & skills
         availableRaceDay: asBool(fields.availableRaceDay),
@@ -431,13 +492,13 @@ async function volunteerRoutes(fastify) {
         languagesSpoken: fields.languagesSpoken ? String(fields.languagesSpoken).trim() : null,
         canStandLongTime: asBool(fields.canStandLongTime),
         tshirtSize: fields.tshirtSize ? String(fields.tshirtSize) : null,
+        skills,
+        otherSkills: fields.otherSkills ? String(fields.otherSkills).trim() : null,
         // Emergency contact
         emergencyContactName: fields.emergencyContactName ? String(fields.emergencyContactName).trim() : null,
         emergencyContactPhone: fields.emergencyContactPhone ? String(fields.emergencyContactPhone).trim() : null,
-        // Agreements
-        agreedInstructions,
-        agreedBriefing,
-        cvPath,
+        // Agreements (single consolidated règlement)
+        agreedRules,
         idPath,
         status: 'en_attente',
       },

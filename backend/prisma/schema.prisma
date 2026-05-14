@@ -48,14 +48,14 @@ model Event {
 
   // Volunteer ("Bénévoles") module — when true, public can submit a volunteer
   // application via /benevoles/<eventSlug>. Independent of registrationOpen.
-  volunteersOpen        Boolean   @default(false)
+  volunteersOpen Boolean @default(false)
 
   // Bib config
-  bibStart           Int     @default(101)
-  bibEnd             Int     @default(1500)
-  bibManualUpperEnd  Int?    // optional ceiling for the upper manual band (bibEnd+1..bibManualUpperEnd)
-  bibPrefix          String?
-  bibRangeLocked     Boolean @default(false)
+  bibStart          Int     @default(101)
+  bibEnd            Int     @default(1500)
+  bibManualUpperEnd Int? // optional ceiling for the upper manual band (bibEnd+1..bibManualUpperEnd)
+  bibPrefix         String?
+  bibRangeLocked    Boolean @default(false)
 
   // Pricing
   priceInCentimes Int  @default(200000)
@@ -75,10 +75,10 @@ model Event {
   status String  @default("upcoming") // upcoming | active | archived
 
   // Relations
-  registrations          Registration[]
-  satimReconciliations   SatimReconciliation[]
-  lateRegistrationLinks  LateRegistrationLink[]
-  volunteers             Volunteer[]
+  registrations         Registration[]
+  satimReconciliations  SatimReconciliation[]
+  lateRegistrationLinks LateRegistrationLink[]
+  volunteers            Volunteer[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -147,8 +147,8 @@ model Registration {
   distributedBy String?
 
   // Event-day check-in (additional event after distribution; independent of `status`)
-  checkedInAt   DateTime?
-  checkedInBy   String?
+  checkedInAt DateTime?
+  checkedInBy String?
 
   // Source
   source    String  @default("public") // public | admin
@@ -285,11 +285,11 @@ model LateRegistrationLink {
   bibNumber Int
 
   // Token / outreach
-  token         String   @unique
-  expiresAt     DateTime
-  status        String   @default("pending") // pending | used | expired | cancelled
-  sentToEmail   String?
-  sentAt        DateTime?
+  token       String    @unique
+  expiresAt   DateTime
+  status      String    @default("pending") // pending | used | expired | cancelled
+  sentToEmail String?
+  sentAt      DateTime?
 
   // Linked when consumed (runner submits the form)
   registrationId String?       @unique
@@ -322,50 +322,66 @@ model Volunteer {
   lastName    String
   firstName   String
   email       String
-  phone       String  // E.164
+  phone       String // E.164
   birthDate   DateTime?
   gender      String?
   nationality String?
 
+  // Residence
+  wilaya  String?
+  commune String?
+
   // Free-text motivation / availability
-  motivation  String? @db.Text
+  motivation String? @db.Text
 
   // Availability & skills
-  availableRaceDay      Boolean  @default(false) // ok to work race day
-  canArriveEarly        Boolean  @default(false) // ok to arrive before main shift
-  previousExperience    String?  @db.Text         // describes past events (empty = none)
-  languagesSpoken       String?                   // free text, comma-separated
-  canStandLongTime      Boolean  @default(false) // can stand for long periods
-  tshirtSize            String?                   // S | M | L | XL | XXL
+  availableRaceDay   Boolean @default(false) // ok to work race day
+  canArriveEarly     Boolean @default(false) // ok to arrive before main shift (briefing + setup)
+  previousExperience String? @db.Text // describes past events (empty = none)
+  languagesSpoken    String? // free text, comma-separated
+  canStandLongTime   Boolean @default(false) // can stand for long periods
+  tshirtSize         String? // S | M | L | XL | XXL
+
+  // Skills — JSON array of checked skills (e.g. ["Communication","Secourisme"])
+  skills      Json?
+  otherSkills String?
 
   // Emergency contact
   emergencyContactName  String?
   emergencyContactPhone String?
 
   // Required agreements (validated at submit; stored for audit)
-  agreedInstructions    Boolean  @default(false)
-  agreedBriefing        Boolean  @default(false)
+  // Legacy two-box agreement (kept nullable for backwards compatibility with older
+  // candidates that submitted before the consolidated règlement was introduced).
+  agreedInstructions Boolean @default(false)
+  agreedBriefing     Boolean @default(false)
+  // Single consolidated règlement acknowledgment used by the current form.
+  agreedRules        Boolean @default(false)
 
   // Uploaded files (relative paths under /uploads/volunteers/<eventId>/<id>/)
-  cvPath      String?
-  idPath      String?
+  cvPath String?
+  idPath String?
 
   // Lifecycle
-  status      String   @default("en_attente") // en_attente | validee
+  status String @default("en_attente") // en_attente | interview_planned | validee | rejected
 
   // Interview workflow
-  interviewSlots   Json?     // Array of 3 datetime ISO strings proposed by admin
-  interviewSentAt  DateTime?
-  interviewSentTo  String?   // copy of email at time of send (audit)
+  interviewSlots  Json? // Array of datetime ISO strings proposed by admin
+  interviewSentAt DateTime?
+  interviewSentTo String? // copy of email at time of send (audit)
 
   // Validation
-  validatedAt   DateTime?
-  validatedBy   String?
+  validatedAt DateTime?
+  validatedBy String?
+
+  // Rejection
+  rejectedAt DateTime?
+  rejectedBy String?
 
   // Audit
-  notes      String?  @db.Text
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([eventId, volunteerId])
   @@unique([eventId, email])

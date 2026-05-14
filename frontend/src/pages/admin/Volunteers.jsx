@@ -7,7 +7,7 @@ import { useAuth } from '../../hooks/useAuth';
 import Sidebar from '../../components/ui/Sidebar';
 import {
   CalendarClock, CheckCircle, X, Clock, Search, FileText, IdCard,
-  Mail, Phone, AlertCircle, Power, ExternalLink, Copy, CalendarCheck,
+  Mail, Phone, AlertCircle, Power, ExternalLink, Copy, CalendarCheck, XCircle,
 } from 'lucide-react';
 
 const ALLOWED_ROLES = ['super_admin', 'admin', 'volunteers_manager'];
@@ -36,6 +36,7 @@ function StatusBadge({ status }) {
     en_attente:         { label: 'En attente',          cls: 'bg-amber-100 text-amber-700',   Icon: Clock },
     interview_planned:  { label: 'Entretien planifié',  cls: 'bg-blue-100 text-blue-700',     Icon: CalendarCheck },
     validee:            { label: 'Validée',             cls: 'bg-emerald-100 text-emerald-700', Icon: CheckCircle },
+    rejected:           { label: 'Rejetée',             cls: 'bg-red-100 text-red-700',       Icon: XCircle },
   };
   const def = map[status] || { label: status, cls: 'bg-gray-100 text-gray-700', Icon: Clock };
   const I = def.Icon;
@@ -69,6 +70,7 @@ export default function Volunteers() {
   const [detail, setDetail] = useState(null); // selected volunteer row
   const [interviewModal, setInterviewModal] = useState(null);
   const [validateModal, setValidateModal] = useState(null);
+  const [rejectModal, setRejectModal] = useState(null);
   const [togglingOpen, setTogglingOpen] = useState(false);
 
   useEffect(() => {
@@ -227,12 +229,14 @@ export default function Volunteers() {
               { value: 'en_attente', label: 'En attente' },
               { value: 'interview_planned', label: 'Entretien planifié' },
               { value: 'validee', label: 'Validés' },
+              { value: 'rejected', label: 'Rejetés' },
             ]}
             value={[
               { value: 'all', label: 'Tous les statuts' },
               { value: 'en_attente', label: 'En attente' },
               { value: 'interview_planned', label: 'Entretien planifié' },
               { value: 'validee', label: 'Validés' },
+              { value: 'rejected', label: 'Rejetés' },
             ].find((o) => o.value === statusFilter)}
             onChange={(opt) => setStatusFilter(opt?.value || 'all')}
             isSearchable={false}
@@ -305,6 +309,7 @@ export default function Volunteers() {
           onClose={() => setDetail(null)}
           onPlanInterview={() => setInterviewModal(detail)}
           onValidate={() => setValidateModal(detail)}
+          onReject={() => setRejectModal(detail)}
           onRefresh={async () => {
             await fetchRows();
             // Reload selected detail
@@ -345,6 +350,22 @@ export default function Volunteers() {
           onError={(m) => flash('error', m)}
         />
       )}
+
+      {/* Reject modal */}
+      {rejectModal && (
+        <RejectModal
+          volunteer={rejectModal}
+          onClose={() => setRejectModal(null)}
+          onDone={async () => {
+            setRejectModal(null);
+            flash('success', `Candidat rejeté — email envoyé à ${rejectModal.email}`);
+            await fetchRows();
+            const fresh = await get(`/admin/volunteers/${rejectModal.id}`).catch(() => null);
+            if (fresh && detail?.id === rejectModal.id) setDetail(fresh);
+          }}
+          onError={(m) => flash('error', m)}
+        />
+      )}
     </div>
   );
 }
@@ -352,7 +373,7 @@ export default function Volunteers() {
 // ────────────────────────────────────────────────────────────────────────────
 // Detail Drawer
 // ────────────────────────────────────────────────────────────────────────────
-function DetailDrawer({ volunteer, onClose, onPlanInterview, onValidate, onRefresh }) {
+function DetailDrawer({ volunteer, onClose, onPlanInterview, onValidate, onReject, onRefresh }) {
   const [notes, setNotes] = useState(volunteer.notes || '');
   const [savingNotes, setSavingNotes] = useState(false);
 
@@ -544,16 +565,22 @@ function DetailDrawer({ volunteer, onClose, onPlanInterview, onValidate, onRefre
 
           {/* Actions */}
           <div className="pt-4 border-t border-gray-100 flex flex-col gap-2">
-            {volunteer.status !== 'validee' && (
+            {volunteer.status !== 'validee' && volunteer.status !== 'rejected' && (
               <button onClick={onPlanInterview}
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-white border border-gray-200 text-gray-700 px-4 py-2.5 text-sm font-medium hover:bg-gray-50 cursor-pointer">
                 <CalendarClock size={16} /> Planifier un entretien
               </button>
             )}
-            {volunteer.status !== 'validee' && (
+            {volunteer.status !== 'validee' && volunteer.status !== 'rejected' && (
               <button onClick={onValidate}
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 text-white px-4 py-2.5 text-sm font-medium hover:bg-emerald-700 cursor-pointer">
                 <CheckCircle size={16} /> Valider le candidat
+              </button>
+            )}
+            {volunteer.status !== 'validee' && volunteer.status !== 'rejected' && (
+              <button onClick={onReject}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-white border border-red-200 text-red-700 px-4 py-2.5 text-sm font-medium hover:bg-red-50 cursor-pointer">
+                <XCircle size={16} /> Refuser la candidature
               </button>
             )}
             {volunteer.status === 'validee' && (
@@ -561,6 +588,12 @@ function DetailDrawer({ volunteer, onClose, onPlanInterview, onValidate, onRefre
                 <p className="font-medium mb-1">Candidat validé</p>
                 <p>ID envoyé : <span className="font-mono font-bold">{volunteer.volunteerId}</span></p>
                 <p className="mt-1 text-emerald-700">Validé le {formatDate(volunteer.validatedAt)} par {volunteer.validatedBy}</p>
+              </div>
+            )}
+            {volunteer.status === 'rejected' && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800">
+                <p className="font-medium mb-1">Candidature rejetée</p>
+                <p>Rejeté le {formatDate(volunteer.rejectedAt)} par {volunteer.rejectedBy}</p>
               </div>
             )}
           </div>
@@ -699,6 +732,64 @@ function ValidateModal({ volunteer, onClose, onDone, onError }) {
             className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-700 cursor-pointer disabled:opacity-60">
             <CheckCircle size={14} />
             {submitting ? 'Validation…' : 'Valider et envoyer'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Reject Modal — confirms rejection + triggers email
+// ────────────────────────────────────────────────────────────────────────────
+function RejectModal({ volunteer, onClose, onDone, onError }) {
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit() {
+    setSubmitting(true);
+    try {
+      await post(`/admin/volunteers/${volunteer.id}/reject`);
+      onDone();
+    } catch (err) {
+      onError(err.message);
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center px-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+            <XCircle size={20} className="text-red-600" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">Refuser la candidature</h3>
+        </div>
+
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 mb-4">
+          <p className="font-medium text-gray-900">{volunteer.firstName} {volunteer.lastName}</p>
+          <p className="text-xs text-gray-500 mt-0.5">{volunteer.email}</p>
+        </div>
+
+        <div className="space-y-1.5 text-xs text-gray-600 mb-4">
+          <p>• Le statut passera à <strong>Rejetée</strong>.</p>
+          <p>• Un email de refus sera envoyé au candidat.</p>
+          <p>• Cette action ne peut pas être annulée depuis l'interface.</p>
+        </div>
+
+        <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg p-3 mb-5">
+          Confirmer le refus déclenche immédiatement l'email au candidat.
+        </p>
+
+        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+          <button onClick={onClose} disabled={submitting}
+            className="rounded-lg bg-gray-100 text-gray-700 px-4 py-2 text-sm font-medium hover:bg-gray-200 cursor-pointer disabled:opacity-50">
+            Annuler
+          </button>
+          <button onClick={handleSubmit} disabled={submitting}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 text-white px-4 py-2 text-sm font-medium hover:bg-red-700 cursor-pointer disabled:opacity-60">
+            <XCircle size={14} />
+            {submitting ? 'Envoi…' : 'Refuser et envoyer'}
           </button>
         </div>
       </div>

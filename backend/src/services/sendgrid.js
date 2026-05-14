@@ -289,18 +289,21 @@ async function sendVolunteerInterviewProposal({ toEmail, firstName, eventName, s
  * unique volunteer ID.
  */
 async function sendVolunteerValidated({ toEmail, firstName, lastName, eventName, volunteerId }) {
+  const eventLabel = eventName || 'l\'événement';
   const subject = `Bienvenue dans l'équipe — ${eventName || 'Événement'}`;
-  const body = `<div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
-    <h2 style="color: #C42826; margin-bottom: 8px;">Vous êtes officiellement bénévole</h2>
-    <p style="color: #444;">Bonjour ${firstName || ''} ${lastName || ''},</p>
-    <p style="color: #444;">Votre candidature pour <strong>${eventName || 'l\'événement'}</strong> a été validée. Bienvenue dans l'équipe !</p>
+  const body = `<div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #444; line-height: 1.55;">
+    <p>Bonjour ${firstName || ''},</p>
+    <p>Nous avons le plaisir de vous confirmer que votre candidature a été retenue : vous faites désormais officiellement partie de l'équipe des bénévoles de <strong>${eventLabel}</strong>.</p>
+    <p>Bienvenue dans l'aventure.</p>
     <div style="text-align: center; margin: 28px 0;">
       <p style="color: #666; font-size: 13px; margin: 0 0 6px;">Votre identifiant bénévole</p>
       <p style="font-family: monospace; font-size: 28px; font-weight: bold; color: #C42826; margin: 0; letter-spacing: 2px;">${volunteerId}</p>
     </div>
-    <p style="color: #444;">Conservez cet identifiant — il vous sera demandé lors des briefings et le jour de l'événement.</p>
-    <p style="color: #444;">Pour toute question, répondez simplement à cet email.</p>
-    <p style="color: #999; font-size: 12px; margin-top: 24px;">À très bientôt,<br/>L'équipe LASSM</p>
+    <p>Merci de le conserver précieusement, il vous sera demandé lors des briefings ainsi que le jour de l'événement.</p>
+    <p>Toutes les informations relatives à l'organisation et aux prochaines étapes vous seront communiquées prochainement.</p>
+    <p>Pour toute question, vous pouvez simplement répondre à cet email.</p>
+    <p>À très bientôt,</p>
+    <p>L'équipe ${eventLabel}</p>
   </div>`;
 
   const msg = {
@@ -324,6 +327,43 @@ async function sendVolunteerValidated({ toEmail, firstName, lastName, eventName,
   }
 }
 
+/**
+ * Volunteer rejection — sent when admin declines the candidate.
+ */
+async function sendVolunteerRejected({ toEmail, firstName, eventName }) {
+  const eventLabel = eventName || 'l\'événement';
+  const subject = `Candidature bénévole — ${eventName || 'Événement'}`;
+  const body = `<div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #444; line-height: 1.55;">
+    <p>Bonjour ${firstName || ''},</p>
+    <p>Merci pour l'intérêt porté à <strong>${eventLabel}</strong> ainsi que pour le temps consacré à votre candidature.</p>
+    <p>Après étude de votre profil, nous ne sommes malheureusement pas en mesure de donner une suite favorable à votre demande pour cette édition.</p>
+    <p>Ce choix ne remet pas en cause votre motivation ou votre intérêt pour l'événement, mais résulte principalement des besoins actuels de l'organisation et du nombre limité de places disponibles au sein de l'équipe bénévole.</p>
+    <p>Nous vous remercions sincèrement pour votre démarche et espérons avoir l'occasion de vous compter parmi nous lors d'une prochaine édition ou sur de futurs projets.</p>
+    <p>Nous vous souhaitons une excellente continuation.</p>
+    <p>L'équipe ${eventLabel}</p>
+  </div>`;
+
+  const msg = {
+    to: toEmail,
+    from: { email: env.SENDGRID_FROM_EMAIL, name: env.SENDGRID_FROM_NAME },
+    replyTo: { email: 'staff@lassm.dz', name: 'Staff LASSM' },
+    subject,
+    html: body,
+    trackingSettings: {
+      clickTracking: { enable: false, enableText: false },
+      openTracking: { enable: false },
+    },
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log(`Volunteer rejection sent to ${toEmail}`);
+  } catch (err) {
+    console.error('SendGrid error (volunteer rejected):', err.response?.body?.errors || err.message);
+    throw new Error('Erreur lors de l\'envoi de l\'email');
+  }
+}
+
 module.exports = {
   sendConfirmationEmail,
   sendInvitationEmail,
@@ -332,4 +372,5 @@ module.exports = {
   sendLateRegistrationInvitation,
   sendVolunteerInterviewProposal,
   sendVolunteerValidated,
+  sendVolunteerRejected,
 };
