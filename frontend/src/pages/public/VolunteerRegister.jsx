@@ -398,10 +398,13 @@ export default function VolunteerRegister() {
             <Heart className="text-[#C42826] flex-shrink-0 mt-0.5" size={22} />
             <div>
               <p className="font-semibold text-gray-900 mb-1">
-                Rejoignez l'équipe bénévole de {event?.name}
+                Rejoignez l'équipe des bénévoles de L'{event?.name}
+              </p>
+              <p className="text-sm text-gray-600 mb-2">
+                Remplissez le formulaire ci-dessous en joignant votre CV et votre pièce d'identité.
               </p>
               <p className="text-sm text-gray-600">
-                Remplissez le formulaire ci-dessous avec votre CV et votre pièce d'identité. L'équipe vous contactera pour un entretien.
+                Si votre candidature est pré-sélectionnée, l'équipe d'organisation vous contactera pour un entretien.
               </p>
             </div>
           </div>
