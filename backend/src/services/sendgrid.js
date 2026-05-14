@@ -249,16 +249,18 @@ async function sendVolunteerInterviewProposal({ toEmail, firstName, eventName, s
     .map((s) => `<li style="margin-bottom: 6px;">${fmt(s)}</li>`)
     .join('');
 
-  const subject = `Entretien candidat bénévole — ${eventName || 'Événement'}`;
-  const body = `<div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
-    <h2 style="color: #C42826; margin-bottom: 8px;">Entretien bénévole</h2>
-    <p style="color: #444;">Bonjour ${firstName || ''},</p>
-    <p style="color: #444;">Merci pour votre candidature au sein de l'équipe bénévole de <strong>${eventName || 'l\'événement'}</strong>.</p>
-    <p style="color: #444;">Nous vous proposons les créneaux suivants pour un entretien :</p>
-    <ul style="color: #444; padding-left: 24px;">${slotItems}</ul>
-    ${adminNote ? `<p style="color: #444; background: #fff7ed; border-left: 3px solid #f59e0b; padding: 10px 14px;">${adminNote}</p>` : ''}
-    <p style="color: #444;">Merci de répondre à cet email pour confirmer le créneau qui vous convient.</p>
-    <p style="color: #999; font-size: 12px; margin-top: 24px;">À très bientôt,<br/>L'équipe LASSM</p>
+  const eventLabel = eventName || 'l\'événement';
+  const subject = `Entretien bénévole — ${eventName || 'Événement'}`;
+  const body = `<div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #444; line-height: 1.55;">
+    <p>Bonjour ${firstName || ''},</p>
+    <p>Merci pour votre candidature pour rejoindre l'équipe des bénévoles de <strong>${eventLabel}</strong>.</p>
+    <p>Nous avons bien étudié votre profil et serions ravis d'échanger avec vous lors d'un court entretien afin de mieux faire connaissance et de vous présenter l'aventure bénévole.</p>
+    <p>Nous vous proposons les créneaux suivants :</p>
+    <ul style="padding-left: 24px;">${slotItems}</ul>
+    ${adminNote ? `<p style="background: #fff7ed; border-left: 3px solid #f59e0b; padding: 10px 14px;">${adminNote}</p>` : ''}
+    <p>Il vous suffit de répondre à cet email en indiquant le créneau qui vous convient le mieux.</p>
+    <p>Au plaisir d'échanger prochainement avec vous.</p>
+    <p>L'équipe ${eventLabel}</p>
   </div>`;
 
   const msg = {
