@@ -5,7 +5,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "cd frontend && npm ci && npm run build && cd ../backend && npm ci && npx prisma generate && npx prisma migrate deploy",
-    "start": "cd backend && node src/server.js"
+    "build": "cd frontend && npm ci && npm run build && cd ../backend && npm ci && npx prisma generate",
+    "start": "cd backend && npx prisma migrate deploy && node src/server.js"
   }
 }
