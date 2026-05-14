@@ -288,6 +288,7 @@ export default function VolunteerRegister() {
     previousExperience: '',
     languagesSpoken: [], // array of language values (joined to comma-separated string on submit)
     skills: [], // array of selected skill labels
+    otherSkillsChecked: false,
     otherSkills: '',
     canStandLongTime: '', // tri-state: '' / 'yes' / 'no' (required)
     tshirtSize: '',
@@ -376,6 +377,11 @@ export default function VolunteerRegister() {
       errs.emergencyContactPhoneNumber = 'Numéro invalide';
     }
 
+    // If "Autres" skills checkbox is on, text is required
+    if (form.otherSkillsChecked && !form.otherSkills.trim()) {
+      errs.otherSkills = 'Merci de préciser';
+    }
+
     // Single consolidated règlement (required)
     if (!form.agreedRules) errs.agreedRules = 'Acceptation requise';
 
@@ -417,7 +423,9 @@ export default function VolunteerRegister() {
       if (Array.isArray(form.skills) && form.skills.length > 0) {
         fd.append('skills', JSON.stringify(form.skills));
       }
-      if (form.otherSkills) fd.append('otherSkills', form.otherSkills);
+      if (form.otherSkillsChecked && form.otherSkills.trim()) {
+        fd.append('otherSkills', form.otherSkills.trim());
+      }
       fd.append('canStandLongTime', form.canStandLongTime === 'yes' ? 'true' : 'false');
       if (form.tshirtSize) fd.append('tshirtSize', form.tshirtSize);
 
@@ -676,11 +684,23 @@ export default function VolunteerRegister() {
                         </label>
                       );
                     })}
+                    <label className="flex items-center gap-2 cursor-pointer rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2 hover:bg-gray-50">
+                      <input type="checkbox" className="h-4 w-4 accent-[#C42826]"
+                        checked={form.otherSkillsChecked}
+                        onChange={(e) => {
+                          update('otherSkillsChecked', e.target.checked);
+                          if (!e.target.checked) update('otherSkills', '');
+                        }} />
+                      <span className="text-sm text-gray-900">Autres</span>
+                    </label>
                   </div>
-                  <input type="text" className={`${inputCls} mt-2`}
-                    placeholder="Autres (merci de préciser)"
-                    value={form.otherSkills}
-                    onChange={(e) => update('otherSkills', e.target.value)} />
+                  {form.otherSkillsChecked && (
+                    <input type="text" className={`${fieldErrors.otherSkills ? inputErrCls : inputCls} mt-2`}
+                      placeholder="Merci de préciser"
+                      value={form.otherSkills}
+                      onChange={(e) => update('otherSkills', e.target.value)} />
+                  )}
+                  <FieldError name="otherSkills" />
                 </div>
 
                 <div>
