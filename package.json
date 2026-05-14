@@ -1,0 +1,8 @@
+{
+  "name": "trailapp",
+  "private": true,
+  "scripts": {
+    "build:railway": "cd frontend && npm ci && npm run build && cd ../backend && npm ci && npx prisma generate && npx prisma migrate deploy",
+    "start:railway": "cd backend && node src/server.js"
+  }
+}
