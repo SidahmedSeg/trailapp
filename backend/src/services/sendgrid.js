@@ -289,18 +289,21 @@ async function sendVolunteerInterviewProposal({ toEmail, firstName, eventName, s
  * unique volunteer ID.
  */
 async function sendVolunteerValidated({ toEmail, firstName, lastName, eventName, volunteerId }) {
+  const eventLabel = eventName || 'l\'événement';
   const subject = `Bienvenue dans l'équipe — ${eventName || 'Événement'}`;
-  const body = `<div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
-    <h2 style="color: #C42826; margin-bottom: 8px;">Vous êtes officiellement bénévole</h2>
-    <p style="color: #444;">Bonjour ${firstName || ''} ${lastName || ''},</p>
-    <p style="color: #444;">Votre candidature pour <strong>${eventName || 'l\'événement'}</strong> a été validée. Bienvenue dans l'équipe !</p>
+  const body = `<div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #444; line-height: 1.55;">
+    <p>Bonjour ${firstName || ''},</p>
+    <p>Nous avons le plaisir de vous confirmer que votre candidature a été retenue : vous faites désormais officiellement partie de l'équipe des bénévoles de <strong>${eventLabel}</strong>.</p>
+    <p>Bienvenue dans l'aventure.</p>
     <div style="text-align: center; margin: 28px 0;">
       <p style="color: #666; font-size: 13px; margin: 0 0 6px;">Votre identifiant bénévole</p>
       <p style="font-family: monospace; font-size: 28px; font-weight: bold; color: #C42826; margin: 0; letter-spacing: 2px;">${volunteerId}</p>
     </div>
-    <p style="color: #444;">Conservez cet identifiant — il vous sera demandé lors des briefings et le jour de l'événement.</p>
-    <p style="color: #444;">Pour toute question, répondez simplement à cet email.</p>
-    <p style="color: #999; font-size: 12px; margin-top: 24px;">À très bientôt,<br/>L'équipe LASSM</p>
+    <p>Merci de le conserver précieusement, il vous sera demandé lors des briefings ainsi que le jour de l'événement.</p>
+    <p>Toutes les informations relatives à l'organisation et aux prochaines étapes vous seront communiquées prochainement.</p>
+    <p>Pour toute question, vous pouvez simplement répondre à cet email.</p>
+    <p>À très bientôt,</p>
+    <p>L'équipe ${eventLabel}</p>
   </div>`;
 
   const msg = {
