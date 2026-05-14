@@ -327,6 +327,43 @@ async function sendVolunteerValidated({ toEmail, firstName, lastName, eventName,
   }
 }
 
+/**
+ * Volunteer rejection — sent when admin declines the candidate.
+ */
+async function sendVolunteerRejected({ toEmail, firstName, eventName }) {
+  const eventLabel = eventName || 'l\'événement';
+  const subject = `Candidature bénévole — ${eventName || 'Événement'}`;
+  const body = `<div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #444; line-height: 1.55;">
+    <p>Bonjour ${firstName || ''},</p>
+    <p>Merci pour l'intérêt porté à <strong>${eventLabel}</strong> ainsi que pour le temps consacré à votre candidature.</p>
+    <p>Après étude de votre profil, nous ne sommes malheureusement pas en mesure de donner une suite favorable à votre demande pour cette édition.</p>
+    <p>Ce choix ne remet pas en cause votre motivation ou votre intérêt pour l'événement, mais résulte principalement des besoins actuels de l'organisation et du nombre limité de places disponibles au sein de l'équipe bénévole.</p>
+    <p>Nous vous remercions sincèrement pour votre démarche et espérons avoir l'occasion de vous compter parmi nous lors d'une prochaine édition ou sur de futurs projets.</p>
+    <p>Nous vous souhaitons une excellente continuation.</p>
+    <p>L'équipe ${eventLabel}</p>
+  </div>`;
+
+  const msg = {
+    to: toEmail,
+    from: { email: env.SENDGRID_FROM_EMAIL, name: env.SENDGRID_FROM_NAME },
+    replyTo: { email: 'staff@lassm.dz', name: 'Staff LASSM' },
+    subject,
+    html: body,
+    trackingSettings: {
+      clickTracking: { enable: false, enableText: false },
+      openTracking: { enable: false },
+    },
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log(`Volunteer rejection sent to ${toEmail}`);
+  } catch (err) {
+    console.error('SendGrid error (volunteer rejected):', err.response?.body?.errors || err.message);
+    throw new Error('Erreur lors de l\'envoi de l\'email');
+  }
+}
+
 module.exports = {
   sendConfirmationEmail,
   sendInvitationEmail,
@@ -335,4 +372,5 @@ module.exports = {
   sendLateRegistrationInvitation,
   sendVolunteerInterviewProposal,
   sendVolunteerValidated,
+  sendVolunteerRejected,
 };
