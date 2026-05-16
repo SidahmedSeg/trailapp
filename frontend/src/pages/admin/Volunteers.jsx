@@ -8,7 +8,7 @@ import Sidebar from '../../components/ui/Sidebar';
 import {
   CalendarClock, CheckCircle, X, Clock, Search, FileText, IdCard,
   Mail, Phone, AlertCircle, Power, ExternalLink, Copy, CalendarCheck, XCircle,
-  Camera, StopCircle, UserPlus, ScanLine,
+  Camera, StopCircle, UserPlus, ScanLine, ChevronRight,
 } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
@@ -1050,7 +1050,9 @@ function AssignModal({ count, volunteerIds, onClose, onDone, onError }) {
 function CheckInScanModal({ onClose, onDone, onError }) {
   const [scannerActive, setScannerActive] = useState(false);
   const [scannerError, setScannerError] = useState('');
-  const [result, setResult] = useState(null);
+  const [preview, setPreview] = useState(null);     // dryRun volunteer awaiting slide-to-confirm
+  const [confirmed, setConfirmed] = useState(null); // post-commit result
+  const [committing, setCommitting] = useState(false);
   const scannerRef = useRef(null);
 
   useEffect(() => {
@@ -1064,14 +1066,18 @@ function CheckInScanModal({ onClose, onDone, onError }) {
     scannerRef.current = scanner;
 
     const onScanSuccess = async (decodedText) => {
-      // Extract qrToken — may be a full URL or the bare token
+      // Extract qrToken — handle proper URLs, malformed (scheme-less) URLs, or bare UUIDs
       let qrToken = decodedText;
       try {
         const url = new URL(decodedText);
         const parts = url.pathname.split('/').filter(Boolean);
         const i = parts.indexOf('card');
         if (i !== -1 && parts[i + 1]) qrToken = parts[i + 1];
-      } catch { /* keep as-is */ }
+      } catch {
+        // URL parsing failed — try to pull a UUID out of the raw text
+        const uuidMatch = decodedText.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+        if (uuidMatch) qrToken = uuidMatch[0];
+      }
 
       // Stop scanner immediately after capture
       try { await scanner.clear(); } catch { /* ignore */ }
@@ -1079,8 +1085,13 @@ function CheckInScanModal({ onClose, onDone, onError }) {
       scannerRef.current = null;
 
       try {
-        const res = await post('/admin/volunteers/scan-check-in', { qrToken });
-        setResult(res);
+        const res = await post('/admin/volunteers/scan-check-in', { qrToken, dryRun: true });
+        if (res.alreadyCheckedIn) {
+          // No need for slide-to-confirm; show the info directly
+          setConfirmed(res);
+        } else {
+          setPreview({ qrToken, volunteer: res.volunteer });
+        }
       } catch (err) {
         onError(err.message);
         setScannerError(err.message);
@@ -1098,7 +1109,8 @@ function CheckInScanModal({ onClose, onDone, onError }) {
 
   function startScanner() {
     setScannerError('');
-    setResult(null);
+    setPreview(null);
+    setConfirmed(null);
     setScannerActive(true);
   }
 
@@ -1110,9 +1122,31 @@ function CheckInScanModal({ onClose, onDone, onError }) {
     setScannerActive(false);
   }
 
+  async function commitCheckIn() {
+    if (!preview || committing) return;
+    setCommitting(true);
+    try {
+      const res = await post('/admin/volunteers/scan-check-in', { qrToken: preview.qrToken });
+      setConfirmed(res);
+      setPreview(null);
+    } catch (err) {
+      onError(err.message);
+      setScannerError(err.message);
+      setPreview(null);
+    } finally {
+      setCommitting(false);
+    }
+  }
+
   function finishAndClose() {
-    if (result) onDone(result);
+    if (confirmed) onDone(confirmed);
     onClose();
+  }
+
+  function scanAnother() {
+    setConfirmed(null);
+    setPreview(null);
+    startScanner();
   }
 
   return (
@@ -1127,7 +1161,7 @@ function CheckInScanModal({ onClose, onDone, onError }) {
           </button>
         </div>
 
-        {!scannerActive && !result && (
+        {!scannerActive && !preview && !confirmed && (
           <button onClick={startScanner}
             className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#C42826] text-white px-4 py-3 text-sm font-medium hover:bg-[#a82220] cursor-pointer">
             <Camera size={16} /> Démarrer le scanner
@@ -1144,29 +1178,56 @@ function CheckInScanModal({ onClose, onDone, onError }) {
           </>
         )}
 
-        {scannerError && !scannerActive && !result && (
+        {scannerError && !scannerActive && !preview && !confirmed && (
           <div className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">{scannerError}</div>
         )}
 
-        {result && (
+        {/* Preview — volunteer info + slide-to-confirm */}
+        {preview && !confirmed && (
+          <div className="space-y-4">
+            <div className="rounded-lg bg-gray-50 border border-gray-200 p-4">
+              <p className="text-[10px] tracking-[0.15em] font-bold text-gray-500">BÉNÉVOLE</p>
+              <p className="font-semibold text-gray-900 mt-1">
+                {preview.volunteer.firstName} {preview.volunteer.lastName}
+              </p>
+              {preview.volunteer.volunteerId && (
+                <p className="font-mono text-sm text-[#C42826] font-bold mt-1">{preview.volunteer.volunteerId}</p>
+              )}
+            </div>
+            <SlideToConfirm
+              label="Glisser pour confirmer le check-in"
+              committingLabel="Check-in en cours…"
+              confirmedLabel="Check-in enregistré !"
+              committing={committing}
+              onConfirm={commitCheckIn}
+            />
+            <button onClick={scanAnother}
+              className="w-full rounded-lg bg-gray-100 text-gray-700 px-4 py-2 text-sm font-medium hover:bg-gray-200 cursor-pointer">
+              Annuler / Scanner un autre
+            </button>
+          </div>
+        )}
+
+        {/* Final confirmation — after slide commit OR alreadyCheckedIn */}
+        {confirmed && (
           <div className="space-y-3">
             <div className={`rounded-lg px-4 py-3 text-sm border ${
-              result.alreadyCheckedIn
+              confirmed.alreadyCheckedIn
                 ? 'bg-amber-50 border-amber-200 text-amber-800'
                 : 'bg-emerald-50 border-emerald-200 text-emerald-800'
             }`}>
               <p className="font-semibold">
-                {result.volunteer.firstName} {result.volunteer.lastName}
-                {result.volunteer.volunteerId && <span className="ml-2 font-mono text-xs opacity-70">{result.volunteer.volunteerId}</span>}
+                {confirmed.volunteer.firstName} {confirmed.volunteer.lastName}
+                {confirmed.volunteer.volunteerId && <span className="ml-2 font-mono text-xs opacity-70">{confirmed.volunteer.volunteerId}</span>}
               </p>
               <p className="mt-1 text-xs">
-                {result.alreadyCheckedIn
-                  ? `Déjà enregistré le ${new Date(result.volunteer.checkedInAt).toLocaleString('fr-FR')} par ${result.volunteer.checkedInBy}`
+                {confirmed.alreadyCheckedIn
+                  ? `Déjà enregistré le ${new Date(confirmed.volunteer.checkedInAt).toLocaleString('fr-FR')} par ${confirmed.volunteer.checkedInBy}`
                   : 'Check-in enregistré.'}
               </p>
             </div>
             <div className="flex justify-end gap-2">
-              <button onClick={() => { setResult(null); startScanner(); }}
+              <button onClick={scanAnother}
                 className="rounded-lg bg-gray-100 text-gray-700 px-4 py-2 text-sm font-medium hover:bg-gray-200 cursor-pointer">
                 Scanner un autre
               </button>
@@ -1177,6 +1238,94 @@ function CheckInScanModal({ onClose, onDone, onError }) {
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Slide-to-Confirm — drag the thumb ~90% of the track to fire onConfirm
+// Mirrors the SlideToDistribute pattern used in the runner ScannerView.
+// ────────────────────────────────────────────────────────────────────────────
+function SlideToConfirm({ label, committingLabel, confirmedLabel, committing, onConfirm }) {
+  const trackRef = useRef(null);
+  const [dragging, setDragging] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const [confirmed, setConfirmed] = useState(false);
+  const thumbWidth = 48;
+
+  const getMaxOffset = useCallback(() => {
+    if (!trackRef.current) return 200;
+    return trackRef.current.offsetWidth - thumbWidth - 8;
+  }, []);
+
+  const handleMove = useCallback((clientX) => {
+    if (!dragging || confirmed || !trackRef.current) return;
+    const rect = trackRef.current.getBoundingClientRect();
+    const newOffset = Math.max(0, Math.min(clientX - rect.left - thumbWidth / 2 - 4, getMaxOffset()));
+    setOffset(newOffset);
+  }, [dragging, confirmed, getMaxOffset]);
+
+  const handleEnd = useCallback(() => {
+    if (!dragging) return;
+    setDragging(false);
+    const max = getMaxOffset();
+    if (offset >= max * 0.9) {
+      setOffset(max);
+      setConfirmed(true);
+      onConfirm();
+    } else {
+      setOffset(0);
+    }
+  }, [dragging, offset, getMaxOffset, onConfirm]);
+
+  useEffect(() => {
+    if (!dragging) return;
+    const onMouseMove = (e) => handleMove(e.clientX);
+    const onTouchMove = (e) => handleMove(e.touches[0].clientX);
+    const onEnd = () => handleEnd();
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onEnd);
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchend', onEnd);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onEnd);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onEnd);
+    };
+  }, [dragging, handleMove, handleEnd]);
+
+  const max = getMaxOffset();
+  const progress = max > 0 ? offset / max : 0;
+
+  if (committing || confirmed) {
+    return (
+      <div className="h-14 rounded-xl bg-emerald-500 flex items-center justify-center">
+        <span className="text-sm font-medium text-white">{committing ? committingLabel : confirmedLabel}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={trackRef}
+      className="relative h-14 rounded-xl select-none overflow-hidden bg-gray-100 transition-colors"
+    >
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <span className="text-sm font-medium text-gray-400 transition-opacity"
+          style={{ opacity: Math.max(0, 1 - progress * 2) }}>
+          {label}
+        </span>
+      </div>
+      <div
+        className="absolute top-1 left-1 w-12 h-12 rounded-lg bg-emerald-500 flex items-center justify-center cursor-grab active:cursor-grabbing shadow-lg"
+        style={{ transform: `translateX(${offset}px)` }}
+        onMouseDown={(e) => { e.preventDefault(); setDragging(true); }}
+        onTouchStart={() => setDragging(true)}
+      >
+        <ChevronRight size={20} className="text-white" />
+        <ChevronRight size={20} className="text-white -ml-3" />
       </div>
     </div>
   );
