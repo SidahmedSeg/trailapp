@@ -44,7 +44,7 @@ export default function Login() {
       const result = await verifyOtp(userId, fullCode);
       const role = result?.role;
       const landing = role === 'scanner' ? '/admin/scan'
-        : role === 'volunteers_manager' ? '/admin/volunteers'
+        : role === 'admin_volunteers' || role === 'team_leader_volunteers' ? '/admin/volunteers'
         : '/admin';
       navigate(landing, { replace: true });
     } catch (err) {

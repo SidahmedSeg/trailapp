@@ -54,7 +54,7 @@ function AdminRoute({ children }) {
   const location = useLocation();
   if (!token) return <Navigate to="/admin/login" replace />;
   const role = decodeRole(token);
-  if (role === 'volunteers_manager' && location.pathname !== '/admin/volunteers') {
+  if ((role === 'admin_volunteers' || role === 'team_leader_volunteers') && location.pathname !== '/admin/volunteers') {
     return <Navigate to="/admin/volunteers" replace />;
   }
   return <EventProvider>{children}</EventProvider>;

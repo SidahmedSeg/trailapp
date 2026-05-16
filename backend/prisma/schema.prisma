@@ -187,7 +187,7 @@ model AdminUser {
   username        String    @unique
   email           String    @unique
   passwordHash    String?
-  role            String    @default("admin") // super_admin | admin | scanner
+  role            String    @default("admin") // super_admin | admin | scanner | reconciliation_specialist | admin_volunteers | team_leader_volunteers
   active          Boolean   @default(true)
   inviteToken     String?   @unique
   inviteExpiresAt DateTime?
@@ -196,6 +196,9 @@ model AdminUser {
   otpExpiresAt    DateTime?
   otpAttempts     Int       @default(0)
   createdAt       DateTime  @default(now())
+
+  // Back-ref: volunteers assigned to this admin (only meaningful for team_leader_volunteers)
+  assignedVolunteers Volunteer[] @relation("VolunteerAssignedTo")
 }
 
 model ScannerSession {
@@ -382,6 +385,16 @@ model Volunteer {
   rejectedAt DateTime?
   rejectedBy String?
 
+  // Assignment to a team leader (set by Admin Bénévoles on validated volunteers)
+  assignedToId String?
+  assignedTo   AdminUser? @relation("VolunteerAssignedTo", fields: [assignedToId], references: [id])
+  assignedAt   DateTime?
+  assignedBy   String?
+
+  // Race-day check-in (via QR scan)
+  checkedInAt DateTime?
+  checkedInBy String?
+
   // Audit
   notes     String?  @db.Text
   createdAt DateTime @default(now())
@@ -390,4 +403,5 @@ model Volunteer {
   @@unique([eventId, volunteerId])
   @@unique([eventId, email])
   @@index([eventId, status])
+  @@index([assignedToId])
 }
