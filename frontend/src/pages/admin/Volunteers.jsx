@@ -501,7 +501,14 @@ function DetailDrawer({ volunteer, onClose, onPlanInterview, onValidate, onRejec
             <div>
               <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Contact d'urgence</h4>
               <div className="text-sm text-gray-700 space-y-0.5">
-                {volunteer.emergencyContactName && <p>{volunteer.emergencyContactName}</p>}
+                {volunteer.emergencyContactName && (
+                  <p>
+                    {volunteer.emergencyContactName}
+                    {volunteer.emergencyContactRelationship && (
+                      <span className="text-gray-500"> — {volunteer.emergencyContactRelationship}</span>
+                    )}
+                  </p>
+                )}
                 {volunteer.emergencyContactPhone && <p className="text-gray-600 font-mono text-xs">{volunteer.emergencyContactPhone}</p>}
               </div>
             </div>
