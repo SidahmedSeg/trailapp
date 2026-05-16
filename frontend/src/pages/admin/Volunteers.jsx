@@ -78,6 +78,8 @@ export default function Volunteers() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [checkInModalOpen, setCheckInModalOpen] = useState(false);
+  const [teamLeaderFilter, setTeamLeaderFilter] = useState('all'); // 'all' | 'none' | <userId>
+  const [teamLeaders, setTeamLeaders] = useState([]);
 
   const isTLB = user?.role === 'team_leader_volunteers';
   const isAB = AB_ROLES.includes(user?.role);
@@ -87,6 +89,14 @@ export default function Volunteers() {
     return () => clearTimeout(id);
   }, [search]);
 
+  // Load team leaders once for the filter + assign modal (AB only)
+  useEffect(() => {
+    if (!isAB) return;
+    get('/admin/volunteers/team-leaders')
+      .then((res) => setTeamLeaders(res || []))
+      .catch(() => { /* ignore — dropdown stays empty */ });
+  }, [isAB]);
+
   const fetchRows = useCallback(async () => {
     // AB roles require a selected event; TLBs are scoped server-side
     if (!isTLB && !selectedEventId) return;
@@ -95,6 +105,9 @@ export default function Volunteers() {
       const params = new URLSearchParams();
       if (selectedEventId) params.set('eventId', selectedEventId);
       if (!isTLB && statusFilter !== 'all') params.set('status', statusFilter);
+      if (!isTLB && statusFilter === 'validee' && teamLeaderFilter !== 'all') {
+        params.set('assignedTo', teamLeaderFilter);
+      }
       if (debouncedSearch) params.set('search', debouncedSearch);
       const data = await get(`/admin/volunteers?${params}`);
       setRows(data || []);
@@ -104,7 +117,7 @@ export default function Volunteers() {
     } finally {
       setLoading(false);
     }
-  }, [selectedEventId, statusFilter, debouncedSearch, isTLB]);
+  }, [selectedEventId, statusFilter, teamLeaderFilter, debouncedSearch, isTLB]);
 
   useEffect(() => { fetchRows(); }, [fetchRows]);
 
@@ -262,12 +275,34 @@ export default function Volunteers() {
                 { value: 'validee', label: 'Validés' },
                 { value: 'rejected', label: 'Rejetés' },
               ].find((o) => o.value === statusFilter)}
-              onChange={(opt) => setStatusFilter(opt?.value || 'all')}
+              onChange={(opt) => {
+                const next = opt?.value || 'all';
+                setStatusFilter(next);
+                // Reset TL filter when leaving the Validés tab (it only applies there)
+                if (next !== 'validee') setTeamLeaderFilter('all');
+              }}
               isSearchable={false}
             />
           )}
-          {(search || (!isTLB && statusFilter !== 'all')) && (
-            <button onClick={() => { setSearch(''); setStatusFilter('all'); }}
+          {isAB && statusFilter === 'validee' && (() => {
+            const tlOptions = [
+              { value: 'all', label: 'Tous les Team Leaders' },
+              { value: 'none', label: 'Non assigné' },
+              ...teamLeaders.map((u) => ({ value: u.id, label: u.username })),
+            ];
+            return (
+              <Select
+                styles={selectStyles}
+                options={tlOptions}
+                value={tlOptions.find((o) => o.value === teamLeaderFilter)}
+                onChange={(opt) => setTeamLeaderFilter(opt?.value || 'all')}
+                isSearchable={teamLeaders.length > 8}
+                placeholder="Team Leader…"
+              />
+            );
+          })()}
+          {(search || (!isTLB && statusFilter !== 'all') || (isAB && teamLeaderFilter !== 'all')) && (
+            <button onClick={() => { setSearch(''); setStatusFilter('all'); setTeamLeaderFilter('all'); }}
               className="text-xs text-gray-500 hover:text-[#C42826] cursor-pointer flex items-center gap-1">
               <X size={12} /> Réinitialiser
             </button>
