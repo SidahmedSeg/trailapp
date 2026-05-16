@@ -25,6 +25,7 @@ import ReconciliationRecap from './pages/public/ReconciliationRecap';
 import LateRegister from './pages/public/LateRegister';
 import LateRecap from './pages/public/LateRecap';
 import VolunteerRegister from './pages/public/VolunteerRegister';
+import VolunteerCard from './pages/public/VolunteerCard';
 
 // Admin pages (lazy loaded)
 const Login = lazy(() => import('./pages/admin/Login'));
@@ -90,6 +91,7 @@ export default function App() {
           <Route path="/late-register/:token" element={<LateRegister />} />
           <Route path="/late-register/:token/recap" element={<LateRecap />} />
           <Route path="/benevoles/:slug" element={<VolunteerRegister />} />
+          <Route path="/benevole/card/:token" element={<VolunteerCard />} />
 
           {/* Admin routes */}
           <Route path="/admin/login" element={<Login />} />
