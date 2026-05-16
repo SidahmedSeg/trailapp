@@ -235,13 +235,16 @@ async function volunteerRoutes(fastify) {
   );
 
   // POST /api/admin/volunteers/scan-check-in
-  // Body: { qrToken }
-  // Flips checkedInAt + checkedInBy. TLBs can only check-in their assignees.
+  // Body: { qrToken, dryRun? }
+  //   - dryRun=true → validates access + returns the volunteer payload WITHOUT
+  //     flipping checkedInAt (used to render a confirmation preview).
+  //   - dryRun=false / missing → flips checkedInAt + checkedInBy.
+  // TLBs can only check-in their assignees.
   fastify.post(
     '/admin/volunteers/scan-check-in',
     { preHandler: [authenticate, authorize(...VOLUNTEER_VIEW_ROLES)] },
     async (request) => {
-      const { qrToken } = request.body || {};
+      const { qrToken, dryRun } = request.body || {};
       if (!qrToken) throw new AppError(400, 'qrToken requis', 'VALIDATION_ERROR');
 
       const row = await prisma.volunteer.findUnique({
@@ -260,6 +263,11 @@ async function volunteerRoutes(fastify) {
           alreadyCheckedIn: true,
           volunteer: row,
         };
+      }
+
+      // Dry-run: return the volunteer without flipping
+      if (dryRun) {
+        return { alreadyCheckedIn: false, dryRun: true, volunteer: row };
       }
 
       const now = new Date();
