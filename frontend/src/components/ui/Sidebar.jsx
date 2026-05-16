@@ -16,7 +16,7 @@ const navItems = [
   { to: '/admin/events', icon: Calendar, label: 'Événements' },
   { to: '/admin/reconciliation', icon: Shuffle, label: 'Réconciliation', roles: ['super_admin', 'reconciliation_specialist'] },
   { to: '/admin/late-registration', icon: Clock, label: 'Inscriptions tardives', roles: ['super_admin', 'reconciliation_specialist'] },
-  { to: '/admin/volunteers', icon: Heart, label: 'Bénévoles', roles: ['super_admin', 'admin', 'volunteers_manager'] },
+  { to: '/admin/volunteers', icon: Heart, label: 'Bénévoles', roles: ['super_admin', 'admin', 'admin_volunteers', 'team_leader_volunteers'] },
   { to: '/admin/activity', icon: ClipboardList, label: 'Activité' },
   { to: '/admin/users', icon: Users, label: 'Utilisateurs', superOnly: true },
   { to: '/admin/settings', icon: Settings, label: 'Paramètres' },
@@ -117,7 +117,8 @@ export default function Sidebar() {
           if (item.superOnly && user?.role !== 'super_admin') return null;
           if (item.roles && !item.roles.includes(user?.role)) return null;
           // Specialized roles: only see items that explicitly include them
-          if (user?.role === 'volunteers_manager' && !item.roles?.includes('volunteers_manager')) return null;
+          if (user?.role === 'admin_volunteers' && !item.roles?.includes('admin_volunteers')) return null;
+          if (user?.role === 'team_leader_volunteers' && !item.roles?.includes('team_leader_volunteers')) return null;
           const active = location.pathname === item.to;
           const Icon = item.icon;
           return (

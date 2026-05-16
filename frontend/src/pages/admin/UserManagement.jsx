@@ -11,14 +11,16 @@ function RoleBadge({ role }) {
     admin: 'bg-blue-50 text-blue-700',
     scanner: 'bg-amber-50 text-amber-700',
     reconciliation_specialist: 'bg-emerald-50 text-emerald-700',
-    volunteers_manager: 'bg-pink-50 text-pink-700',
+    admin_volunteers: 'bg-pink-50 text-pink-700',
+    team_leader_volunteers: 'bg-teal-50 text-teal-700',
   };
   const labels = {
     super_admin: 'Super Admin',
     admin: 'Admin',
     scanner: 'Scanner',
     reconciliation_specialist: 'Réconciliation',
-    volunteers_manager: 'Bénévoles',
+    admin_volunteers: 'Admin Bénévoles',
+    team_leader_volunteers: 'Team Leader Bénévoles',
   };
   return (
     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${map[role] || 'bg-gray-50 text-gray-500'}`}>
@@ -117,7 +119,8 @@ function InviteModal({ onClose, onInvited }) {
               <option value="admin">Admin</option>
               <option value="scanner">Scanner</option>
               <option value="reconciliation_specialist">Réconciliation</option>
-              <option value="volunteers_manager">Bénévoles</option>
+              <option value="admin_volunteers">Admin Bénévoles</option>
+              <option value="team_leader_volunteers">Team Leader Bénévoles</option>
               <option value="super_admin">Super Admin</option>
             </select>
           </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Select from 'react-select';
 import { get, post, put } from '../../lib/api';
 import { getAccessToken } from '../../lib/auth';
@@ -8,9 +8,12 @@ import Sidebar from '../../components/ui/Sidebar';
 import {
   CalendarClock, CheckCircle, X, Clock, Search, FileText, IdCard,
   Mail, Phone, AlertCircle, Power, ExternalLink, Copy, CalendarCheck, XCircle,
+  Camera, StopCircle, UserPlus, ScanLine,
 } from 'lucide-react';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 
-const ALLOWED_ROLES = ['super_admin', 'admin', 'volunteers_manager'];
+const ALLOWED_ROLES = ['super_admin', 'admin', 'admin_volunteers', 'team_leader_volunteers'];
+const AB_ROLES = ['super_admin', 'admin', 'admin_volunteers'];
 
 const selectStyles = {
   control: (base, state) => ({
@@ -72,6 +75,12 @@ export default function Volunteers() {
   const [validateModal, setValidateModal] = useState(null);
   const [rejectModal, setRejectModal] = useState(null);
   const [togglingOpen, setTogglingOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [checkInModalOpen, setCheckInModalOpen] = useState(false);
+
+  const isTLB = user?.role === 'team_leader_volunteers';
+  const isAB = AB_ROLES.includes(user?.role);
 
   useEffect(() => {
     const id = setTimeout(() => setDebouncedSearch(search), 300);
@@ -79,20 +88,23 @@ export default function Volunteers() {
   }, [search]);
 
   const fetchRows = useCallback(async () => {
-    if (!selectedEventId) return;
+    // AB roles require a selected event; TLBs are scoped server-side
+    if (!isTLB && !selectedEventId) return;
     setLoading(true);
     try {
-      const params = new URLSearchParams({ eventId: selectedEventId });
-      if (statusFilter !== 'all') params.set('status', statusFilter);
+      const params = new URLSearchParams();
+      if (selectedEventId) params.set('eventId', selectedEventId);
+      if (!isTLB && statusFilter !== 'all') params.set('status', statusFilter);
       if (debouncedSearch) params.set('search', debouncedSearch);
       const data = await get(`/admin/volunteers?${params}`);
       setRows(data || []);
+      setSelectedIds(new Set());
     } catch (err) {
       flash('error', err.message);
     } finally {
       setLoading(false);
     }
-  }, [selectedEventId, statusFilter, debouncedSearch]);
+  }, [selectedEventId, statusFilter, debouncedSearch, isTLB]);
 
   useEffect(() => { fetchRows(); }, [fetchRows]);
 
@@ -134,10 +146,17 @@ export default function Volunteers() {
       <main className="lg:ml-60 pt-16 lg:pt-0 p-4 sm:p-6 lg:p-8">
         <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
           <div>
-            <h2 className="text-2xl font-bold mb-1">Bénévoles</h2>
+            <h2 className="text-2xl font-bold mb-1">{isTLB ? 'Mes bénévoles assignés' : 'Bénévoles'}</h2>
             <p className="text-gray-500 text-sm">
-              Candidatures bénévoles — {selectedEvent?.name || 'Aucun événement sélectionné'}
+              {isTLB ? 'Check-in jour J via scan QR' : `Candidatures bénévoles — ${selectedEvent?.name || 'Aucun événement sélectionné'}`}
             </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCheckInModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-lg bg-[#C42826] text-white px-4 py-2 text-sm font-medium hover:bg-[#a82220] cursor-pointer">
+              <ScanLine size={16} /> Check-in
+            </button>
           </div>
         </div>
 
@@ -149,7 +168,8 @@ export default function Volunteers() {
           }`}>{message.text}</div>
         )}
 
-        {/* Activation + public link */}
+        {/* Activation + public link — AB only */}
+        {!isTLB && (
         <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
           <div className="flex flex-wrap items-start gap-4 justify-between">
             <div className="flex-1 min-w-[260px]">
@@ -160,7 +180,7 @@ export default function Volunteers() {
                 Lorsqu'activées, le formulaire public est accessible à l'URL ci-dessous. Les candidats remplissent leur dossier (CV + pièce d'identité) et apparaissent dans la liste.
               </p>
             </div>
-            {user?.role !== 'volunteers_manager' && (
+            {AB_ROLES.includes(user?.role) && (
               <button
                 onClick={toggleVolunteersOpen}
                 disabled={togglingOpen || !selectedEvent}
@@ -193,8 +213,10 @@ export default function Volunteers() {
             </div>
           )}
         </div>
+        )}
 
-        {/* Stats */}
+        {/* Stats — AB only */}
+        {!isTLB && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <p className="text-xs text-gray-500">Total candidats</p>
@@ -213,6 +235,7 @@ export default function Volunteers() {
             <p className="text-2xl font-bold text-emerald-700 mt-1">{stats.validee}</p>
           </div>
         </div>
+        )}
 
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -222,29 +245,37 @@ export default function Volunteers() {
               value={search} onChange={(e) => setSearch(e.target.value)}
               className="w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-[#C42826] focus:ring-2 focus:ring-[#C42826]/10 transition" />
           </div>
-          <Select
-            styles={selectStyles}
-            options={[
-              { value: 'all', label: 'Tous les statuts' },
-              { value: 'en_attente', label: 'En attente' },
-              { value: 'interview_planned', label: 'Entretien planifié' },
-              { value: 'validee', label: 'Validés' },
-              { value: 'rejected', label: 'Rejetés' },
-            ]}
-            value={[
-              { value: 'all', label: 'Tous les statuts' },
-              { value: 'en_attente', label: 'En attente' },
-              { value: 'interview_planned', label: 'Entretien planifié' },
-              { value: 'validee', label: 'Validés' },
-              { value: 'rejected', label: 'Rejetés' },
-            ].find((o) => o.value === statusFilter)}
-            onChange={(opt) => setStatusFilter(opt?.value || 'all')}
-            isSearchable={false}
-          />
-          {(search || statusFilter !== 'all') && (
+          {!isTLB && (
+            <Select
+              styles={selectStyles}
+              options={[
+                { value: 'all', label: 'Tous les statuts' },
+                { value: 'en_attente', label: 'En attente' },
+                { value: 'interview_planned', label: 'Entretien planifié' },
+                { value: 'validee', label: 'Validés' },
+                { value: 'rejected', label: 'Rejetés' },
+              ]}
+              value={[
+                { value: 'all', label: 'Tous les statuts' },
+                { value: 'en_attente', label: 'En attente' },
+                { value: 'interview_planned', label: 'Entretien planifié' },
+                { value: 'validee', label: 'Validés' },
+                { value: 'rejected', label: 'Rejetés' },
+              ].find((o) => o.value === statusFilter)}
+              onChange={(opt) => setStatusFilter(opt?.value || 'all')}
+              isSearchable={false}
+            />
+          )}
+          {(search || (!isTLB && statusFilter !== 'all')) && (
             <button onClick={() => { setSearch(''); setStatusFilter('all'); }}
               className="text-xs text-gray-500 hover:text-[#C42826] cursor-pointer flex items-center gap-1">
               <X size={12} /> Réinitialiser
+            </button>
+          )}
+          {isAB && statusFilter === 'validee' && selectedIds.size > 0 && (
+            <button onClick={() => setAssignModalOpen(true)}
+              className="ml-auto inline-flex items-center gap-2 rounded-lg bg-[#C42826] text-white px-4 py-2 text-sm font-medium hover:bg-[#a82220] cursor-pointer">
+              <UserPlus size={14} /> Assigner ({selectedIds.size})
             </button>
           )}
         </div>
@@ -264,10 +295,24 @@ export default function Volunteers() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
                   <tr>
+                    {isAB && statusFilter === 'validee' && (
+                      <th className="px-3 py-3 text-left w-8">
+                        <input type="checkbox"
+                          checked={rows.length > 0 && rows.every((r) => selectedIds.has(r.id))}
+                          onChange={(e) => {
+                            if (e.target.checked) setSelectedIds(new Set(rows.map((r) => r.id)));
+                            else setSelectedIds(new Set());
+                          }}
+                          className="h-4 w-4 accent-[#C42826]" />
+                      </th>
+                    )}
                     <th className="px-4 py-3 text-left">Candidat</th>
                     <th className="px-4 py-3 text-left">Contact</th>
                     <th className="px-4 py-3 text-left">ID bénévole</th>
-                    <th className="px-4 py-3 text-left">Statut</th>
+                    {!isTLB && <th className="px-4 py-3 text-left">Statut</th>}
+                    {(isTLB || statusFilter === 'validee') && (
+                      <th className="px-4 py-3 text-left">{isTLB ? 'Check-in' : 'Team Leader'}</th>
+                    )}
                     <th className="px-4 py-3 text-left">Reçu le</th>
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
@@ -275,6 +320,18 @@ export default function Volunteers() {
                 <tbody className="divide-y divide-gray-100">
                   {rows.map((r) => (
                     <tr key={r.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setDetail(r)}>
+                      {isAB && statusFilter === 'validee' && (
+                        <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                          <input type="checkbox"
+                            checked={selectedIds.has(r.id)}
+                            onChange={(e) => {
+                              const next = new Set(selectedIds);
+                              if (e.target.checked) next.add(r.id); else next.delete(r.id);
+                              setSelectedIds(next);
+                            }}
+                            className="h-4 w-4 accent-[#C42826]" />
+                        </td>
+                      )}
                       <td className="px-4 py-3">
                         <div className="font-medium text-gray-900">{r.firstName} {r.lastName}</div>
                       </td>
@@ -285,7 +342,25 @@ export default function Volunteers() {
                       <td className="px-4 py-3 font-mono text-[#C42826] font-bold">
                         {r.volunteerId || '—'}
                       </td>
-                      <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
+                      {!isTLB && <td className="px-4 py-3"><StatusBadge status={r.status} /></td>}
+                      {isTLB && (
+                        <td className="px-4 py-3 text-xs">
+                          {r.checkedInAt ? (
+                            <span className="inline-flex items-center gap-1 text-emerald-700">
+                              <CheckCircle size={12} /> {formatDate(r.checkedInAt)}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-gray-400">
+                              <Clock size={12} /> En attente
+                            </span>
+                          )}
+                        </td>
+                      )}
+                      {!isTLB && statusFilter === 'validee' && (
+                        <td className="px-4 py-3 text-xs text-gray-600">
+                          {r.assignedTo?.username || <span className="text-gray-400">—</span>}
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-gray-500 text-xs">{formatDate(r.createdAt, { year: true })}</td>
                       <td className="px-4 py-3 text-right">
                         <button onClick={(e) => { e.stopPropagation(); setDetail(r); }}
@@ -306,16 +381,48 @@ export default function Volunteers() {
       {detail && (
         <DetailDrawer
           volunteer={detail}
+          isTLB={isTLB}
           onClose={() => setDetail(null)}
           onPlanInterview={() => setInterviewModal(detail)}
           onValidate={() => setValidateModal(detail)}
           onReject={() => setRejectModal(detail)}
           onRefresh={async () => {
             await fetchRows();
-            // Reload selected detail
             const fresh = await get(`/admin/volunteers/${detail.id}`).catch(() => null);
             if (fresh) setDetail(fresh);
           }}
+        />
+      )}
+
+      {/* Bulk Assign modal */}
+      {assignModalOpen && (
+        <AssignModal
+          count={selectedIds.size}
+          onClose={() => setAssignModalOpen(false)}
+          onDone={async () => {
+            const ids = Array.from(selectedIds);
+            flash('success', `${ids.length} bénévole(s) assigné(s)`);
+            setAssignModalOpen(false);
+            await fetchRows();
+          }}
+          onError={(m) => flash('error', m)}
+          volunteerIds={Array.from(selectedIds)}
+        />
+      )}
+
+      {/* Check-in scanner modal */}
+      {checkInModalOpen && (
+        <CheckInScanModal
+          onClose={() => setCheckInModalOpen(false)}
+          onDone={async (result) => {
+            if (result.alreadyCheckedIn) {
+              flash('info', `Déjà enregistré le ${formatDate(result.volunteer.checkedInAt)} par ${result.volunteer.checkedInBy}`);
+            } else {
+              flash('success', `Check-in : ${result.volunteer.firstName} ${result.volunteer.lastName}`);
+            }
+            await fetchRows();
+          }}
+          onError={(m) => flash('error', m)}
         />
       )}
 
@@ -373,7 +480,7 @@ export default function Volunteers() {
 // ────────────────────────────────────────────────────────────────────────────
 // Detail Drawer
 // ────────────────────────────────────────────────────────────────────────────
-function DetailDrawer({ volunteer, onClose, onPlanInterview, onValidate, onReject, onRefresh }) {
+function DetailDrawer({ volunteer, isTLB, onClose, onPlanInterview, onValidate, onReject, onRefresh }) {
   const [notes, setNotes] = useState(volunteer.notes || '');
   const [savingNotes, setSavingNotes] = useState(false);
 
@@ -570,21 +677,39 @@ function DetailDrawer({ volunteer, onClose, onPlanInterview, onValidate, onRejec
             </div>
           </div>
 
+          {/* Team Leader assignment + check-in status (validated only) */}
+          {volunteer.status === 'validee' && (
+            <div className="space-y-2 pt-4 border-t border-gray-100">
+              {!isTLB && (
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs">
+                  <p className="text-gray-500 mb-0.5">Team Leader</p>
+                  <p className="font-medium text-gray-900">{volunteer.assignedTo?.username || '— non assigné'}</p>
+                </div>
+              )}
+              {volunteer.checkedInAt && (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
+                  <p className="font-medium mb-0.5">Présent le jour J</p>
+                  <p>Check-in le {formatDate(volunteer.checkedInAt)} par {volunteer.checkedInBy}</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Actions */}
           <div className="pt-4 border-t border-gray-100 flex flex-col gap-2">
-            {volunteer.status !== 'validee' && volunteer.status !== 'rejected' && (
+            {!isTLB && volunteer.status !== 'validee' && volunteer.status !== 'rejected' && (
               <button onClick={onPlanInterview}
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-white border border-gray-200 text-gray-700 px-4 py-2.5 text-sm font-medium hover:bg-gray-50 cursor-pointer">
                 <CalendarClock size={16} /> Planifier un entretien
               </button>
             )}
-            {volunteer.status !== 'validee' && volunteer.status !== 'rejected' && (
+            {!isTLB && volunteer.status !== 'validee' && volunteer.status !== 'rejected' && (
               <button onClick={onValidate}
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 text-white px-4 py-2.5 text-sm font-medium hover:bg-emerald-700 cursor-pointer">
                 <CheckCircle size={16} /> Valider le candidat
               </button>
             )}
-            {volunteer.status !== 'validee' && volunteer.status !== 'rejected' && (
+            {!isTLB && volunteer.status !== 'validee' && volunteer.status !== 'rejected' && (
               <button onClick={onReject}
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-white border border-red-200 text-red-700 px-4 py-2.5 text-sm font-medium hover:bg-red-50 cursor-pointer">
                 <XCircle size={16} /> Refuser la candidature
@@ -799,6 +924,224 @@ function RejectModal({ volunteer, onClose, onDone, onError }) {
             {submitting ? 'Envoi…' : 'Refuser et envoyer'}
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Bulk Assign Modal — pick a Team Leader for the selected validated volunteers
+// ────────────────────────────────────────────────────────────────────────────
+function AssignModal({ count, volunteerIds, onClose, onDone, onError }) {
+  const [teamLeaders, setTeamLeaders] = useState([]);
+  const [selectedTL, setSelectedTL] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    get('/admin/volunteers/team-leaders')
+      .then((res) => setTeamLeaders(res || []))
+      .catch((err) => onError(err.message));
+  }, []);
+
+  async function handleSubmit(unassign = false) {
+    setSubmitting(true);
+    try {
+      await post('/admin/volunteers/bulk-assign', {
+        volunteerIds,
+        teamLeaderId: unassign ? null : selectedTL?.value,
+      });
+      onDone();
+    } catch (err) {
+      onError(err.message);
+      setSubmitting(false);
+    }
+  }
+
+  const options = teamLeaders.map((u) => ({ value: u.id, label: u.username }));
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center px-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center flex-shrink-0">
+            <UserPlus size={20} className="text-teal-600" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">Assigner à un Team Leader</h3>
+        </div>
+
+        <p className="text-sm text-gray-600 mb-4">
+          {count} bénévole(s) sélectionné(s).
+        </p>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Team Leader</label>
+          <Select
+            styles={selectStyles}
+            options={options}
+            value={selectedTL}
+            onChange={setSelectedTL}
+            placeholder={options.length === 0 ? 'Aucun Team Leader actif' : 'Choisir un Team Leader…'}
+            isClearable
+            isDisabled={submitting || options.length === 0}
+          />
+          {options.length === 0 && (
+            <p className="text-xs text-gray-500 mt-1">Invitez d'abord un utilisateur avec le rôle "Team Leader Bénévoles" depuis /admin/users.</p>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
+          <button onClick={onClose} disabled={submitting}
+            className="rounded-lg bg-gray-100 text-gray-700 px-4 py-2 text-sm font-medium hover:bg-gray-200 cursor-pointer disabled:opacity-50">
+            Annuler
+          </button>
+          <button onClick={() => handleSubmit(true)} disabled={submitting}
+            className="rounded-lg bg-white border border-gray-200 text-gray-700 px-4 py-2 text-sm font-medium hover:bg-gray-50 cursor-pointer disabled:opacity-50">
+            Désassigner
+          </button>
+          <button onClick={() => handleSubmit(false)} disabled={submitting || !selectedTL}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[#C42826] text-white px-4 py-2 text-sm font-medium hover:bg-[#a82220] cursor-pointer disabled:opacity-60">
+            <UserPlus size={14} />
+            {submitting ? 'Assignation…' : 'Confirmer'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Check-in Scanner Modal — opens camera, scans QR, posts to scan-check-in
+// ────────────────────────────────────────────────────────────────────────────
+function CheckInScanModal({ onClose, onDone, onError }) {
+  const [scannerActive, setScannerActive] = useState(false);
+  const [scannerError, setScannerError] = useState('');
+  const [result, setResult] = useState(null);
+  const scannerRef = useRef(null);
+
+  useEffect(() => {
+    if (!scannerActive) return;
+
+    const scanner = new Html5QrcodeScanner(
+      'volunteer-qr-reader',
+      { fps: 10, qrbox: { width: 250, height: 250 }, rememberLastUsedCamera: true, showTorchButtonIfSupported: true },
+      false
+    );
+    scannerRef.current = scanner;
+
+    const onScanSuccess = async (decodedText) => {
+      // Extract qrToken — may be a full URL or the bare token
+      let qrToken = decodedText;
+      try {
+        const url = new URL(decodedText);
+        const parts = url.pathname.split('/').filter(Boolean);
+        const i = parts.indexOf('card');
+        if (i !== -1 && parts[i + 1]) qrToken = parts[i + 1];
+      } catch { /* keep as-is */ }
+
+      // Stop scanner immediately after capture
+      try { await scanner.clear(); } catch { /* ignore */ }
+      setScannerActive(false);
+      scannerRef.current = null;
+
+      try {
+        const res = await post('/admin/volunteers/scan-check-in', { qrToken });
+        setResult(res);
+      } catch (err) {
+        onError(err.message);
+        setScannerError(err.message);
+      }
+    };
+
+    const onScanFailure = () => { /* silence continuous scan attempts */ };
+    scanner.render(onScanSuccess, onScanFailure);
+
+    return () => {
+      try { scanner.clear(); } catch { /* ignore */ }
+      scannerRef.current = null;
+    };
+  }, [scannerActive]);
+
+  function startScanner() {
+    setScannerError('');
+    setResult(null);
+    setScannerActive(true);
+  }
+
+  async function stopScanner() {
+    if (scannerRef.current) {
+      try { await scannerRef.current.clear(); } catch { /* ignore */ }
+      scannerRef.current = null;
+    }
+    setScannerActive(false);
+  }
+
+  function finishAndClose() {
+    if (result) onDone(result);
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center px-4" onClick={() => { stopScanner(); onClose(); }}>
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <ScanLine size={18} className="text-[#C42826]" /> Check-in bénévole
+          </h3>
+          <button onClick={() => { stopScanner(); onClose(); }} className="text-gray-400 hover:text-gray-900 cursor-pointer">
+            <X size={18} />
+          </button>
+        </div>
+
+        {!scannerActive && !result && (
+          <button onClick={startScanner}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#C42826] text-white px-4 py-3 text-sm font-medium hover:bg-[#a82220] cursor-pointer">
+            <Camera size={16} /> Démarrer le scanner
+          </button>
+        )}
+
+        {scannerActive && (
+          <>
+            <div id="volunteer-qr-reader" className="rounded-lg overflow-hidden" />
+            <button onClick={stopScanner}
+              className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-gray-700 text-white px-4 py-2 text-sm font-medium hover:bg-gray-800 cursor-pointer">
+              <StopCircle size={14} /> Arrêter
+            </button>
+          </>
+        )}
+
+        {scannerError && !scannerActive && !result && (
+          <div className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">{scannerError}</div>
+        )}
+
+        {result && (
+          <div className="space-y-3">
+            <div className={`rounded-lg px-4 py-3 text-sm border ${
+              result.alreadyCheckedIn
+                ? 'bg-amber-50 border-amber-200 text-amber-800'
+                : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+            }`}>
+              <p className="font-semibold">
+                {result.volunteer.firstName} {result.volunteer.lastName}
+                {result.volunteer.volunteerId && <span className="ml-2 font-mono text-xs opacity-70">{result.volunteer.volunteerId}</span>}
+              </p>
+              <p className="mt-1 text-xs">
+                {result.alreadyCheckedIn
+                  ? `Déjà enregistré le ${new Date(result.volunteer.checkedInAt).toLocaleString('fr-FR')} par ${result.volunteer.checkedInBy}`
+                  : 'Check-in enregistré.'}
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => { setResult(null); startScanner(); }}
+                className="rounded-lg bg-gray-100 text-gray-700 px-4 py-2 text-sm font-medium hover:bg-gray-200 cursor-pointer">
+                Scanner un autre
+              </button>
+              <button onClick={finishAndClose}
+                className="rounded-lg bg-[#C42826] text-white px-4 py-2 text-sm font-medium hover:bg-[#a82220] cursor-pointer">
+                Terminer
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

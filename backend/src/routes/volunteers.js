@@ -22,7 +22,8 @@ const { logActivity } = require('../middleware/activityLogger');
 const { AppError } = require('../utils/errors');
 const { sendVolunteerInterviewProposal, sendVolunteerValidated, sendVolunteerRejected } = require('../services/sendgrid');
 
-const VOLUNTEER_ROLES = ['super_admin', 'admin', 'volunteers_manager'];
+const VOLUNTEER_ROLES = ['super_admin', 'admin', 'admin_volunteers'];
+const VOLUNTEER_VIEW_ROLES = ['super_admin', 'admin', 'admin_volunteers', 'team_leader_volunteers'];
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB per file
 const ALLOWED_MIME = {
   'application/pdf': '.pdf',
@@ -88,15 +89,27 @@ async function volunteerRoutes(fastify) {
   // ────────────────────────────────────────────────────────────────────
 
   // GET /api/admin/volunteers?eventId=&status=
+  // TLBs are scoped to their assigned validated volunteers only.
   fastify.get(
     '/admin/volunteers',
-    { preHandler: [authenticate, authorize(...VOLUNTEER_ROLES)] },
+    { preHandler: [authenticate, authorize(...VOLUNTEER_VIEW_ROLES)] },
     async (request) => {
       const { eventId, status, search } = request.query;
-      if (!eventId) throw new AppError(400, 'eventId requis', 'VALIDATION_ERROR');
+      const isTLB = request.user.role === 'team_leader_volunteers';
 
-      const where = { eventId };
-      if (status && status !== 'all') where.status = status;
+      if (!eventId && !isTLB) throw new AppError(400, 'eventId requis', 'VALIDATION_ERROR');
+
+      const where = {};
+      if (eventId) where.eventId = eventId;
+
+      if (isTLB) {
+        // Force: only validated volunteers assigned to this TLB
+        where.assignedToId = request.user.userId;
+        where.status = 'validee';
+      } else if (status && status !== 'all') {
+        where.status = status;
+      }
+
       if (search) {
         const s = search.trim();
         if (s) {
@@ -113,6 +126,7 @@ async function volunteerRoutes(fastify) {
       const rows = await prisma.volunteer.findMany({
         where,
         orderBy: { createdAt: 'desc' },
+        include: { assignedTo: { select: { id: true, username: true } } },
       });
       return rows;
     }
@@ -121,14 +135,152 @@ async function volunteerRoutes(fastify) {
   // GET /api/admin/volunteers/:id
   fastify.get(
     '/admin/volunteers/:id',
-    { preHandler: [authenticate, authorize(...VOLUNTEER_ROLES)] },
+    { preHandler: [authenticate, authorize(...VOLUNTEER_VIEW_ROLES)] },
     async (request) => {
       const row = await prisma.volunteer.findUnique({
         where: { id: request.params.id },
-        include: { event: { select: { name: true, slug: true, primaryColor: true } } },
+        include: {
+          event: { select: { name: true, slug: true, primaryColor: true } },
+          assignedTo: { select: { id: true, username: true } },
+        },
       });
       if (!row) throw new AppError(404, 'Bénévole introuvable', 'NOT_FOUND');
+      // TLBs can only fetch their own assigned + validated volunteers
+      if (request.user.role === 'team_leader_volunteers') {
+        if (row.assignedToId !== request.user.userId || row.status !== 'validee') {
+          throw new AppError(403, 'Accès refusé', 'FORBIDDEN');
+        }
+      }
       return row;
+    }
+  );
+
+  // GET /api/admin/volunteers/team-leaders
+  // Lists active team leader users for the bulk-assign dropdown.
+  fastify.get(
+    '/admin/volunteers/team-leaders',
+    { preHandler: [authenticate, authorize(...VOLUNTEER_ROLES)] },
+    async () => {
+      const users = await prisma.adminUser.findMany({
+        where: { role: 'team_leader_volunteers', active: true },
+        select: { id: true, username: true, email: true },
+        orderBy: { username: 'asc' },
+      });
+      return users;
+    }
+  );
+
+  // POST /api/admin/volunteers/bulk-assign
+  // Body: { volunteerIds: string[], teamLeaderId: string | null }
+  // Assigns (or unassigns when null) a batch of validated volunteers to a TLB.
+  fastify.post(
+    '/admin/volunteers/bulk-assign',
+    { preHandler: [authenticate, authorize(...VOLUNTEER_ROLES)] },
+    async (request) => {
+      const { volunteerIds, teamLeaderId } = request.body || {};
+      if (!Array.isArray(volunteerIds) || volunteerIds.length === 0) {
+        throw new AppError(400, 'volunteerIds requis', 'VALIDATION_ERROR');
+      }
+
+      // If a TLB id was provided, verify it exists and has the right role
+      if (teamLeaderId) {
+        const tl = await prisma.adminUser.findUnique({
+          where: { id: teamLeaderId },
+          select: { id: true, role: true, active: true, username: true },
+        });
+        if (!tl || !tl.active || tl.role !== 'team_leader_volunteers') {
+          throw new AppError(400, 'Team Leader invalide', 'VALIDATION_ERROR');
+        }
+      }
+
+      // All target volunteers must be validated
+      const target = await prisma.volunteer.findMany({
+        where: { id: { in: volunteerIds } },
+        select: { id: true, status: true },
+      });
+      const nonValidated = target.filter((v) => v.status !== 'validee');
+      if (nonValidated.length > 0) {
+        throw new AppError(409,
+          `Seuls les bénévoles validés peuvent être assignés (${nonValidated.length} non validé(s))`,
+          'NOT_VALIDATED');
+      }
+
+      const result = await prisma.volunteer.updateMany({
+        where: { id: { in: target.map((v) => v.id) } },
+        data: {
+          assignedToId: teamLeaderId || null,
+          assignedAt: teamLeaderId ? new Date() : null,
+          assignedBy: teamLeaderId ? request.user.username : null,
+        },
+      });
+
+      await logActivity({
+        action: 'volunteers_bulk_assigned',
+        adminUsername: request.user.username,
+        targetType: 'volunteer',
+        targetId: null,
+        details: {
+          teamLeaderId: teamLeaderId || null,
+          volunteerIds: target.map((v) => v.id),
+          count: result.count,
+        },
+      });
+
+      return { updated: result.count };
+    }
+  );
+
+  // POST /api/admin/volunteers/scan-check-in
+  // Body: { qrToken }
+  // Flips checkedInAt + checkedInBy. TLBs can only check-in their assignees.
+  fastify.post(
+    '/admin/volunteers/scan-check-in',
+    { preHandler: [authenticate, authorize(...VOLUNTEER_VIEW_ROLES)] },
+    async (request) => {
+      const { qrToken } = request.body || {};
+      if (!qrToken) throw new AppError(400, 'qrToken requis', 'VALIDATION_ERROR');
+
+      const row = await prisma.volunteer.findUnique({
+        where: { qrToken },
+        select: { id: true, firstName: true, lastName: true, volunteerId: true, status: true, assignedToId: true, checkedInAt: true, checkedInBy: true },
+      });
+      if (!row) throw new AppError(404, 'QR invalide ou bénévole introuvable', 'NOT_FOUND');
+      if (row.status !== 'validee') {
+        throw new AppError(403, 'Ce bénévole n\'est pas validé', 'NOT_VALIDATED');
+      }
+      if (request.user.role === 'team_leader_volunteers' && row.assignedToId !== request.user.userId) {
+        throw new AppError(403, 'Ce bénévole n\'est pas assigné à vous', 'NOT_ASSIGNED');
+      }
+      if (row.checkedInAt) {
+        return {
+          alreadyCheckedIn: true,
+          volunteer: row,
+        };
+      }
+
+      const now = new Date();
+      const result = await prisma.volunteer.updateMany({
+        where: { id: row.id, checkedInAt: null },
+        data: { checkedInAt: now, checkedInBy: request.user.username },
+      });
+      if (result.count === 0) {
+        // Concurrent scan won — return the now-stored state
+        const fresh = await prisma.volunteer.findUnique({ where: { id: row.id } });
+        return { alreadyCheckedIn: true, volunteer: fresh };
+      }
+
+      await logActivity({
+        action: 'volunteer_checked_in',
+        adminUsername: request.user.username,
+        targetType: 'volunteer',
+        targetId: row.id,
+        details: { volunteerId: row.volunteerId, qrToken },
+      });
+
+      return {
+        alreadyCheckedIn: false,
+        volunteer: { ...row, checkedInAt: now, checkedInBy: request.user.username },
+      };
     }
   );
 
