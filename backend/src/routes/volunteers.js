@@ -209,7 +209,7 @@ async function volunteerRoutes(fastify) {
     async (request) => {
       const row = await prisma.volunteer.findUnique({
         where: { id: request.params.id },
-        include: { event: { select: { name: true } } },
+        include: { event: true },
       });
       if (!row) throw new AppError(404, 'Bénévole introuvable', 'NOT_FOUND');
       if (row.status === 'validee' && row.volunteerId) {
@@ -220,11 +220,15 @@ async function volunteerRoutes(fastify) {
       const prefix = buildVolunteerPrefix(row.event?.name);
       const volunteerId = row.volunteerId || (await generateUniqueVolunteerId(prisma, row.eventId, prefix));
 
+      // Generate qrToken if not present (lets us regenerate later w/o losing prior link)
+      const qrToken = row.qrToken || randomUUID();
+
       const updated = await prisma.volunteer.update({
         where: { id: row.id },
         data: {
           status: 'validee',
           volunteerId,
+          qrToken,
           validatedAt: new Date(),
           validatedBy: request.user.username,
         },
@@ -232,11 +236,8 @@ async function volunteerRoutes(fastify) {
 
       try {
         await sendVolunteerValidated({
-          toEmail: row.email,
-          firstName: row.firstName,
-          lastName: row.lastName,
-          eventName: row.event?.name || 'Événement',
-          volunteerId,
+          volunteer: { ...row, volunteerId, qrToken },
+          event: row.event,
         });
       } catch (err) {
         request.log.error(err, 'Volunteer validation email failed');
@@ -252,10 +253,11 @@ async function volunteerRoutes(fastify) {
           eventId: row.eventId,
           email: row.email,
           volunteerId,
+          qrToken,
         },
       });
 
-      return { validated: true, volunteerId };
+      return { validated: true, volunteerId, qrToken };
     }
   );
 
@@ -510,6 +512,45 @@ async function volunteerRoutes(fastify) {
       id: volunteer.id,
       message: 'Candidature reçue. L\'équipe vous contactera prochainement.',
     };
+  });
+
+  // GET /api/benevole/card/:token — public badge card payload (gated by qrToken)
+  fastify.get('/benevole/card/:token', async (request) => {
+    const row = await prisma.volunteer.findUnique({
+      where: { qrToken: request.params.token },
+      include: { event: { select: { name: true, date: true, location: true, primaryColor: true, slug: true } } },
+    });
+    if (!row) throw new AppError(404, 'Carte introuvable', 'NOT_FOUND');
+    if (row.status !== 'validee') throw new AppError(403, 'Carte non disponible', 'NOT_VALIDATED');
+
+    return {
+      firstName: row.firstName,
+      lastName: row.lastName,
+      email: row.email,
+      phone: row.phone,
+      volunteerId: row.volunteerId,
+      qrToken: row.qrToken,
+      skills: Array.isArray(row.skills) ? row.skills : [],
+      otherSkills: row.otherSkills || null,
+      event: row.event,
+    };
+  });
+
+  // GET /api/benevole/card/:token/pdf — same gating, streams the PDF
+  fastify.get('/benevole/card/:token/pdf', async (request, reply) => {
+    const row = await prisma.volunteer.findUnique({
+      where: { qrToken: request.params.token },
+      include: { event: true },
+    });
+    if (!row) throw new AppError(404, 'Carte introuvable', 'NOT_FOUND');
+    if (row.status !== 'validee') throw new AppError(403, 'Carte non disponible', 'NOT_VALIDATED');
+
+    const { generateVolunteerBadgePDF } = require('../services/pdf');
+    const pdfBuffer = await generateVolunteerBadgePDF(row, row.event);
+    reply
+      .header('Content-Type', 'application/pdf')
+      .header('Content-Disposition', `attachment; filename="benevole-${row.volunteerId || 'card'}.pdf"`)
+      .send(pdfBuffer);
   });
 }
 

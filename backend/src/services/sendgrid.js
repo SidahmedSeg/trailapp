@@ -1,7 +1,7 @@
 const sgMail = require('@sendgrid/mail');
 const env = require('../config/env');
 const prisma = require('../config/database');
-const { generateTicketPDF } = require('./pdf');
+const { generateTicketPDF, generateVolunteerBadgePDF } = require('./pdf');
 const { generateQRDataURL } = require('./qrcode');
 
 sgMail.setApiKey(env.SENDGRID_API_KEY);
@@ -288,11 +288,17 @@ async function sendVolunteerInterviewProposal({ toEmail, firstName, eventName, s
  * Volunteer validation — sent when admin approves the candidate. Includes their
  * unique volunteer ID.
  */
-async function sendVolunteerValidated({ toEmail, firstName, lastName, eventName, volunteerId }) {
-  const eventLabel = eventName || 'l\'événement';
-  const subject = `Bienvenue dans l'équipe — ${eventName || 'Événement'}`;
+async function sendVolunteerValidated({ volunteer, event }) {
+  const toEmail = volunteer.email;
+  const firstName = volunteer.firstName || '';
+  const eventName = event?.name || 'Événement';
+  const eventLabel = event?.name || 'l\'événement';
+  const volunteerId = volunteer.volunteerId;
+  const cardUrl = volunteer.qrToken ? `${env.APP_URL}/benevole/card/${volunteer.qrToken}` : null;
+
+  const subject = `Bienvenue dans l'équipe — ${eventName}`;
   const body = `<div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #444; line-height: 1.55;">
-    <p>Bonjour ${firstName || ''},</p>
+    <p>Bonjour ${firstName},</p>
     <p>Nous avons le plaisir de vous confirmer que votre candidature a été retenue : vous faites désormais officiellement partie de l'équipe des bénévoles de <strong>${eventLabel}</strong>.</p>
     <p>Bienvenue dans l'aventure.</p>
     <div style="text-align: center; margin: 28px 0;">
@@ -300,11 +306,27 @@ async function sendVolunteerValidated({ toEmail, firstName, lastName, eventName,
       <p style="font-family: monospace; font-size: 28px; font-weight: bold; color: #C42826; margin: 0; letter-spacing: 2px;">${volunteerId}</p>
     </div>
     <p>Merci de le conserver précieusement, il vous sera demandé lors des briefings ainsi que le jour de l'événement.</p>
+    ${cardUrl ? `<p>Vous pouvez aussi télécharger votre carte bénévole ou la consulter à tout moment : <a href="${cardUrl}" style="color: #C42826;">Ouvrir ma carte</a>.</p>` : ''}
     <p>Toutes les informations relatives à l'organisation et aux prochaines étapes vous seront communiquées prochainement.</p>
     <p>Pour toute question, vous pouvez simplement répondre à cet email.</p>
     <p>À très bientôt,</p>
     <p>L'équipe ${eventLabel}</p>
   </div>`;
+
+  // Build the badge PDF — non-fatal if generation fails (admin can resend)
+  let attachments;
+  try {
+    const pdfBuffer = await generateVolunteerBadgePDF(volunteer, event);
+    attachments = [{
+      content: pdfBuffer.toString('base64'),
+      filename: `benevole-${volunteerId}.pdf`,
+      type: 'application/pdf',
+      disposition: 'attachment',
+    }];
+  } catch (err) {
+    console.error('Volunteer badge PDF generation failed:', err?.message || err);
+    // Send the email anyway, without the attachment
+  }
 
   const msg = {
     to: toEmail,
@@ -312,6 +334,7 @@ async function sendVolunteerValidated({ toEmail, firstName, lastName, eventName,
     replyTo: { email: 'staff@lassm.dz', name: 'Staff LASSM' },
     subject,
     html: body,
+    ...(attachments ? { attachments } : {}),
     trackingSettings: {
       clickTracking: { enable: false, enableText: false },
       openTracking: { enable: false },

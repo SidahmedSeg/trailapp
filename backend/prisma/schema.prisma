@@ -318,6 +318,9 @@ model Volunteer {
   // Per-event volunteer identifier (e.g. "TMO4827" — event initials + 4 random digits)
   volunteerId String?
 
+  // QR token (UUID) issued at validation. Encodes the URL to the public badge page.
+  qrToken     String? @unique
+
   // Personal info
   lastName    String
   firstName   String

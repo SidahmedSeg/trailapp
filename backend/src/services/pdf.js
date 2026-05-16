@@ -199,4 +199,144 @@ function drawPaymentRow(doc, x, y, width, label, value) {
   return y + 18;
 }
 
-module.exports = { generateTicketPDF };
+/**
+ * Generate volunteer badge PDF (A6 portrait, lanyard-style).
+ * Includes full name, email, phone, ID pill, skill chips, optional "Autres",
+ * QR code linking back to the public card page.
+ */
+async function generateVolunteerBadgePDF(volunteer, event) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      // A6 portrait: 105 × 148 mm in PDF points (1 mm = 2.83465 pt)
+      // → 297.64 × 419.53 pt
+      const pageW = 297.64;
+      const pageH = 419.53;
+      const doc = new PDFDocument({ size: [pageW, pageH], margin: 0 });
+      const chunks = [];
+      doc.on('data', (c) => chunks.push(c));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+
+      const brand = event?.primaryColor || DEFAULT_BRAND;
+      const mx = 18; // horizontal margin inside the badge
+      const cw = pageW - mx * 2;
+
+      const eventName = pdfSafe(event?.name || 'Evenement');
+      const eventDate = event?.date
+        ? pdfSafe(new Date(event.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }))
+        : '';
+      const eventLocation = pdfSafe(event?.location || '');
+
+      // ── Header band ─────────────────────────────────────
+      const headerH = 56;
+      doc.rect(0, 0, pageW, headerH).fill(brand);
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#FFFFFF')
+        .text(eventName.toUpperCase(), 0, 14, { width: pageW, align: 'center' });
+      if (eventDate || eventLocation) {
+        doc.fontSize(8).font('Helvetica').fillColor('rgba(255,255,255,0.85)')
+          .text([eventDate, eventLocation].filter(Boolean).join(' - '), 0, 32, { width: pageW, align: 'center' });
+      }
+
+      // ── "BÉNÉVOLE" label ────────────────────────────────
+      doc.fillColor(GRAY_400);
+      doc.fontSize(9).font('Helvetica-Bold').text('BENEVOLE', 0, headerH + 14, { width: pageW, align: 'center', characterSpacing: 2 });
+
+      // ── Full name ───────────────────────────────────────
+      const fullName = pdfSafe(`${volunteer.firstName || ''} ${volunteer.lastName || ''}`.trim()) || 'Benevole';
+      doc.fontSize(18).font('Helvetica-Bold').fillColor(GRAY_900)
+        .text(fullName, mx, headerH + 30, { width: cw, align: 'center' });
+
+      // Email + phone, small grey
+      doc.fontSize(8).font('Helvetica').fillColor(GRAY_600);
+      let contactY = headerH + 56;
+      if (volunteer.email) {
+        doc.text(pdfSafe(volunteer.email), mx, contactY, { width: cw, align: 'center' });
+        contactY += 11;
+      }
+      if (volunteer.phone) {
+        doc.text(pdfSafe(volunteer.phone), mx, contactY, { width: cw, align: 'center' });
+        contactY += 11;
+      }
+
+      // ── ID pill ─────────────────────────────────────────
+      const idText = pdfSafe(volunteer.volunteerId || '----');
+      const pillY = contactY + 10;
+      const pillW = 150;
+      const pillH = 30;
+      const pillX = (pageW - pillW) / 2;
+      doc.roundedRect(pillX, pillY, pillW, pillH, 8).fill(brand);
+      doc.fontSize(16).font('Helvetica-Bold').fillColor('#FFFFFF')
+        .text(idText, pillX, pillY + 8, { width: pillW, align: 'center' });
+
+      // ── Compétences ──────────────────────────────────────
+      let y = pillY + pillH + 16;
+      const skills = Array.isArray(volunteer.skills) ? volunteer.skills.filter(Boolean) : [];
+      const otherSkills = (volunteer.otherSkills || '').trim();
+
+      if (skills.length > 0 || otherSkills) {
+        doc.fontSize(8).font('Helvetica-Bold').fillColor(GRAY_600)
+          .text('COMPETENCES', mx, y, { width: cw, align: 'center', characterSpacing: 1.5 });
+        y += 14;
+
+        // Skill chips — flow horizontally, wrap if needed
+        if (skills.length > 0) {
+          doc.fontSize(8).font('Helvetica').fillColor(brand);
+          const chipPadX = 6;
+          const chipH = 16;
+          const gap = 4;
+
+          const rows = [];
+          let row = [];
+          let rowW = 0;
+          for (const s of skills) {
+            const label = pdfSafe(s);
+            const tw = doc.widthOfString(label) + chipPadX * 2;
+            if (rowW + tw + gap > cw) {
+              rows.push(row);
+              row = [{ label, tw }];
+              rowW = tw + gap;
+            } else {
+              row.push({ label, tw });
+              rowW += tw + gap;
+            }
+          }
+          if (row.length) rows.push(row);
+
+          for (const r of rows) {
+            const totalW = r.reduce((s, c) => s + c.tw, 0) + gap * (r.length - 1);
+            let cx = (pageW - totalW) / 2;
+            for (const chip of r) {
+              doc.roundedRect(cx, y, chip.tw, chipH, 8).lineWidth(0.8).strokeColor(brand).stroke();
+              doc.fillColor(brand).text(chip.label, cx, y + 4, { width: chip.tw, align: 'center' });
+              cx += chip.tw + gap;
+            }
+            y += chipH + 4;
+          }
+        }
+
+        if (otherSkills) {
+          doc.fontSize(8).font('Helvetica-Oblique').fillColor(GRAY_600)
+            .text(`Autres : ${pdfSafe(otherSkills)}`, mx, y + 2, { width: cw, align: 'center' });
+          y += 14;
+        }
+      }
+
+      // ── QR ──────────────────────────────────────────────
+      const qrSize = 110;
+      const qrX = (pageW - qrSize) / 2;
+      const qrY = pageH - qrSize - 32;
+      const cardUrl = `${env.APP_URL}/benevole/card/${volunteer.qrToken || ''}`;
+      const qrBuffer = await generateQRBuffer(cardUrl);
+      doc.image(qrBuffer, qrX, qrY, { width: qrSize, height: qrSize });
+
+      // Footer caption
+      doc.fontSize(7).font('Helvetica').fillColor(GRAY_400)
+        .text('Scannable pour verification', 0, pageH - 20, { width: pageW, align: 'center' });
+
+      doc.end();
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+module.exports = { generateTicketPDF, generateVolunteerBadgePDF };
