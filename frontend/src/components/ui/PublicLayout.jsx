@@ -9,7 +9,7 @@ export function usePublicEvent() {
   return useContext(PublicEventContext);
 }
 
-export default function PublicLayout({ title, children }) {
+export default function PublicLayout({ title, children, hideNavLinks = false }) {
   const [eventConfig, setEventConfig] = useState(null);
 
   useEffect(() => {
@@ -27,7 +27,7 @@ export default function PublicLayout({ title, children }) {
         style={{ '--brand': brandColor }}
       >
         <div className="print:hidden">
-          <Header title={title === 'event' ? (eventConfig?.eventName || '') : title} event={eventConfig} />
+          <Header title={title === 'event' ? (eventConfig?.eventName || '') : title} event={eventConfig} hideNavLinks={hideNavLinks} />
         </div>
         <main className="flex-1">{children}</main>
         <div className="print:hidden">

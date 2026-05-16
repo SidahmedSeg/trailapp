@@ -347,8 +347,9 @@ model Volunteer {
   otherSkills String?
 
   // Emergency contact
-  emergencyContactName  String?
-  emergencyContactPhone String?
+  emergencyContactName         String?
+  emergencyContactRelationship String?
+  emergencyContactPhone        String?
 
   // Required agreements (validated at submit; stored for audit)
   // Legacy two-box agreement (kept nullable for backwards compatibility with older

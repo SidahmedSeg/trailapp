@@ -294,6 +294,7 @@ export default function VolunteerRegister() {
     tshirtSize: '',
     // Emergency contact
     emergencyContactName: '',
+    emergencyContactRelationship: '',
     emergencyContactPhoneCountryCode: '+213',
     emergencyContactPhoneNumber: '',
     // Single consolidated règlement agreement
@@ -370,6 +371,7 @@ export default function VolunteerRegister() {
 
     // Emergency contact
     if (!form.emergencyContactName?.trim()) errs.emergencyContactName = 'Nom du contact requis';
+    if (!form.emergencyContactRelationship?.trim()) errs.emergencyContactRelationship = 'Lien requis';
     if (form.emergencyContactPhoneCountryCode === '+213') {
       const num = form.emergencyContactPhoneNumber.replace(/^0+/, '');
       if (!/^[567]\d{8}$/.test(num)) errs.emergencyContactPhoneNumber = '9 chiffres, démarrant par 5/6/7 (sans le 0)';
@@ -432,6 +434,7 @@ export default function VolunteerRegister() {
       // Emergency contact (E.164)
       const emergencyPhone = form.emergencyContactPhoneCountryCode + form.emergencyContactPhoneNumber.replace(/^0+/, '');
       fd.append('emergencyContactName', form.emergencyContactName);
+      fd.append('emergencyContactRelationship', form.emergencyContactRelationship);
       fd.append('emergencyContactPhone', emergencyPhone);
 
       // Single consolidated règlement
@@ -499,7 +502,11 @@ export default function VolunteerRegister() {
   const FieldError = ({ name }) => fieldErrors[name] ? <p className="text-xs text-red-500 mt-1">{fieldErrors[name]}</p> : null;
 
   return (
-    <PublicLayout title="Candidature bénévole" event={event}>
+    <PublicLayout
+      title="Candidature bénévole"
+      event={event}
+      hideNavLinks={event?.registrationOpen === false}
+    >
       <div className="py-10 px-4">
         <div className="max-w-3xl mx-auto">
           {/* Banner */}
@@ -620,7 +627,7 @@ export default function VolunteerRegister() {
                     <p className="text-sm font-medium text-gray-900">
                       Disponible le jour de la course
                       {event?.date && (
-                        <span className="text-gray-500 font-normal"> (le {new Date(event.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })})</span>
+                        <span className="text-gray-500 font-normal"> (le {new Date(event.date).toLocaleString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })})</span>
                       )}
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">Je confirme être présent(e) pour l'événement</p>
@@ -732,13 +739,23 @@ export default function VolunteerRegister() {
             <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
               <SectionHeader icon={AlertTriangle} title="Contact d'urgence" />
               <div className="space-y-4">
-                <div>
-                  <label className={labelCls}>Nom et lien (parent, conjoint…)<span className="text-[#C42826] ms-0.5">*</span></label>
-                  <input className={fieldErrors.emergencyContactName ? inputErrCls : inputCls} required
-                    placeholder="Ex : Karim BENALI — Frère"
-                    value={form.emergencyContactName}
-                    onChange={(e) => update('emergencyContactName', e.target.value)} />
-                  <FieldError name="emergencyContactName" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelCls}>Nom<span className="text-[#C42826] ms-0.5">*</span></label>
+                    <input className={fieldErrors.emergencyContactName ? inputErrCls : inputCls} required
+                      placeholder="Ex : Karim BENALI"
+                      value={form.emergencyContactName}
+                      onChange={(e) => update('emergencyContactName', e.target.value)} />
+                    <FieldError name="emergencyContactName" />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Lien<span className="text-[#C42826] ms-0.5">*</span></label>
+                    <input className={fieldErrors.emergencyContactRelationship ? inputErrCls : inputCls} required
+                      placeholder="Ex : Frère, Conjoint, Parent…"
+                      value={form.emergencyContactRelationship}
+                      onChange={(e) => update('emergencyContactRelationship', e.target.value)} />
+                    <FieldError name="emergencyContactRelationship" />
+                  </div>
                 </div>
                 <div>
                   <label className={labelCls}>Téléphone d'urgence<span className="text-[#C42826] ms-0.5">*</span></label>

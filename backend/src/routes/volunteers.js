@@ -372,7 +372,8 @@ async function volunteerRoutes(fastify) {
       select: {
         id: true, slug: true, name: true, type: true, date: true, location: true,
         primaryColor: true, logoPath: true, coverImagePath: true,
-        volunteersOpen: true, status: true, contactEmail: true, contactPhone: true,
+        volunteersOpen: true, registrationOpen: true,
+        status: true, contactEmail: true, contactPhone: true,
       },
     });
     if (!event) throw new AppError(404, 'Événement introuvable', 'NOT_FOUND');
@@ -496,6 +497,7 @@ async function volunteerRoutes(fastify) {
         otherSkills: fields.otherSkills ? String(fields.otherSkills).trim() : null,
         // Emergency contact
         emergencyContactName: fields.emergencyContactName ? String(fields.emergencyContactName).trim() : null,
+        emergencyContactRelationship: fields.emergencyContactRelationship ? String(fields.emergencyContactRelationship).trim() : null,
         emergencyContactPhone: fields.emergencyContactPhone ? String(fields.emergencyContactPhone).trim() : null,
         // Agreements (single consolidated règlement)
         agreedRules,

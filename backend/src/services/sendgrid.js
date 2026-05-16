@@ -241,7 +241,7 @@ async function sendLateRegistrationInvitation({ toEmail, eventName, bibNumber, l
  */
 async function sendVolunteerInterviewProposal({ toEmail, firstName, eventName, slots, adminNote }) {
   const fmt = (iso) => new Date(iso).toLocaleString('fr-FR', {
-    weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
   });
 
   const slotItems = (slots || [])
