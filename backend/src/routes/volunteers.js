@@ -94,7 +94,7 @@ async function volunteerRoutes(fastify) {
     '/admin/volunteers',
     { preHandler: [authenticate, authorize(...VOLUNTEER_VIEW_ROLES)] },
     async (request) => {
-      const { eventId, status, search } = request.query;
+      const { eventId, status, search, assignedTo } = request.query;
       const isTLB = request.user.role === 'team_leader_volunteers';
 
       if (!eventId && !isTLB) throw new AppError(400, 'eventId requis', 'VALIDATION_ERROR');
@@ -106,8 +106,12 @@ async function volunteerRoutes(fastify) {
         // Force: only validated volunteers assigned to this TLB
         where.assignedToId = request.user.userId;
         where.status = 'validee';
-      } else if (status && status !== 'all') {
-        where.status = status;
+      } else {
+        if (status && status !== 'all') where.status = status;
+        // Team Leader filter (AB only). 'none' = unassigned, '<uuid>' = that TL, 'all'/missing = no filter
+        if (assignedTo && assignedTo !== 'all') {
+          where.assignedToId = assignedTo === 'none' ? null : assignedTo;
+        }
       }
 
       if (search) {
