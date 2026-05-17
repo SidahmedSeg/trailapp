@@ -40,6 +40,63 @@ const ALLOWED_MIME = {
  *   "ALGIERS URBAN TRAIL 2026"      →  "AUT"
  * Falls back to first 3 uppercase letters of the name if heuristics yield none.
  */
+// Build a CSV from volunteer rows. Handles escaping (quotes, commas, newlines)
+// and shapes nested values (skills array → "|"-joined; assignedTo → username).
+const CSV_COLUMNS = [
+  { key: 'volunteerId',                  label: 'ID Benevole' },
+  { key: 'firstName',                    label: 'Prenom' },
+  { key: 'lastName',                     label: 'Nom' },
+  { key: 'email',                        label: 'Email' },
+  { key: 'phone',                        label: 'Telephone' },
+  { key: 'gender',                       label: 'Genre' },
+  { key: 'birthDate',                    label: 'Date de naissance' },
+  { key: 'nationality',                  label: 'Nationalite' },
+  { key: 'wilaya',                       label: 'Wilaya' },
+  { key: 'commune',                      label: 'Commune' },
+  { key: 'tshirtSize',                   label: 'Taille t-shirt' },
+  { key: 'skills',                       label: 'Competences' },
+  { key: 'otherSkills',                  label: 'Autres competences' },
+  { key: 'languagesSpoken',              label: 'Langues parlees' },
+  { key: 'availableRaceDay',             label: 'Disponible jour J' },
+  { key: 'canArriveEarly',               label: 'Peut arriver tot' },
+  { key: 'canStandLongTime',             label: 'Peut rester debout' },
+  { key: 'previousExperience',           label: 'Experience precedente' },
+  { key: 'emergencyContactName',         label: 'Contact urgence (nom)' },
+  { key: 'emergencyContactRelationship', label: 'Contact urgence (lien)' },
+  { key: 'emergencyContactPhone',        label: 'Contact urgence (telephone)' },
+  { key: 'status',                       label: 'Statut' },
+  { key: 'assignedTo',                   label: 'Team Leader' },
+  { key: 'validatedAt',                  label: 'Date validation' },
+  { key: 'validatedBy',                  label: 'Validee par' },
+  { key: 'rejectedAt',                   label: 'Date rejet' },
+  { key: 'rejectedBy',                   label: 'Rejetee par' },
+  { key: 'checkedInAt',                  label: 'Date check-in' },
+  { key: 'checkedInBy',                  label: 'Check-in par' },
+  { key: 'createdAt',                    label: 'Date candidature' },
+];
+
+function csvCell(value) {
+  if (value === null || value === undefined) return '';
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'boolean') return value ? 'Oui' : 'Non';
+  let s = String(value);
+  if (s.includes('"') || s.includes(',') || s.includes('\n') || s.includes('\r')) {
+    s = '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+function buildVolunteerCSV(rows) {
+  const header = CSV_COLUMNS.map((c) => c.label).join(',');
+  const data = rows.map((r) => CSV_COLUMNS.map((c) => {
+    let v = r[c.key];
+    if (c.key === 'skills' && Array.isArray(v)) v = v.join(' | ');
+    if (c.key === 'assignedTo') v = r.assignedTo?.username || '';
+    return csvCell(v);
+  }).join(','));
+  return [header, ...data].join('\n');
+}
+
 function buildVolunteerPrefix(eventName) {
   const name = String(eventName || '').trim();
   if (!name) return 'VOL';
@@ -200,6 +257,49 @@ async function volunteerRoutes(fastify) {
         checkedIn,
         notCheckedIn: validated - checkedIn,
       };
+    }
+  );
+
+  // GET /api/admin/volunteers/export/csv?eventId=&status=&assignedTo=&search=
+  // Streams a CSV of volunteers, scoped to the same filters as the list endpoint.
+  // AB roles only — TLBs would just be re-exporting their own already-visible list.
+  fastify.get(
+    '/admin/volunteers/export/csv',
+    { preHandler: [authenticate, authorize(...VOLUNTEER_ROLES)] },
+    async (request, reply) => {
+      const { eventId, status, assignedTo, search } = request.query;
+      if (!eventId) throw new AppError(400, 'eventId requis', 'VALIDATION_ERROR');
+
+      const where = { eventId };
+      if (status && status !== 'all') where.status = status;
+      if (assignedTo && assignedTo !== 'all') {
+        where.assignedToId = assignedTo === 'none' ? null : assignedTo;
+      }
+      if (search) {
+        const s = search.trim();
+        if (s) {
+          where.OR = [
+            { firstName: { contains: s, mode: 'insensitive' } },
+            { lastName: { contains: s, mode: 'insensitive' } },
+            { email: { contains: s, mode: 'insensitive' } },
+            { volunteerId: { contains: s, mode: 'insensitive' } },
+            { phone: { contains: s } },
+          ];
+        }
+      }
+
+      const rows = await prisma.volunteer.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        include: { assignedTo: { select: { username: true } } },
+      });
+
+      const csv = buildVolunteerCSV(rows);
+      const filename = `benevoles-${new Date().toISOString().slice(0, 10)}.csv`;
+      reply
+        .header('Content-Type', 'text/csv; charset=utf-8')
+        .header('Content-Disposition', `attachment; filename="${filename}"`)
+        .send('﻿' + csv); // UTF-8 BOM so Excel renders accents correctly
     }
   );
 
