@@ -20,9 +20,10 @@ const { randomUUID } = require('crypto');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../middleware/activityLogger');
 const { AppError } = require('../utils/errors');
-const { sendVolunteerInterviewProposal, sendVolunteerValidated } = require('../services/sendgrid');
+const { sendVolunteerInterviewProposal, sendVolunteerValidated, sendVolunteerRejected } = require('../services/sendgrid');
 
-const VOLUNTEER_ROLES = ['super_admin', 'admin', 'volunteers_manager'];
+const VOLUNTEER_ROLES = ['super_admin', 'admin', 'admin_volunteers'];
+const VOLUNTEER_VIEW_ROLES = ['super_admin', 'admin', 'admin_volunteers', 'team_leader_volunteers'];
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB per file
 const ALLOWED_MIME = {
   'application/pdf': '.pdf',
@@ -88,15 +89,31 @@ async function volunteerRoutes(fastify) {
   // ────────────────────────────────────────────────────────────────────
 
   // GET /api/admin/volunteers?eventId=&status=
+  // TLBs are scoped to their assigned validated volunteers only.
   fastify.get(
     '/admin/volunteers',
-    { preHandler: [authenticate, authorize(...VOLUNTEER_ROLES)] },
+    { preHandler: [authenticate, authorize(...VOLUNTEER_VIEW_ROLES)] },
     async (request) => {
-      const { eventId, status, search } = request.query;
-      if (!eventId) throw new AppError(400, 'eventId requis', 'VALIDATION_ERROR');
+      const { eventId, status, search, assignedTo } = request.query;
+      const isTLB = request.user.role === 'team_leader_volunteers';
 
-      const where = { eventId };
-      if (status && status !== 'all') where.status = status;
+      if (!eventId && !isTLB) throw new AppError(400, 'eventId requis', 'VALIDATION_ERROR');
+
+      const where = {};
+      if (eventId) where.eventId = eventId;
+
+      if (isTLB) {
+        // Force: only validated volunteers assigned to this TLB
+        where.assignedToId = request.user.userId;
+        where.status = 'validee';
+      } else {
+        if (status && status !== 'all') where.status = status;
+        // Team Leader filter (AB only). 'none' = unassigned, '<uuid>' = that TL, 'all'/missing = no filter
+        if (assignedTo && assignedTo !== 'all') {
+          where.assignedToId = assignedTo === 'none' ? null : assignedTo;
+        }
+      }
+
       if (search) {
         const s = search.trim();
         if (s) {
@@ -113,6 +130,7 @@ async function volunteerRoutes(fastify) {
       const rows = await prisma.volunteer.findMany({
         where,
         orderBy: { createdAt: 'desc' },
+        include: { assignedTo: { select: { id: true, username: true } } },
       });
       return rows;
     }
@@ -121,14 +139,189 @@ async function volunteerRoutes(fastify) {
   // GET /api/admin/volunteers/:id
   fastify.get(
     '/admin/volunteers/:id',
-    { preHandler: [authenticate, authorize(...VOLUNTEER_ROLES)] },
+    { preHandler: [authenticate, authorize(...VOLUNTEER_VIEW_ROLES)] },
     async (request) => {
       const row = await prisma.volunteer.findUnique({
         where: { id: request.params.id },
-        include: { event: { select: { name: true, slug: true, primaryColor: true } } },
+        include: {
+          event: { select: { name: true, slug: true, primaryColor: true } },
+          assignedTo: { select: { id: true, username: true } },
+        },
       });
       if (!row) throw new AppError(404, 'Bénévole introuvable', 'NOT_FOUND');
+      // TLBs can only fetch their own assigned + validated volunteers
+      if (request.user.role === 'team_leader_volunteers') {
+        if (row.assignedToId !== request.user.userId || row.status !== 'validee') {
+          throw new AppError(403, 'Accès refusé', 'FORBIDDEN');
+        }
+      }
       return row;
+    }
+  );
+
+  // GET /api/admin/volunteers/team-leaders
+  // Lists active team leader users for the bulk-assign dropdown.
+  fastify.get(
+    '/admin/volunteers/team-leaders',
+    { preHandler: [authenticate, authorize(...VOLUNTEER_ROLES)] },
+    async () => {
+      const users = await prisma.adminUser.findMany({
+        where: { role: 'team_leader_volunteers', active: true },
+        select: { id: true, username: true, email: true },
+        orderBy: { username: 'asc' },
+      });
+      return users;
+    }
+  );
+
+  // GET /api/admin/volunteers/stats?eventId=
+  // Returns overall counts for the event (independent of list filters).
+  // TLBs see counts scoped to their own assignments.
+  fastify.get(
+    '/admin/volunteers/stats',
+    { preHandler: [authenticate, authorize(...VOLUNTEER_VIEW_ROLES)] },
+    async (request) => {
+      const { eventId } = request.query;
+      const isTLB = request.user.role === 'team_leader_volunteers';
+      if (!eventId && !isTLB) throw new AppError(400, 'eventId requis', 'VALIDATION_ERROR');
+
+      const baseWhere = {};
+      if (eventId) baseWhere.eventId = eventId;
+      if (isTLB) baseWhere.assignedToId = request.user.userId;
+
+      const [registered, validated, checkedIn] = await Promise.all([
+        prisma.volunteer.count({ where: baseWhere }),
+        prisma.volunteer.count({ where: { ...baseWhere, status: 'validee' } }),
+        prisma.volunteer.count({ where: { ...baseWhere, status: 'validee', checkedInAt: { not: null } } }),
+      ]);
+      return {
+        registered,
+        validated,
+        checkedIn,
+        notCheckedIn: validated - checkedIn,
+      };
+    }
+  );
+
+  // POST /api/admin/volunteers/bulk-assign
+  // Body: { volunteerIds: string[], teamLeaderId: string | null }
+  // Assigns (or unassigns when null) a batch of validated volunteers to a TLB.
+  fastify.post(
+    '/admin/volunteers/bulk-assign',
+    { preHandler: [authenticate, authorize(...VOLUNTEER_ROLES)] },
+    async (request) => {
+      const { volunteerIds, teamLeaderId } = request.body || {};
+      if (!Array.isArray(volunteerIds) || volunteerIds.length === 0) {
+        throw new AppError(400, 'volunteerIds requis', 'VALIDATION_ERROR');
+      }
+
+      // If a TLB id was provided, verify it exists and has the right role
+      if (teamLeaderId) {
+        const tl = await prisma.adminUser.findUnique({
+          where: { id: teamLeaderId },
+          select: { id: true, role: true, active: true, username: true },
+        });
+        if (!tl || !tl.active || tl.role !== 'team_leader_volunteers') {
+          throw new AppError(400, 'Team Leader invalide', 'VALIDATION_ERROR');
+        }
+      }
+
+      // All target volunteers must be validated
+      const target = await prisma.volunteer.findMany({
+        where: { id: { in: volunteerIds } },
+        select: { id: true, status: true },
+      });
+      const nonValidated = target.filter((v) => v.status !== 'validee');
+      if (nonValidated.length > 0) {
+        throw new AppError(409,
+          `Seuls les bénévoles validés peuvent être assignés (${nonValidated.length} non validé(s))`,
+          'NOT_VALIDATED');
+      }
+
+      const result = await prisma.volunteer.updateMany({
+        where: { id: { in: target.map((v) => v.id) } },
+        data: {
+          assignedToId: teamLeaderId || null,
+          assignedAt: teamLeaderId ? new Date() : null,
+          assignedBy: teamLeaderId ? request.user.username : null,
+        },
+      });
+
+      await logActivity({
+        action: 'volunteers_bulk_assigned',
+        adminUsername: request.user.username,
+        targetType: 'volunteer',
+        targetId: null,
+        details: {
+          teamLeaderId: teamLeaderId || null,
+          volunteerIds: target.map((v) => v.id),
+          count: result.count,
+        },
+      });
+
+      return { updated: result.count };
+    }
+  );
+
+  // POST /api/admin/volunteers/scan-check-in
+  // Body: { qrToken, dryRun? }
+  //   - dryRun=true → validates access + returns the volunteer payload WITHOUT
+  //     flipping checkedInAt (used to render a confirmation preview).
+  //   - dryRun=false / missing → flips checkedInAt + checkedInBy.
+  // TLBs can only check-in their assignees.
+  fastify.post(
+    '/admin/volunteers/scan-check-in',
+    { preHandler: [authenticate, authorize(...VOLUNTEER_VIEW_ROLES)] },
+    async (request) => {
+      const { qrToken, dryRun } = request.body || {};
+      if (!qrToken) throw new AppError(400, 'qrToken requis', 'VALIDATION_ERROR');
+
+      const row = await prisma.volunteer.findUnique({
+        where: { qrToken },
+        select: { id: true, firstName: true, lastName: true, volunteerId: true, status: true, assignedToId: true, checkedInAt: true, checkedInBy: true },
+      });
+      if (!row) throw new AppError(404, 'QR invalide ou bénévole introuvable', 'NOT_FOUND');
+      if (row.status !== 'validee') {
+        throw new AppError(403, 'Ce bénévole n\'est pas validé', 'NOT_VALIDATED');
+      }
+      if (request.user.role === 'team_leader_volunteers' && row.assignedToId !== request.user.userId) {
+        throw new AppError(403, 'Ce bénévole n\'est pas assigné à vous', 'NOT_ASSIGNED');
+      }
+      if (row.checkedInAt) {
+        return {
+          alreadyCheckedIn: true,
+          volunteer: row,
+        };
+      }
+
+      // Dry-run: return the volunteer without flipping
+      if (dryRun) {
+        return { alreadyCheckedIn: false, dryRun: true, volunteer: row };
+      }
+
+      const now = new Date();
+      const result = await prisma.volunteer.updateMany({
+        where: { id: row.id, checkedInAt: null },
+        data: { checkedInAt: now, checkedInBy: request.user.username },
+      });
+      if (result.count === 0) {
+        // Concurrent scan won — return the now-stored state
+        const fresh = await prisma.volunteer.findUnique({ where: { id: row.id } });
+        return { alreadyCheckedIn: true, volunteer: fresh };
+      }
+
+      await logActivity({
+        action: 'volunteer_checked_in',
+        adminUsername: request.user.username,
+        targetType: 'volunteer',
+        targetId: row.id,
+        details: { volunteerId: row.volunteerId, qrToken },
+      });
+
+      return {
+        alreadyCheckedIn: false,
+        volunteer: { ...row, checkedInAt: now, checkedInBy: request.user.username },
+      };
     }
   );
 
@@ -209,7 +402,7 @@ async function volunteerRoutes(fastify) {
     async (request) => {
       const row = await prisma.volunteer.findUnique({
         where: { id: request.params.id },
-        include: { event: { select: { name: true } } },
+        include: { event: true },
       });
       if (!row) throw new AppError(404, 'Bénévole introuvable', 'NOT_FOUND');
       if (row.status === 'validee' && row.volunteerId) {
@@ -220,11 +413,15 @@ async function volunteerRoutes(fastify) {
       const prefix = buildVolunteerPrefix(row.event?.name);
       const volunteerId = row.volunteerId || (await generateUniqueVolunteerId(prisma, row.eventId, prefix));
 
+      // Generate qrToken if not present (lets us regenerate later w/o losing prior link)
+      const qrToken = row.qrToken || randomUUID();
+
       const updated = await prisma.volunteer.update({
         where: { id: row.id },
         data: {
           status: 'validee',
           volunteerId,
+          qrToken,
           validatedAt: new Date(),
           validatedBy: request.user.username,
         },
@@ -232,11 +429,8 @@ async function volunteerRoutes(fastify) {
 
       try {
         await sendVolunteerValidated({
-          toEmail: row.email,
-          firstName: row.firstName,
-          lastName: row.lastName,
-          eventName: row.event?.name || 'Événement',
-          volunteerId,
+          volunteer: { ...row, volunteerId, qrToken },
+          event: row.event,
         });
       } catch (err) {
         request.log.error(err, 'Volunteer validation email failed');
@@ -252,10 +446,64 @@ async function volunteerRoutes(fastify) {
           eventId: row.eventId,
           email: row.email,
           volunteerId,
+          qrToken,
         },
       });
 
-      return { validated: true, volunteerId };
+      return { validated: true, volunteerId, qrToken };
+    }
+  );
+
+  // POST /api/admin/volunteers/:id/reject
+  // Marks the candidate as rejected and sends a rejection email.
+  fastify.post(
+    '/admin/volunteers/:id/reject',
+    { preHandler: [authenticate, authorize(...VOLUNTEER_ROLES)] },
+    async (request) => {
+      const row = await prisma.volunteer.findUnique({
+        where: { id: request.params.id },
+        include: { event: { select: { name: true } } },
+      });
+      if (!row) throw new AppError(404, 'Bénévole introuvable', 'NOT_FOUND');
+      if (row.status === 'validee') {
+        throw new AppError(409, 'Ce candidat est déjà validé, impossible de le rejeter', 'ALREADY_VALIDATED');
+      }
+      if (row.status === 'rejected') {
+        throw new AppError(409, 'Ce candidat est déjà rejeté', 'ALREADY_REJECTED');
+      }
+
+      await prisma.volunteer.update({
+        where: { id: row.id },
+        data: {
+          status: 'rejected',
+          rejectedAt: new Date(),
+          rejectedBy: request.user.username,
+        },
+      });
+
+      try {
+        await sendVolunteerRejected({
+          toEmail: row.email,
+          firstName: row.firstName,
+          eventName: row.event?.name || 'Événement',
+        });
+      } catch (err) {
+        request.log.error(err, 'Volunteer rejection email failed');
+        // Don't block status change if email fails — admin can manually contact the candidate
+      }
+
+      await logActivity({
+        action: 'volunteer_rejected',
+        adminUsername: request.user.username,
+        targetType: 'volunteer',
+        targetId: row.id,
+        details: {
+          eventId: row.eventId,
+          email: row.email,
+        },
+      });
+
+      return { rejected: true };
     }
   );
 
@@ -319,7 +567,8 @@ async function volunteerRoutes(fastify) {
       select: {
         id: true, slug: true, name: true, type: true, date: true, location: true,
         primaryColor: true, logoPath: true, coverImagePath: true,
-        volunteersOpen: true, status: true, contactEmail: true, contactPhone: true,
+        volunteersOpen: true, registrationOpen: true,
+        status: true, contactEmail: true, contactPhone: true,
       },
     });
     if (!event) throw new AppError(404, 'Événement introuvable', 'NOT_FOUND');
@@ -377,15 +626,24 @@ async function volunteerRoutes(fastify) {
     if (!/^\S+@\S+\.\S+$/.test(fields.email)) {
       throw new AppError(400, 'Email invalide', 'VALIDATION_ERROR');
     }
-    if (!files.cv) throw new AppError(400, 'CV requis (PDF, JPG ou PNG)', 'CV_REQUIRED');
     if (!files.idDoc) throw new AppError(400, 'Pièce d\'identité requise (PDF, JPG ou PNG)', 'ID_REQUIRED');
 
-    // Required agreements — submitted as 'true' strings (FormData has no real booleans)
+    // Single consolidated règlement acknowledgment — submitted as 'true' string
+    // (FormData has no real booleans). Older accepted-engagements are kept on
+    // existing rows but the current form only requires this one.
     const asBool = (v) => v === true || v === 'true' || v === '1' || v === 'on';
-    const agreedInstructions = asBool(fields.agreedInstructions);
-    const agreedBriefing = asBool(fields.agreedBriefing);
-    if (!agreedInstructions || !agreedBriefing) {
-      throw new AppError(400, 'Vous devez accepter les deux engagements', 'AGREEMENTS_REQUIRED');
+    const agreedRules = asBool(fields.agreedRules);
+    if (!agreedRules) {
+      throw new AppError(400, 'Vous devez accepter le règlement et les engagements du bénévole', 'AGREEMENTS_REQUIRED');
+    }
+
+    // Parse skills JSON if present (frontend sends a JSON-encoded array)
+    let skills = null;
+    if (fields.skills) {
+      try {
+        const parsed = JSON.parse(fields.skills);
+        if (Array.isArray(parsed)) skills = parsed.filter((s) => typeof s === 'string').slice(0, 20);
+      } catch { /* ignore malformed input */ }
     }
 
     const emailLower = fields.email.toLowerCase().trim();
@@ -404,12 +662,9 @@ async function volunteerRoutes(fastify) {
     const dir = path.resolve(__dirname, `../../uploads/volunteers/${event.id}/${volunteerRowId}`);
     fs.mkdirSync(dir, { recursive: true });
 
-    const cvFilename = `cv${files.cv.ext}`;
     const idFilename = `id${files.idDoc.ext}`;
-    fs.writeFileSync(path.join(dir, cvFilename), files.cv.buffer);
     fs.writeFileSync(path.join(dir, idFilename), files.idDoc.buffer);
 
-    const cvPath = `/uploads/volunteers/${event.id}/${volunteerRowId}/${cvFilename}`;
     const idPath = `/uploads/volunteers/${event.id}/${volunteerRowId}/${idFilename}`;
 
     const volunteer = await prisma.volunteer.create({
@@ -423,6 +678,8 @@ async function volunteerRoutes(fastify) {
         birthDate: fields.birthDate ? new Date(fields.birthDate) : null,
         gender: fields.gender ? String(fields.gender) : null,
         nationality: fields.nationality ? String(fields.nationality) : null,
+        wilaya: fields.wilaya ? String(fields.wilaya).trim() : null,
+        commune: fields.commune ? String(fields.commune).trim() : null,
         motivation: fields.motivation ? String(fields.motivation) : null,
         // Availability & skills
         availableRaceDay: asBool(fields.availableRaceDay),
@@ -431,13 +688,14 @@ async function volunteerRoutes(fastify) {
         languagesSpoken: fields.languagesSpoken ? String(fields.languagesSpoken).trim() : null,
         canStandLongTime: asBool(fields.canStandLongTime),
         tshirtSize: fields.tshirtSize ? String(fields.tshirtSize) : null,
+        skills,
+        otherSkills: fields.otherSkills ? String(fields.otherSkills).trim() : null,
         // Emergency contact
         emergencyContactName: fields.emergencyContactName ? String(fields.emergencyContactName).trim() : null,
+        emergencyContactRelationship: fields.emergencyContactRelationship ? String(fields.emergencyContactRelationship).trim() : null,
         emergencyContactPhone: fields.emergencyContactPhone ? String(fields.emergencyContactPhone).trim() : null,
-        // Agreements
-        agreedInstructions,
-        agreedBriefing,
-        cvPath,
+        // Agreements (single consolidated règlement)
+        agreedRules,
         idPath,
         status: 'en_attente',
       },
@@ -447,6 +705,45 @@ async function volunteerRoutes(fastify) {
       id: volunteer.id,
       message: 'Candidature reçue. L\'équipe vous contactera prochainement.',
     };
+  });
+
+  // GET /api/benevole/card/:token — public badge card payload (gated by qrToken)
+  fastify.get('/benevole/card/:token', async (request) => {
+    const row = await prisma.volunteer.findUnique({
+      where: { qrToken: request.params.token },
+      include: { event: { select: { name: true, date: true, location: true, primaryColor: true, slug: true } } },
+    });
+    if (!row) throw new AppError(404, 'Carte introuvable', 'NOT_FOUND');
+    if (row.status !== 'validee') throw new AppError(403, 'Carte non disponible', 'NOT_VALIDATED');
+
+    return {
+      firstName: row.firstName,
+      lastName: row.lastName,
+      email: row.email,
+      phone: row.phone,
+      volunteerId: row.volunteerId,
+      qrToken: row.qrToken,
+      skills: Array.isArray(row.skills) ? row.skills : [],
+      otherSkills: row.otherSkills || null,
+      event: row.event,
+    };
+  });
+
+  // GET /api/benevole/card/:token/pdf — same gating, streams the PDF
+  fastify.get('/benevole/card/:token/pdf', async (request, reply) => {
+    const row = await prisma.volunteer.findUnique({
+      where: { qrToken: request.params.token },
+      include: { event: true },
+    });
+    if (!row) throw new AppError(404, 'Carte introuvable', 'NOT_FOUND');
+    if (row.status !== 'validee') throw new AppError(403, 'Carte non disponible', 'NOT_VALIDATED');
+
+    const { generateVolunteerBadgePDF } = require('../services/pdf');
+    const pdfBuffer = await generateVolunteerBadgePDF(row, row.event);
+    reply
+      .header('Content-Type', 'application/pdf')
+      .header('Content-Disposition', `attachment; filename="benevole-${row.volunteerId || 'card'}.pdf"`)
+      .send(pdfBuffer);
   });
 }
 
