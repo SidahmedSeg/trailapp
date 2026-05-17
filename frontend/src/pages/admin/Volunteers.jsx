@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Select from 'react-select';
 import { get, post, put } from '../../lib/api';
 import { getAccessToken } from '../../lib/auth';
@@ -80,6 +80,7 @@ export default function Volunteers() {
   const [checkInModalOpen, setCheckInModalOpen] = useState(false);
   const [teamLeaderFilter, setTeamLeaderFilter] = useState('all'); // 'all' | 'none' | <userId>
   const [teamLeaders, setTeamLeaders] = useState([]);
+  const [stats, setStats] = useState({ registered: 0, validated: 0, checkedIn: 0, notCheckedIn: 0 });
 
   const isTLB = user?.role === 'team_leader_volunteers';
   const isAB = AB_ROLES.includes(user?.role);
@@ -112,6 +113,10 @@ export default function Volunteers() {
       const data = await get(`/admin/volunteers?${params}`);
       setRows(data || []);
       setSelectedIds(new Set());
+      // Refresh global stats alongside the list (mutations call fetchRows after)
+      get(`/admin/volunteers/stats${selectedEventId ? `?eventId=${selectedEventId}` : ''}`)
+        .then((s) => setStats(s || { registered: 0, validated: 0, checkedIn: 0, notCheckedIn: 0 }))
+        .catch(() => { /* keep prior */ });
     } catch (err) {
       flash('error', err.message);
     } finally {
@@ -141,12 +146,18 @@ export default function Volunteers() {
     setTogglingOpen(false);
   }
 
-  const stats = useMemo(() => ({
-    total: rows.length,
-    en_attente: rows.filter((r) => r.status === 'en_attente').length,
-    interview_planned: rows.filter((r) => r.status === 'interview_planned').length,
-    validee: rows.filter((r) => r.status === 'validee').length,
-  }), [rows]);
+  // Fetch overall stats whenever event or refresh fires (independent of list filters)
+  const fetchStats = useCallback(async () => {
+    if (!isTLB && !selectedEventId) return;
+    try {
+      const params = new URLSearchParams();
+      if (selectedEventId) params.set('eventId', selectedEventId);
+      const data = await get(`/admin/volunteers/stats?${params}`);
+      setStats(data || { registered: 0, validated: 0, checkedIn: 0, notCheckedIn: 0 });
+    } catch { /* ignore — keep last good value */ }
+  }, [selectedEventId, isTLB]);
+
+  useEffect(() => { fetchStats(); }, [fetchStats]);
 
   if (!user) return null;
   if (!ALLOWED_ROLES.includes(user.role)) return null;
@@ -232,20 +243,20 @@ export default function Volunteers() {
         {!isTLB && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-500">Total candidats</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
-          </div>
-          <div className="bg-amber-50 rounded-xl border border-amber-200 p-4">
-            <p className="text-xs text-amber-700">En attente</p>
-            <p className="text-2xl font-bold text-amber-700 mt-1">{stats.en_attente}</p>
+            <p className="text-xs text-gray-500">Inscrits</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{stats.registered}</p>
           </div>
           <div className="bg-blue-50 rounded-xl border border-blue-200 p-4">
-            <p className="text-xs text-blue-700">Entretien planifié</p>
-            <p className="text-2xl font-bold text-blue-700 mt-1">{stats.interview_planned}</p>
+            <p className="text-xs text-blue-700">Validés</p>
+            <p className="text-2xl font-bold text-blue-700 mt-1">{stats.validated}</p>
           </div>
           <div className="bg-emerald-50 rounded-xl border border-emerald-200 p-4">
-            <p className="text-xs text-emerald-700">Validés</p>
-            <p className="text-2xl font-bold text-emerald-700 mt-1">{stats.validee}</p>
+            <p className="text-xs text-emerald-700">Présents</p>
+            <p className="text-2xl font-bold text-emerald-700 mt-1">{stats.checkedIn}</p>
+          </div>
+          <div className="bg-amber-50 rounded-xl border border-amber-200 p-4">
+            <p className="text-xs text-amber-700">En attente check-in</p>
+            <p className="text-2xl font-bold text-amber-700 mt-1">{stats.notCheckedIn}</p>
           </div>
         </div>
         )}

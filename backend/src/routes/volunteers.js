@@ -174,6 +174,35 @@ async function volunteerRoutes(fastify) {
     }
   );
 
+  // GET /api/admin/volunteers/stats?eventId=
+  // Returns overall counts for the event (independent of list filters).
+  // TLBs see counts scoped to their own assignments.
+  fastify.get(
+    '/admin/volunteers/stats',
+    { preHandler: [authenticate, authorize(...VOLUNTEER_VIEW_ROLES)] },
+    async (request) => {
+      const { eventId } = request.query;
+      const isTLB = request.user.role === 'team_leader_volunteers';
+      if (!eventId && !isTLB) throw new AppError(400, 'eventId requis', 'VALIDATION_ERROR');
+
+      const baseWhere = {};
+      if (eventId) baseWhere.eventId = eventId;
+      if (isTLB) baseWhere.assignedToId = request.user.userId;
+
+      const [registered, validated, checkedIn] = await Promise.all([
+        prisma.volunteer.count({ where: baseWhere }),
+        prisma.volunteer.count({ where: { ...baseWhere, status: 'validee' } }),
+        prisma.volunteer.count({ where: { ...baseWhere, status: 'validee', checkedInAt: { not: null } } }),
+      ]);
+      return {
+        registered,
+        validated,
+        checkedIn,
+        notCheckedIn: validated - checkedIn,
+      };
+    }
+  );
+
   // POST /api/admin/volunteers/bulk-assign
   // Body: { volunteerIds: string[], teamLeaderId: string | null }
   // Assigns (or unassigns when null) a batch of validated volunteers to a TLB.
