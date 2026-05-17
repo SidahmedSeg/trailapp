@@ -8,7 +8,7 @@ import Sidebar from '../../components/ui/Sidebar';
 import {
   CalendarClock, CheckCircle, X, Clock, Search, FileText, IdCard,
   Mail, Phone, AlertCircle, Power, ExternalLink, Copy, CalendarCheck, XCircle,
-  Camera, StopCircle, UserPlus, ScanLine, ChevronRight,
+  Camera, StopCircle, UserPlus, ScanLine, ChevronRight, Download,
 } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
@@ -144,6 +144,38 @@ export default function Volunteers() {
       flash('error', err.message);
     }
     setTogglingOpen(false);
+  }
+
+  // Export the current filtered list as a CSV file
+  async function handleExport() {
+    if (!selectedEventId) return;
+    try {
+      const params = new URLSearchParams({ eventId: selectedEventId });
+      if (statusFilter !== 'all') params.set('status', statusFilter);
+      if (teamLeaderFilter !== 'all') params.set('assignedTo', teamLeaderFilter);
+      if (debouncedSearch) params.set('search', debouncedSearch);
+
+      const token = getAccessToken();
+      const res = await fetch(`/api/admin/volunteers/export/csv?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        throw new Error(j?.message || `Erreur ${res.status}`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `benevoles-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      flash('success', 'Export téléchargé');
+    } catch (err) {
+      flash('error', err.message);
+    }
   }
 
   // Fetch overall stats whenever event or refresh fires (independent of list filters)
@@ -322,6 +354,15 @@ export default function Volunteers() {
             <button onClick={() => setAssignModalOpen(true)}
               className="ml-auto inline-flex items-center gap-2 rounded-lg bg-[#C42826] text-white px-4 py-2 text-sm font-medium hover:bg-[#a82220] cursor-pointer">
               <UserPlus size={14} /> Assigner ({selectedIds.size})
+            </button>
+          )}
+          {isAB && (
+            <button onClick={handleExport}
+              className={`inline-flex items-center gap-2 rounded-lg bg-white border border-gray-200 text-gray-700 px-4 py-2 text-sm font-medium hover:bg-gray-50 cursor-pointer ${
+                selectedIds.size > 0 && statusFilter === 'validee' ? '' : 'ml-auto'
+              }`}
+              title="Exporter selon les filtres actuels (statut, Team Leader, recherche)">
+              <Download size={14} /> Exporter
             </button>
           )}
         </div>
