@@ -265,8 +265,9 @@ async function sendVolunteerInterviewProposal({ toEmail, firstName, eventName, s
 
   const msg = {
     to: toEmail,
-    from: { email: env.SENDGRID_FROM_EMAIL, name: env.SENDGRID_FROM_NAME },
-    replyTo: { email: 'staff@lassm.dz', name: 'Staff LASSM' },
+    // Volunteer emails are sent from staff@lassm.dz (the team's operational address)
+    // so replies land there directly instead of bouncing off noreply.
+    from: { email: 'staff@lassm.dz', name: env.SENDGRID_FROM_NAME },
     subject,
     html: body,
     trackingSettings: {
@@ -330,8 +331,9 @@ async function sendVolunteerValidated({ volunteer, event }) {
 
   const msg = {
     to: toEmail,
-    from: { email: env.SENDGRID_FROM_EMAIL, name: env.SENDGRID_FROM_NAME },
-    replyTo: { email: 'staff@lassm.dz', name: 'Staff LASSM' },
+    // Volunteer emails are sent from staff@lassm.dz (the team's operational address)
+    // so replies land there directly instead of bouncing off noreply.
+    from: { email: 'staff@lassm.dz', name: env.SENDGRID_FROM_NAME },
     subject,
     html: body,
     ...(attachments ? { attachments } : {}),
@@ -368,8 +370,9 @@ async function sendVolunteerRejected({ toEmail, firstName, eventName }) {
 
   const msg = {
     to: toEmail,
-    from: { email: env.SENDGRID_FROM_EMAIL, name: env.SENDGRID_FROM_NAME },
-    replyTo: { email: 'staff@lassm.dz', name: 'Staff LASSM' },
+    // Volunteer emails are sent from staff@lassm.dz (the team's operational address)
+    // so replies land there directly instead of bouncing off noreply.
+    from: { email: 'staff@lassm.dz', name: env.SENDGRID_FROM_NAME },
     subject,
     html: body,
     trackingSettings: {
