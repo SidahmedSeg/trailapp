@@ -257,6 +257,7 @@ async function sendVolunteerInterviewProposal({ toEmail, firstName, eventName, s
     <p>Nous avons bien étudié votre profil et serions ravis d'échanger avec vous lors d'un court entretien afin de mieux faire connaissance et de vous présenter l'aventure bénévole.</p>
     <p>Nous vous proposons les créneaux suivants :</p>
     <ul style="padding-left: 24px;">${slotItems}</ul>
+    <p><strong>Lieu :</strong> TENNIS CLUB DE BEN AKNOUN — <a href="https://maps.app.goo.gl/1ooKBaRj9iNa5BQ18" style="color: #C42826; text-decoration: underline;">https://maps.app.goo.gl/1ooKBaRj9iNa5BQ18</a></p>
     ${adminNote ? `<p style="background: #fff7ed; border-left: 3px solid #f59e0b; padding: 10px 14px;">${adminNote}</p>` : ''}
     <p>Il vous suffit de répondre à cet email en indiquant le créneau qui vous convient le mieux.</p>
     <p>Au plaisir d'échanger prochainement avec vous.</p>
