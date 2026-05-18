@@ -695,6 +695,25 @@ function DetailDrawer({ volunteer, isTLB, onClose, onPlanInterview, onValidate, 
             )}
           </div>
 
+          {/* Compétences */}
+          {((Array.isArray(volunteer.skills) && volunteer.skills.length > 0) || volunteer.otherSkills) && (
+            <div>
+              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Compétences</h4>
+              {Array.isArray(volunteer.skills) && volunteer.skills.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {volunteer.skills.map((s) => (
+                    <span key={s} className="text-xs font-medium rounded-full border border-[#C42826] text-[#C42826] px-2.5 py-0.5">
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {volunteer.otherSkills && (
+                <p className="text-xs italic text-gray-600 mt-2">Autres : {volunteer.otherSkills}</p>
+              )}
+            </div>
+          )}
+
           {/* Emergency contact */}
           {(volunteer.emergencyContactName || volunteer.emergencyContactPhone) && (
             <div>
