@@ -638,6 +638,11 @@ function DetailDrawer({ volunteer, isTLB, onClose, onPlanInterview, onValidate, 
             )}
             {volunteer.gender && <div className="text-xs text-gray-500">Genre : {volunteer.gender}</div>}
             {volunteer.nationality && <div className="text-xs text-gray-500">Nationalité : {volunteer.nationality}</div>}
+            {(volunteer.wilaya || volunteer.commune) && (
+              <div className="text-xs text-gray-500">
+                Adresse : {[volunteer.wilaya, volunteer.commune].filter(Boolean).join(' — ')}
+              </div>
+            )}
           </div>
 
           {/* Documents */}
