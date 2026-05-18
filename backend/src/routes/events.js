@@ -119,9 +119,14 @@ async function eventsRoutes(fastify) {
             'BIB_END_DECREASE'
           );
         }
-        // Cannot decrease below highest assigned bib in the auto range
+        // Cannot decrease below highest assigned bib in the auto range.
+        // Scope to [bibStart..bibEnd] — upper-band manual bibs (above bibEnd)
+        // are governed by their own ceiling and must not influence this check.
         const maxBib = await prisma.registration.aggregate({
-          where: { eventId: event.id, bibNumber: { not: null } },
+          where: {
+            eventId: event.id,
+            bibNumber: { not: null, gte: event.bibStart, lte: event.bibEnd },
+          },
           _max: { bibNumber: true },
         });
         if (maxBib._max.bibNumber && body.bibEnd < maxBib._max.bibNumber) {
