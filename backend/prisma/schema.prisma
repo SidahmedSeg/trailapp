@@ -79,6 +79,7 @@ model Event {
   satimReconciliations  SatimReconciliation[]
   lateRegistrationLinks LateRegistrationLink[]
   volunteers            Volunteer[]
+  campaigns             CommunicationCampaign[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -404,4 +405,36 @@ model Volunteer {
   @@unique([eventId, email])
   @@index([eventId, status])
   @@index([assignedToId])
+}
+
+model CommunicationCampaign {
+  id      String  @id @default(uuid())
+  eventId String?
+  event   Event?  @relation(fields: [eventId], references: [id])
+
+  audienceType  String // 'custom' | 'all_runners' | 'all_volunteers' | 'volunteers_by_tlb'
+  audienceParam String? // tlb userId for 'volunteers_by_tlb'; pipe-joined emails for 'custom'
+
+  subject  String
+  bodyHtml String  @db.Text
+  bodyText String? @db.Text
+
+  fromEmail String
+  fromName  String?
+
+  totalCount  Int @default(0)
+  sentCount   Int @default(0)
+  failedCount Int @default(0)
+
+  status       String    @default("pending") // pending | running | done | failed
+  startedAt    DateTime?
+  completedAt  DateTime?
+  errorSamples Json? // last 5 failure samples: [{email, message}]
+
+  createdAt DateTime @default(now())
+  createdBy String
+
+  @@index([eventId, createdAt])
+  @@index([status])
+  @@index([createdBy])
 }

@@ -391,6 +391,26 @@ async function sendVolunteerRejected({ toEmail, firstName, eventName }) {
   }
 }
 
+/**
+ * Generic email send used by the Communication module.
+ * Single recipient. Throws on failure (caller decides whether to count it as a
+ * per-recipient failure or abort the whole campaign).
+ */
+async function sendGenericEmail({ to, from, fromName, subject, html, text }) {
+  const msg = {
+    to,
+    from: { email: from, name: fromName || env.SENDGRID_FROM_NAME },
+    subject,
+    html,
+    text: text || undefined,
+    trackingSettings: {
+      clickTracking: { enable: false, enableText: false },
+      openTracking: { enable: false },
+    },
+  };
+  await sgMail.send(msg);
+}
+
 module.exports = {
   sendConfirmationEmail,
   sendInvitationEmail,
@@ -400,4 +420,5 @@ module.exports = {
   sendVolunteerInterviewProposal,
   sendVolunteerValidated,
   sendVolunteerRejected,
+  sendGenericEmail,
 };

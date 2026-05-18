@@ -1,0 +1,338 @@
+const { sendGenericEmail } = require('./sendgrid');
+const { renderTemplate, htmlToPlainText } = require('./templating');
+
+const CONCURRENCY = 5;
+const DB_FLUSH_EVERY = 20;        // flush counts every N emails…
+const DB_FLUSH_INTERVAL_MS = 5000; // …or every 5 seconds, whichever first
+const RATE_LIMIT_BACKOFFS_MS = [1000, 2000, 4000];
+
+const AUDIENCE_TYPES = ['custom', 'all_runners', 'all_volunteers', 'volunteers_by_tlb'];
+
+const FROM_RULES = {
+  all_runners:        { email: 'noreply@lassm.dz', name: 'LASSM' },
+  all_volunteers:     { email: 'staff@lassm.dz',   name: 'LASSM' },
+  volunteers_by_tlb:  { email: 'staff@lassm.dz',   name: 'LASSM' },
+  custom:             { email: 'staff@lassm.dz',   name: 'LASSM' },
+};
+
+function fromForAudience(audienceType) {
+  return FROM_RULES[audienceType] || FROM_RULES.custom;
+}
+
+function buildEventVars(event) {
+  return {
+    eventName: event?.name || '',
+    eventDate: event?.date ? new Date(event.date).toLocaleDateString('fr-FR') : '',
+    eventLocation: event?.location || '',
+  };
+}
+
+function buildRunnerVars(reg, event) {
+  return {
+    ...buildEventVars(event),
+    firstName: reg.firstName || '',
+    lastName: reg.lastName || '',
+    email: reg.email || '',
+    bibNumber: reg.bibNumber != null ? String(reg.bibNumber) : '',
+    runnerLevel: reg.runnerLevel || '',
+  };
+}
+
+function buildVolunteerVars(vol, event) {
+  return {
+    ...buildEventVars(event),
+    firstName: vol.firstName || '',
+    lastName: vol.lastName || '',
+    email: vol.email || '',
+    volunteerId: vol.volunteerId || '',
+  };
+}
+
+function parseCustomEmails(audienceParam) {
+  if (!audienceParam) return [];
+  return audienceParam
+    .split(/[|,;\n\r]+/)
+    .map((e) => e.trim().toLowerCase())
+    .filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+}
+
+function pipeJoinEmails(audienceParam) {
+  return parseCustomEmails(audienceParam).join('|');
+}
+
+/**
+ * Resolve a campaign's audience into `[{email, vars}]`.
+ * Pure read — no mutation.
+ */
+async function resolveAudience(prisma, campaign) {
+  const event = campaign.eventId
+    ? await prisma.event.findUnique({ where: { id: campaign.eventId } })
+    : null;
+
+  switch (campaign.audienceType) {
+    case 'all_runners': {
+      if (!campaign.eventId) return [];
+      const rows = await prisma.registration.findMany({
+        where: {
+          eventId: campaign.eventId,
+          paymentStatus: { in: ['success', 'manual'] },
+          email: { not: '' },
+        },
+        select: {
+          firstName: true, lastName: true, email: true,
+          bibNumber: true, runnerLevel: true,
+        },
+      });
+      return rows
+        .filter((r) => r.email)
+        .map((r) => ({ email: r.email, vars: buildRunnerVars(r, event) }));
+    }
+    case 'all_volunteers': {
+      if (!campaign.eventId) return [];
+      const rows = await prisma.volunteer.findMany({
+        where: { eventId: campaign.eventId },
+        select: { firstName: true, lastName: true, email: true, volunteerId: true },
+      });
+      return rows
+        .filter((v) => v.email)
+        .map((v) => ({ email: v.email, vars: buildVolunteerVars(v, event) }));
+    }
+    case 'volunteers_by_tlb': {
+      if (!campaign.eventId || !campaign.audienceParam) return [];
+      const rows = await prisma.volunteer.findMany({
+        where: {
+          eventId: campaign.eventId,
+          assignedToId: campaign.audienceParam,
+          status: 'validee',
+        },
+        select: { firstName: true, lastName: true, email: true, volunteerId: true },
+      });
+      return rows
+        .filter((v) => v.email)
+        .map((v) => ({ email: v.email, vars: buildVolunteerVars(v, event) }));
+    }
+    case 'custom': {
+      const emails = parseCustomEmails(campaign.audienceParam);
+      const evtVars = buildEventVars(event);
+      return emails.map((email) => ({ email, vars: { ...evtVars, email } }));
+    }
+    default:
+      return [];
+  }
+}
+
+async function getAudienceCount(prisma, audienceType, audienceParam, eventId) {
+  if (!AUDIENCE_TYPES.includes(audienceType)) return 0;
+  switch (audienceType) {
+    case 'all_runners':
+      if (!eventId) return 0;
+      return prisma.registration.count({
+        where: {
+          eventId,
+          paymentStatus: { in: ['success', 'manual'] },
+          email: { not: '' },
+        },
+      });
+    case 'all_volunteers':
+      if (!eventId) return 0;
+      return prisma.volunteer.count({
+        where: { eventId, email: { not: '' } },
+      });
+    case 'volunteers_by_tlb':
+      if (!eventId || !audienceParam) return 0;
+      return prisma.volunteer.count({
+        where: {
+          eventId,
+          assignedToId: audienceParam,
+          status: 'validee',
+          email: { not: '' },
+        },
+      });
+    case 'custom':
+      return parseCustomEmails(audienceParam).length;
+    default:
+      return 0;
+  }
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Send a single recipient with bounded rate-limit retries.
+ * Returns `{ ok: true }` or `{ ok: false, error }`.
+ */
+async function sendOneWithRetry({ to, from, fromName, subject, html, text }) {
+  for (let attempt = 0; attempt <= RATE_LIMIT_BACKOFFS_MS.length; attempt++) {
+    try {
+      await sendGenericEmail({ to, from, fromName, subject, html, text });
+      return { ok: true };
+    } catch (err) {
+      const code = err?.code || err?.response?.statusCode;
+      if (code === 429 && attempt < RATE_LIMIT_BACKOFFS_MS.length) {
+        await sleep(RATE_LIMIT_BACKOFFS_MS[attempt]);
+        continue;
+      }
+      return {
+        ok: false,
+        error: err?.response?.body?.errors?.[0]?.message || err?.message || 'unknown',
+      };
+    }
+  }
+  return { ok: false, error: 'rate-limit exhausted' };
+}
+
+/**
+ * Run a campaign in the background.
+ * - Concurrency = 5
+ * - DB counts flushed every 20 emails or every 5 seconds
+ * - First 5 failures captured as errorSamples
+ *
+ * Caller fires-and-forgets (does NOT await). Errors are logged, never thrown.
+ */
+async function runCampaign(prisma, campaignId) {
+  try {
+    const campaign = await prisma.communicationCampaign.update({
+      where: { id: campaignId },
+      data: { status: 'running', startedAt: new Date() },
+    });
+
+    const recipients = await resolveAudience(prisma, campaign);
+    if (recipients.length === 0) {
+      await prisma.communicationCampaign.update({
+        where: { id: campaignId },
+        data: { status: 'done', completedAt: new Date(), totalCount: 0 },
+      });
+      return;
+    }
+
+    // Update totalCount in case it drifted vs. the snapshot at creation time
+    if (recipients.length !== campaign.totalCount) {
+      await prisma.communicationCampaign.update({
+        where: { id: campaignId },
+        data: { totalCount: recipients.length },
+      });
+    }
+
+    let sent = 0;
+    let failed = 0;
+    const errorSamples = [];
+    let lastFlushAt = Date.now();
+    let lastFlushedSent = 0;
+    let lastFlushedFailed = 0;
+
+    const flush = async (force = false) => {
+      const sentDelta = sent - lastFlushedSent;
+      const failedDelta = failed - lastFlushedFailed;
+      const elapsedSinceFlush = Date.now() - lastFlushAt;
+      if (
+        !force &&
+        sentDelta + failedDelta < DB_FLUSH_EVERY &&
+        elapsedSinceFlush < DB_FLUSH_INTERVAL_MS
+      ) {
+        return;
+      }
+      lastFlushedSent = sent;
+      lastFlushedFailed = failed;
+      lastFlushAt = Date.now();
+      try {
+        await prisma.communicationCampaign.update({
+          where: { id: campaignId },
+          data: {
+            sentCount: sent,
+            failedCount: failed,
+            errorSamples: errorSamples.length ? errorSamples : undefined,
+          },
+        });
+      } catch (e) {
+        console.error('[communication] flush failed', e.message);
+      }
+    };
+
+    // Concurrency pool
+    let cursor = 0;
+    async function worker() {
+      while (cursor < recipients.length) {
+        const idx = cursor++;
+        const r = recipients[idx];
+        const subject = renderTemplate(campaign.subject, r.vars);
+        const html = renderTemplate(campaign.bodyHtml, r.vars);
+        const text = htmlToPlainText(html);
+        const result = await sendOneWithRetry({
+          to: r.email,
+          from: campaign.fromEmail,
+          fromName: campaign.fromName,
+          subject,
+          html,
+          text,
+        });
+        if (result.ok) {
+          sent++;
+        } else {
+          failed++;
+          if (errorSamples.length < 5) {
+            errorSamples.push({ email: r.email, message: String(result.error).slice(0, 200) });
+          }
+        }
+        await flush(false);
+      }
+    }
+
+    await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
+    await flush(true);
+
+    const finalStatus = failed > 0 && sent === 0 ? 'failed' : 'done';
+    await prisma.communicationCampaign.update({
+      where: { id: campaignId },
+      data: {
+        status: finalStatus,
+        completedAt: new Date(),
+        sentCount: sent,
+        failedCount: failed,
+        errorSamples: errorSamples.length ? errorSamples : undefined,
+      },
+    });
+  } catch (err) {
+    console.error(`[communication] runCampaign(${campaignId}) failed:`, err);
+    try {
+      await prisma.communicationCampaign.update({
+        where: { id: campaignId },
+        data: {
+          status: 'failed',
+          completedAt: new Date(),
+          errorSamples: [{ email: '', message: err?.message?.slice(0, 200) || 'fatal' }],
+        },
+      });
+    } catch (_) {
+      /* swallow */
+    }
+  }
+}
+
+/**
+ * On boot, mark any `running` campaign older than 1 hour as `failed` —
+ * recovers from process restarts mid-send.
+ */
+async function sweepStuckCampaigns(prisma) {
+  const cutoff = new Date(Date.now() - 60 * 60 * 1000);
+  const result = await prisma.communicationCampaign.updateMany({
+    where: { status: 'running', startedAt: { lt: cutoff } },
+    data: { status: 'failed', completedAt: new Date() },
+  });
+  if (result.count > 0) {
+    console.log(`[communication] swept ${result.count} stuck running campaign(s) at boot`);
+  }
+  return result.count;
+}
+
+module.exports = {
+  AUDIENCE_TYPES,
+  resolveAudience,
+  getAudienceCount,
+  runCampaign,
+  fromForAudience,
+  pipeJoinEmails,
+  parseCustomEmails,
+  sweepStuckCampaigns,
+};
