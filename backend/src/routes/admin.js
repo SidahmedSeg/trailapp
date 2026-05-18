@@ -4,6 +4,7 @@ const { validateManualBib } = require('../services/bib');
 const { getActiveEvent } = require('../services/event');
 const { validateRegistration, validateOptionalFields, buildE164 } = require('../schemas/registration');
 const { generateCSV } = require('../services/csv');
+const { generateBibsWorkbook } = require('../services/excel');
 const { sendConfirmationEmail } = require('../services/sendgrid');
 const { AppError } = require('../utils/errors');
 const { v4: uuidv4 } = require('uuid');
@@ -423,6 +424,69 @@ async function adminRoutes(fastify) {
     reply.header('Content-Type', 'text/csv; charset=utf-8');
     reply.header('Content-Disposition', 'attachment; filename="coureurs.csv"');
     return csv;
+  });
+
+  // GET /api/admin/runners/export/bibs-xlsx — admin only
+  // Exports a .xlsx with embedded QR PNGs, scoped to current Coureurs filters.
+  fastify.get('/runners/export/bibs-xlsx', { preHandler: authorize('admin', 'super_admin') }, async (request, reply) => {
+    const { status, search, source, paymentFilter = 'paid' } = request.query;
+    const eventId = await resolveEventId(request.query);
+
+    const where = {
+      eventId,
+      bibNumber: { not: null },
+      qrToken: { not: null },
+    };
+
+    if (paymentFilter === 'paid') {
+      where.paymentStatus = { in: ['success', 'manual'] };
+    }
+    if (status && status !== 'all') {
+      where.status = status;
+    }
+    if (source && source !== 'all') {
+      where.source = source;
+    }
+    if (search) {
+      const s = search.trim();
+      const bibNum = parseInt(s, 10);
+      where.OR = [
+        { firstName: { contains: s, mode: 'insensitive' } },
+        { lastName: { contains: s, mode: 'insensitive' } },
+        { email: { contains: s, mode: 'insensitive' } },
+        { phone: { contains: s } },
+        { orderNumber: { contains: s, mode: 'insensitive' } },
+        { transactionId: { contains: s, mode: 'insensitive' } },
+        ...(isNaN(bibNum) ? [] : [{ bibNumber: bibNum }]),
+      ];
+    }
+
+    const registrations = await prisma.registration.findMany({
+      where,
+      orderBy: { bibNumber: 'asc' },
+      select: {
+        firstName: true,
+        lastName: true,
+        bibNumber: true,
+        runnerLevel: true,
+        qrToken: true,
+      },
+    });
+
+    const workbook = await generateBibsWorkbook(registrations);
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    reply.header(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    reply.header(
+      'Content-Disposition',
+      `attachment; filename="coureurs-bibs-${dateStr}.xlsx"`
+    );
+
+    await workbook.xlsx.write(reply.raw);
+    reply.raw.end();
   });
 
   // GET /api/admin/stats

@@ -1036,6 +1036,7 @@ export default function Runners() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [eventConfig, setEventConfig] = useState(null);
+  const [exportingBibs, setExportingBibs] = useState(false);
 
   // Fetch full event config for create modal
   useEffect(() => {
@@ -1083,6 +1084,35 @@ export default function Runners() {
     fetchRunners();
   };
 
+  const handleExportBibsXlsx = async () => {
+    if (!selectedEventId || exportingBibs) return;
+    setExportingBibs(true);
+    try {
+      const params = new URLSearchParams({ eventId: selectedEventId });
+      if (search) params.set('search', search);
+      if (statusFilter) params.set('status', statusFilter);
+      if (sourceFilter) params.set('source', sourceFilter);
+      const token = getAccessToken();
+      const res = await fetch(`/api/admin/runners/export/bibs-xlsx?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.message || `Erreur ${res.status}`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `coureurs-bibs-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.message || 'Erreur lors de l\'export QR');
+    }
+    setExportingBibs(false);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <Sidebar />
@@ -1117,6 +1147,13 @@ export default function Runners() {
               className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm hover:bg-gray-100 transition cursor-pointer"
             >
               Export CSV
+            </button>
+            <button
+              onClick={handleExportBibsXlsx}
+              disabled={exportingBibs}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm hover:bg-gray-100 transition cursor-pointer disabled:opacity-50"
+            >
+              {exportingBibs ? 'Export...' : 'QR Export'}
             </button>
           </div>
         </div>
