@@ -41,6 +41,7 @@ const Reconciliation = lazy(() => import('./pages/admin/Reconciliation'));
 const LateRegistration = lazy(() => import('./pages/admin/LateRegistration'));
 const Volunteers = lazy(() => import('./pages/admin/Volunteers'));
 const CheckIn = lazy(() => import('./pages/admin/CheckIn'));
+const Communication = lazy(() => import('./pages/admin/Communication'));
 
 function decodeRole(token) {
   try {
@@ -54,7 +55,8 @@ function AdminRoute({ children }) {
   const location = useLocation();
   if (!token) return <Navigate to="/admin/login" replace />;
   const role = decodeRole(token);
-  if ((role === 'admin_volunteers' || role === 'team_leader_volunteers') && location.pathname !== '/admin/volunteers') {
+  if ((role === 'admin_volunteers' || role === 'team_leader_volunteers') &&
+      !['/admin/volunteers', '/admin/communication'].includes(location.pathname)) {
     return <Navigate to="/admin/volunteers" replace />;
   }
   return <EventProvider>{children}</EventProvider>;
@@ -107,6 +109,7 @@ export default function App() {
           <Route path="/admin/reconciliation" element={<AdminRoute><Reconciliation /></AdminRoute>} />
           <Route path="/admin/late-registration" element={<AdminRoute><LateRegistration /></AdminRoute>} />
           <Route path="/admin/volunteers" element={<AdminRoute><Volunteers /></AdminRoute>} />
+          <Route path="/admin/communication" element={<AdminRoute><Communication /></AdminRoute>} />
         </Routes>
       </Suspense>
     </AuthProvider>

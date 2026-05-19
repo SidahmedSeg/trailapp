@@ -92,6 +92,7 @@ fastify.register(require('./routes/emails'), { prefix: '/api' });
 fastify.register(require('./routes/reconciliation'), { prefix: '/api' });
 fastify.register(require('./routes/lateRegistration'), { prefix: '/api' });
 fastify.register(require('./routes/volunteers'), { prefix: '/api' });
+fastify.register(require('./routes/communication'), { prefix: '/api' });
 
 // Graceful shutdown
 const gracefulShutdown = async () => {
@@ -117,6 +118,14 @@ const start = async () => {
 
     await fastify.listen({ port: env.PORT, host: env.HOST });
     fastify.log.info(`Server running on port ${env.PORT}`);
+
+    // Sweep any campaigns left in `running` state by a crashed/restarted process.
+    try {
+      const { sweepStuckCampaigns } = require('./services/communication');
+      await sweepStuckCampaigns(prisma);
+    } catch (err) {
+      fastify.log.warn({ err }, 'communication: stuck-campaign sweep failed');
+    }
 
     // Start monitoring
     const { startMonitoring } = require('./services/monitoring');
