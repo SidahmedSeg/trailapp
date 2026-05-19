@@ -689,14 +689,16 @@ function Composer({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div>
             <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Édition</p>
-            <ReactQuill
-              ref={quillRef}
-              theme="snow"
-              value={bodyHtml}
-              onChange={setBodyHtml}
-              modules={QUILL_MODULES}
-              placeholder="Bonjour {{firstName}}, …"
-            />
+            <div className="[&_.ql-editor]:min-h-[260px] [&_.ql-container]:rounded-b-lg [&_.ql-toolbar]:rounded-t-lg">
+              <ReactQuill
+                ref={quillRef}
+                theme="snow"
+                value={bodyHtml}
+                onChange={setBodyHtml}
+                modules={QUILL_MODULES}
+                placeholder="Bonjour {{firstName}}, …"
+              />
+            </div>
           </div>
           <div>
             <p className="text-xs text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1"><Eye size={12} /> Aperçu — données factices à des fins de prévisualisation uniquement</p>
