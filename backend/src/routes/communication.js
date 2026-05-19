@@ -187,7 +187,7 @@ async function communicationRoutes(fastify) {
 
       const me = await prisma.adminUser.findUnique({
         where: { id: request.user.userId },
-        select: { email: true, username: true, firstName: true },
+        select: { email: true, username: true },
       });
       if (!me?.email) throw new AppError(400, 'Aucune adresse email sur votre compte', 'NO_EMAIL');
 

@@ -26,10 +26,31 @@ const AUDIENCE_LABEL = {
 };
 
 const VARS_BY_AUDIENCE = {
-  all_runners: ['firstName', 'lastName', 'email', 'bibNumber', 'runnerLevel', 'eventName'],
-  all_volunteers: ['firstName', 'lastName', 'email', 'volunteerId', 'eventName'],
-  volunteers_by_tlb: ['firstName', 'lastName', 'email', 'volunteerId', 'eventName'],
-  custom: ['eventName'],
+  all_runners: [
+    { key: 'firstName', label: 'Prénom' },
+    { key: 'lastName', label: 'Nom' },
+    { key: 'email', label: 'Email' },
+    { key: 'bibNumber', label: 'Dossard' },
+    { key: 'runnerLevel', label: 'Niveau' },
+    { key: 'eventName', label: 'Événement' },
+  ],
+  all_volunteers: [
+    { key: 'firstName', label: 'Prénom' },
+    { key: 'lastName', label: 'Nom' },
+    { key: 'email', label: 'Email' },
+    { key: 'volunteerId', label: 'ID bénévole' },
+    { key: 'eventName', label: 'Événement' },
+  ],
+  volunteers_by_tlb: [
+    { key: 'firstName', label: 'Prénom' },
+    { key: 'lastName', label: 'Nom' },
+    { key: 'email', label: 'Email' },
+    { key: 'volunteerId', label: 'ID bénévole' },
+    { key: 'eventName', label: 'Événement' },
+  ],
+  custom: [
+    { key: 'eventName', label: 'Événement' },
+  ],
 };
 
 const QUILL_MODULES = {
@@ -162,15 +183,16 @@ function VarPicker({ vars, onInsert }) {
         <span className="hidden sm:inline">Variable</span>
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 min-w-[180px]">
+        <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 min-w-[220px]">
           {vars.map((v) => (
             <button
-              key={v}
+              key={v.key}
               type="button"
-              onClick={() => { onInsert(`{{${v}}}`); setOpen(false); }}
-              className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 font-mono"
+              onClick={() => { onInsert(`{{${v.key}}}`); setOpen(false); }}
+              className="w-full flex items-center justify-between gap-3 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
             >
-              {`{{${v}}}`}
+              <span className="font-mono text-xs text-[#C42826]">{`{{${v.key}}}`}</span>
+              <span className="text-xs text-gray-500">{v.label}</span>
             </button>
           ))}
         </div>
@@ -642,6 +664,28 @@ function Composer({
             <VarPicker vars={availableVars} onInsert={insertIntoBody} />
           </div>
         </div>
+
+        {/* Inline variable chips — click to insert at cursor */}
+        <div className="mb-3 rounded-lg border border-blue-100 bg-blue-50/50 px-3 py-2">
+          <p className="text-xs text-gray-600 mb-1.5 flex items-center gap-1"><Variable size={12} /> Variables disponibles pour cette audience — cliquez pour insérer :</p>
+          <div className="flex flex-wrap gap-1.5">
+            {availableVars.map((v) => (
+              <button
+                key={v.key}
+                type="button"
+                onClick={() => insertIntoBody(`{{${v.key}}}`)}
+                className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-white px-2 py-0.5 text-xs hover:bg-blue-100 transition cursor-pointer"
+                title={`Insère {{${v.key}}} (= ${v.label})`}
+              >
+                <span className="font-mono text-[#C42826]">{`{{${v.key}}}`}</span>
+                <span className="text-gray-500">{v.label}</span>
+              </button>
+            ))}
+          </div>
+          {audienceType === 'custom' && (
+            <p className="text-xs text-amber-700 mt-2">⚠ Pour les emails personnalisés, seul <code className="font-mono">{'{{eventName}}'}</code> est substitué (aucune donnée par destinataire).</p>
+          )}
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div>
             <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Édition</p>
@@ -655,12 +699,13 @@ function Composer({
             />
           </div>
           <div>
-            <p className="text-xs text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1"><Eye size={12} /> Aperçu (variables remplacées par un exemple)</p>
+            <p className="text-xs text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1"><Eye size={12} /> Aperçu — données factices à des fins de prévisualisation uniquement</p>
             <div className="border border-gray-200 rounded-lg bg-gray-50 p-4 min-h-[300px]">
               <p className="text-xs text-gray-400 uppercase mb-1">Sujet</p>
               <p className="text-sm font-semibold text-gray-900 mb-3">{previewSubject || <span className="text-gray-300">—</span>}</p>
               <p className="text-xs text-gray-400 uppercase mb-1">Message</p>
               <div className="prose prose-sm max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: previewHtml || '<p class="text-gray-300">—</p>' }} />
+              <p className="mt-3 text-xs text-gray-400 italic">À l'envoi, chaque destinataire reçoit l'email avec ses propres valeurs.</p>
             </div>
           </div>
         </div>

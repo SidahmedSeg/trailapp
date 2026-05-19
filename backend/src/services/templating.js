@@ -8,7 +8,13 @@
 
 function renderTemplate(template, vars) {
   if (template == null) return '';
-  return String(template).replace(/\{\{(\w+)\}\}/g, (match, key) => {
+  // Tolerant matcher:
+  //   - {{ varName }} with optional whitespace
+  //   - {{varName}} no whitespace
+  //   - Also accepts &#123;&#123;varName&#125;&#125; — HTML-encoded braces some
+  //     editors emit on copy-paste.
+  const re = /(?:\{\{|&#123;&#123;|&#x7B;&#x7B;)\s*(\w+)\s*(?:\}\}|&#125;&#125;|&#x7D;&#x7D;)/g;
+  return String(template).replace(re, (match, key) => {
     const value = vars?.[key];
     return value != null ? String(value) : match;
   });
