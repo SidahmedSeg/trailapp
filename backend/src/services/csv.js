@@ -21,6 +21,11 @@ const FIELD_MAP = {
   source: 'Source',
   createdAt: 'Date inscription',
   distributedAt: 'Date distribution',
+  pickedUpByName: 'Récupéré par (nom)',
+  pickedUpByPhone: 'Récupéré par (téléphone)',
+  pickedUpByRelation: 'Relation récupérateur',
+  pickedUpAt: 'Date récupération',
+  pickedUpByCin: 'CIN récupérateur',
 };
 
 function generateCSV(registrations, fields) {

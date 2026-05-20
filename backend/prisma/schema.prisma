@@ -146,6 +146,17 @@ model Registration {
   distributedAt DateTime?
   distributedBy String?
 
+  // Proxy pickup — populated only when a third party collected the bib on race day.
+  pickedUpAt               DateTime?
+  pickedUpByName           String?
+  pickedUpByPhone          String?
+  pickedUpByCin            String? // text CIN number (optional)
+  pickedUpByCinPhotoPath   String? // server-relative path, served via auth endpoint
+  pickedUpByRelation       String? // conjoint | ami | famille | autre
+  pickedUpByRegistrationId String?
+  pickedUpByRegistration   Registration?  @relation("BibPickupProxy", fields: [pickedUpByRegistrationId], references: [id], onDelete: SetNull)
+  pickupsMade              Registration[] @relation("BibPickupProxy")
+
   // Event-day check-in (additional event after distribution; independent of `status`)
   checkedInAt DateTime?
   checkedInBy String?
@@ -169,6 +180,7 @@ model Registration {
   emailsSent           EmailLog[]
   satimReconciliation  SatimReconciliation?
   lateRegistrationLink LateRegistrationLink?
+  scannerSessions      ScannerSession[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -180,6 +192,7 @@ model Registration {
   @@index([paymentStatus])
   @@index([lastName, firstName])
   @@index([bibNumber])
+  @@index([pickedUpByRegistrationId])
 }
 
 model AdminUser {
@@ -202,14 +215,17 @@ model AdminUser {
 }
 
 model ScannerSession {
-  id             String   @id @default(uuid())
+  id             String       @id @default(uuid())
   operatorId     String
   operatorName   String
   registrationId String
+  registration   Registration @relation(fields: [registrationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   bibNumber      Int
   runnerName     String
-  scannedAt      DateTime @default(now())
-  method         String   @default("qr") // qr | manual
+  scannedAt      DateTime     @default(now())
+  method         String       @default("qr") // qr | manual
+
+  @@index([registrationId])
 }
 
 model EmailLog {

@@ -5,7 +5,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { useEvent } from '../../hooks/useEvent';
 import Sidebar from '../../components/ui/Sidebar';
 import Select from 'react-select';
-import { ChevronDown, ArrowUp, ArrowDown, ArrowUpDown, ChevronRight, RotateCcw } from 'lucide-react';
+import { ChevronDown, ArrowUp, ArrowDown, ArrowUpDown, ChevronRight, RotateCcw, User } from 'lucide-react';
+import PickupDetails from '../../components/pickup/PickupDetails';
 import {
   flagUrl, COUNTRIES_DATA, PHONE_CODES, WILAYAS, COMMUNES_MAP,
   TSHIRT_SIZES, selectStyles, phoneSelectStyles,
@@ -118,6 +119,16 @@ const CSV_FIELD_GROUPS = [
       { key: 'source', label: 'Source' },
       { key: 'createdAt', label: 'Date inscription' },
       { key: 'distributedAt', label: 'Date distribution' },
+    ],
+  },
+  {
+    label: 'Récupération',
+    fields: [
+      { key: 'pickedUpByName',     label: 'Récupéré par (nom)' },
+      { key: 'pickedUpByPhone',    label: 'Récupéré par (tél.)' },
+      { key: 'pickedUpByRelation', label: 'Relation' },
+      { key: 'pickedUpAt',         label: 'Date récupération' },
+      { key: 'pickedUpByCin',      label: 'CIN récupérateur' },
     ],
   },
 ];
@@ -669,6 +680,46 @@ function ResendEmailButton({ registrationId }) {
   );
 }
 
+/* ─── Pickup block (proxy info on a distributed runner) ─── */
+// Read-only view delegates to <PickupDetails/>. Edit mode uses the drawer's
+// `renderField` so it shares the same input styling as the rest of the form.
+function PickupBlock({ display, editing, renderField, registrationId }) {
+  if (editing) {
+    return (
+      <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50/60 p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <User size={14} className="text-[#C42826]" />
+          <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Récupération du dossard</p>
+        </div>
+        <div className="space-y-3">
+          {renderField('Récupéré par (nom)', 'pickedUpByName')}
+          {renderField('Téléphone', 'pickedUpByPhone')}
+          {renderField('CIN', 'pickedUpByCin')}
+          {renderField('Relation', 'pickedUpByRelation', { select: ['', 'conjoint', 'ami', 'famille', 'autre'] })}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4">
+      <PickupDetails
+        pickup={{
+          name: display.pickedUpByName,
+          phone: display.pickedUpByPhone,
+          cin: display.pickedUpByCin,
+          relation: display.pickedUpByRelation,
+          pickedUpAt: display.pickedUpAt,
+          cinPhotoPath: display.pickedUpByCinPhotoPath,
+        }}
+        registrationId={registrationId}
+        distributedBy={display.distributedBy}
+        variant="card"
+      />
+    </div>
+  );
+}
+
 function DetailPanel({ runner, onClose, onUpdated }) {
   const { user } = useAuth();
   const { selectedEvent } = useEvent();
@@ -859,6 +910,16 @@ function DetailPanel({ runner, onClose, onUpdated }) {
                 <Field
                   label="Date d'inscription"
                   value={display.createdAt ? new Date(display.createdAt).toLocaleString('fr-FR') : '—'}
+                />
+              )}
+
+              {/* Proxy pickup block — only shown if the bib was collected by someone else */}
+              {(display.pickedUpByName || (editing && display.pickedUpByName)) && (
+                <PickupBlock
+                  display={display}
+                  editing={editing}
+                  renderField={renderField}
+                  registrationId={runner.id}
                 />
               )}
 
