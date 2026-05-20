@@ -35,6 +35,13 @@ function isTlb(user) {
   return user?.role === 'team_leader_volunteers';
 }
 
+function isAB(user) {
+  return user?.role === 'admin_volunteers';
+}
+
+// AB is restricted to bénévole audiences only. No coureurs, no custom emails.
+const AB_ALLOWED_AUDIENCES = new Set(['all_volunteers', 'volunteers_by_tlb']);
+
 async function communicationRoutes(fastify) {
   const { prisma } = fastify;
 
@@ -55,6 +62,10 @@ async function communicationRoutes(fastify) {
     }
     if (!AUDIENCE_TYPES.includes(audienceType)) {
       throw new AppError(400, 'Audience invalide', 'VALIDATION_ERROR');
+    }
+    // AB is locked to bénévole audiences — block coureurs and custom emails.
+    if (isAB(user) && !AB_ALLOWED_AUDIENCES.has(audienceType)) {
+      throw new AppError(403, 'Audience non autorisée pour ce rôle', 'FORBIDDEN');
     }
     if (audienceType === 'volunteers_by_tlb' && !audienceParam) {
       throw new AppError(400, 'TLB id requis', 'VALIDATION_ERROR');

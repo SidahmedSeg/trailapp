@@ -291,10 +291,17 @@ export default function Communication() {
   const { user } = useAuth();
   const { selectedEventId, selectedEvent } = useEvent();
   const isTlb = user?.role === 'team_leader_volunteers';
+  const isAB = user?.role === 'admin_volunteers';
   const isPrivileged = ['super_admin', 'admin_volunteers'].includes(user?.role);
 
   const [tab, setTab] = useState('composer'); // composer | history
-  const [audienceType, setAudienceType] = useState(isTlb ? 'volunteers_by_tlb' : 'all_runners');
+  // AB defaults to bénévole audience since coureurs are blocked for them
+  const defaultAudience = isTlb
+    ? 'volunteers_by_tlb'
+    : isAB
+    ? 'all_volunteers'
+    : 'all_runners';
+  const [audienceType, setAudienceType] = useState(defaultAudience);
   const [audienceParam, setAudienceParam] = useState('');
   const [customEmailsRaw, setCustomEmailsRaw] = useState('');
   const [teamLeaders, setTeamLeaders] = useState([]);
@@ -476,6 +483,7 @@ export default function Communication() {
             user={user}
             isTlb={isTlb}
             isPrivileged={isPrivileged}
+            isAB={isAB}
             audienceType={audienceType}
             setAudienceType={setAudienceType}
             audienceParam={audienceParam}
@@ -535,7 +543,7 @@ export default function Communication() {
 
 /* ─── Composer subcomponent ─── */
 function Composer({
-  user, isTlb, isPrivileged,
+  user, isTlb, isPrivileged, isAB,
   audienceType, setAudienceType, audienceParam, setAudienceParam,
   customEmailsRaw, setCustomEmailsRaw, teamLeaders,
   audienceCount, audienceCountLoading, availableVars,
@@ -543,7 +551,14 @@ function Composer({
   bodyHtml, setBodyHtml, insertIntoBody, quillRef,
   previewHtml, previewSubject, fromEmail, canSend, onTest, onSend, testing,
 }) {
-  const audienceOptions = isPrivileged
+  // AB is limited to bénévole audiences only — coureurs and custom emails
+  // are blocked at the server level too.
+  const audienceOptions = isAB
+    ? [
+        { value: 'all_volunteers', label: 'Tous les Bénévoles', Icon: Heart },
+        { value: 'volunteers_by_tlb', label: 'Bénévoles par TLB', Icon: User },
+      ]
+    : isPrivileged
     ? [
         { value: 'all_runners', label: 'Tous les Coureurs', Icon: UsersIcon },
         { value: 'all_volunteers', label: 'Tous les Bénévoles', Icon: Heart },
