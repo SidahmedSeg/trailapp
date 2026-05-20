@@ -533,8 +533,8 @@ async function adminRoutes(fastify) {
     }
   );
 
-  // GET /api/admin/stats
-  fastify.get('/stats', async (request) => {
+  // GET /api/admin/stats — Dashboard data, admin + super_admin only
+  fastify.get('/stats', { preHandler: authorize('admin', 'super_admin') }, async (request) => {
     const eventId = await resolveEventId(request.query);
     const where = { eventId, paymentStatus: { in: ['success', 'manual'] } };
 
@@ -566,8 +566,8 @@ async function adminRoutes(fastify) {
     };
   });
 
-  // GET /api/admin/stats/charts
-  fastify.get('/stats/charts', async (request) => {
+  // GET /api/admin/stats/charts — Dashboard charts, admin + super_admin only
+  fastify.get('/stats/charts', { preHandler: authorize('admin', 'super_admin') }, async (request) => {
     const eventId = await resolveEventId(request.query);
     const where = { eventId, paymentStatus: { in: ['success', 'manual'] } };
 

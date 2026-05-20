@@ -55,10 +55,20 @@ function AdminRoute({ children }) {
   const location = useLocation();
   if (!token) return <Navigate to="/admin/login" replace />;
   const role = decodeRole(token);
+
+  // Volunteer-side roles only see the Volunteers + Communication pages.
   if ((role === 'admin_volunteers' || role === 'team_leader_volunteers') &&
       !['/admin/volunteers', '/admin/communication'].includes(location.pathname)) {
     return <Navigate to="/admin/volunteers" replace />;
   }
+
+  // Dashboard (root /admin) is admin/super_admin only — bounce scanner and
+  // reconciliation_specialist to their primary work page.
+  if (location.pathname === '/admin') {
+    if (role === 'scanner') return <Navigate to="/admin/scan" replace />;
+    if (role === 'reconciliation_specialist') return <Navigate to="/admin/reconciliation" replace />;
+  }
+
   return <EventProvider>{children}</EventProvider>;
 }
 
