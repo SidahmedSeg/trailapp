@@ -6,7 +6,7 @@ const { validateManualBib } = require('../services/bib');
 const { getActiveEvent } = require('../services/event');
 const { validateRegistration, validateOptionalFields, buildE164 } = require('../schemas/registration');
 const { generateCSV } = require('../services/csv');
-const { generateBibsWorkbook } = require('../services/excel');
+const { buildBibsArchive } = require('../services/bibsZip');
 const { sendConfirmationEmail } = require('../services/sendgrid');
 const { AppError } = require('../utils/errors');
 const { v4: uuidv4 } = require('uuid');
@@ -430,9 +430,11 @@ async function adminRoutes(fastify) {
     return csv;
   });
 
-  // GET /api/admin/runners/export/bibs-xlsx — admin only
-  // Exports a .xlsx with embedded QR PNGs, scoped to current Coureurs filters.
-  fastify.get('/runners/export/bibs-xlsx', { preHandler: authorize('admin', 'super_admin') }, async (request, reply) => {
+  // GET /api/admin/runners/export/bibs-zip — admin only
+  // Streams a .zip containing a CSV (Prénom, Nom, Dossard, Niveau, QR) plus
+  // one PNG per runner (filename = bib number) under qr-codes/.
+  // Mirrors the existing Coureurs filter shape.
+  fastify.get('/runners/export/bibs-zip', { preHandler: authorize('admin', 'super_admin') }, async (request, reply) => {
     const { status, search, source, paymentFilter = 'paid' } = request.query;
     const eventId = await resolveEventId(request.query);
 
@@ -477,20 +479,17 @@ async function adminRoutes(fastify) {
       },
     });
 
-    const workbook = await generateBibsWorkbook(registrations);
-
     const dateStr = new Date().toISOString().slice(0, 10);
-    reply.header(
-      'Content-Type',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    );
+    reply.header('Content-Type', 'application/zip');
     reply.header(
       'Content-Disposition',
-      `attachment; filename="coureurs-bibs-${dateStr}.xlsx"`
+      `attachment; filename="coureurs-bibs-${dateStr}.zip"`
     );
 
-    await workbook.xlsx.write(reply.raw);
-    reply.raw.end();
+    // The archiver pipes itself into reply.raw and finalizes on its own;
+    // we just hijack the reply so Fastify doesn't try to serialize.
+    reply.hijack();
+    buildBibsArchive(registrations, reply.raw);
   });
 
   // GET /api/admin/registrations/:id/proxy-id-photo — admin/super_admin only.
@@ -533,6 +532,7 @@ async function adminRoutes(fastify) {
       return reply.send(fs.createReadStream(absPath));
     }
   );
+
 
   // GET /api/admin/stats
   fastify.get('/stats', async (request) => {

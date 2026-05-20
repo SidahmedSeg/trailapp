@@ -1141,11 +1141,7 @@ export default function Runners() {
 
   const totalPages = Math.ceil(total / limit) || 1;
 
-  const handleRefresh = () => {
-    fetchRunners();
-  };
-
-  const handleExportBibsXlsx = async () => {
+  const handleExportBibsZip = async () => {
     if (!selectedEventId || exportingBibs) return;
     setExportingBibs(true);
     try {
@@ -1154,7 +1150,7 @@ export default function Runners() {
       if (statusFilter) params.set('status', statusFilter);
       if (sourceFilter) params.set('source', sourceFilter);
       const token = getAccessToken();
-      const res = await fetch(`/api/admin/runners/export/bibs-xlsx?${params}`, {
+      const res = await fetch(`/api/admin/runners/export/bibs-zip?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
@@ -1165,13 +1161,17 @@ export default function Runners() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `coureurs-bibs-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.download = `coureurs-bibs-${new Date().toISOString().slice(0, 10)}.zip`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
       alert(err.message || 'Erreur lors de l\'export QR');
     }
     setExportingBibs(false);
+  };
+
+  const handleRefresh = () => {
+    fetchRunners();
   };
 
   return (
@@ -1210,7 +1210,7 @@ export default function Runners() {
               Export CSV
             </button>
             <button
-              onClick={handleExportBibsXlsx}
+              onClick={handleExportBibsZip}
               disabled={exportingBibs}
               className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm hover:bg-gray-100 transition cursor-pointer disabled:opacity-50"
             >
