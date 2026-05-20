@@ -130,6 +130,10 @@ const start = async () => {
     // Start monitoring
     const { startMonitoring } = require('./services/monitoring');
     startMonitoring(fastify);
+
+    // Daily sweep of proxy CIN photos older than the retention window
+    const { startRetentionSweep } = require('./services/proxyIdRetention');
+    startRetentionSweep(prisma);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);

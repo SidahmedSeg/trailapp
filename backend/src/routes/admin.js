@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../middleware/activityLogger');
 const { validateManualBib } = require('../services/bib');
@@ -212,6 +214,8 @@ async function adminRoutes(fastify) {
       // Optional fields
       'selectedDistance', 'club', 'licenseNumber', 'bestPerformance',
       'previousParticipations', 'shuttle', 'bloodType', 'photoPack',
+      // Proxy pickup metadata (admin can correct mistakes after distribution)
+      'pickedUpByName', 'pickedUpByPhone', 'pickedUpByCin', 'pickedUpByRelation',
     ];
 
     const updateData = {};
@@ -488,6 +492,47 @@ async function adminRoutes(fastify) {
     await workbook.xlsx.write(reply.raw);
     reply.raw.end();
   });
+
+  // GET /api/admin/registrations/:id/proxy-id-photo — admin/super_admin only.
+  // Auth-gated streaming endpoint. Scanners can capture photos but cannot view
+  // them back; only admins can inspect.
+  fastify.get(
+    '/registrations/:id/proxy-id-photo',
+    { preHandler: authorize('admin', 'super_admin') },
+    async (request, reply) => {
+      const row = await prisma.registration.findUnique({
+        where: { id: request.params.id },
+        select: { pickedUpByCinPhotoPath: true },
+      });
+      if (!row) throw new AppError(404, 'Coureur non trouvé', 'NOT_FOUND');
+      if (!row.pickedUpByCinPhotoPath) {
+        throw new AppError(404, 'Photo non disponible', 'NO_FILE');
+      }
+
+      const relPath = row.pickedUpByCinPhotoPath.replace(/^\/+/, '');
+      const absPath = path.resolve(__dirname, '../..', relPath);
+      const proxyRoot = path.resolve(__dirname, '../../uploads/proxy-ids');
+      if (!absPath.startsWith(proxyRoot + path.sep)) {
+        throw new AppError(403, 'Chemin invalide', 'FORBIDDEN');
+      }
+      if (!fs.existsSync(absPath)) {
+        throw new AppError(404, 'Fichier introuvable', 'NO_FILE');
+      }
+
+      const ext = path.extname(absPath).toLowerCase();
+      const mime =
+        ext === '.jpg'  ? 'image/jpeg' :
+        ext === '.jpeg' ? 'image/jpeg' :
+        ext === '.png'  ? 'image/png' :
+        ext === '.webp' ? 'image/webp' :
+        ext === '.heic' ? 'image/heic' :
+        ext === '.heif' ? 'image/heif' :
+        'application/octet-stream';
+      reply.header('Content-Type', mime);
+      reply.header('Content-Disposition', `inline; filename="proxy-id${ext}"`);
+      return reply.send(fs.createReadStream(absPath));
+    }
+  );
 
   // GET /api/admin/stats
   fastify.get('/stats', async (request) => {
