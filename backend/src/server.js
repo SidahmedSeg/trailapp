@@ -30,6 +30,36 @@ fastify.register(require('@fastify/static'), {
   decorateReply: false,
 });
 
+// Serve the built frontend SPA when present (Railway combined-service deploy).
+// Local dev (Vite on :3820) and the VPS (Nginx in front) skip this — Vite/Nginx
+// already handle SPA serving in those environments. Block is dormant if dist
+// folder is absent, so it's safe to ship to prod as a no-op.
+{
+  const fs = require('fs');
+  const frontendDist = path.resolve(__dirname, '../../frontend/dist');
+  if (fs.existsSync(frontendDist)) {
+    fastify.register(require('@fastify/static'), {
+      root: frontendDist,
+      prefix: '/',
+      decorateReply: false,
+    });
+
+    fastify.setNotFoundHandler((request, reply) => {
+      if (request.method !== 'GET') {
+        return reply.status(404).send({ error: true, message: 'Not found' });
+      }
+      if (
+        request.url.startsWith('/api/') ||
+        request.url.startsWith('/uploads/') ||
+        request.url === '/health'
+      ) {
+        return reply.status(404).send({ error: true, message: 'Not found' });
+      }
+      return reply.type('text/html').send(fs.readFileSync(path.join(frontendDist, 'index.html')));
+    });
+  }
+}
+
 // Decorate with shared instances
 fastify.decorate('prisma', prisma);
 fastify.decorate('redis', redis);
