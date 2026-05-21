@@ -132,7 +132,7 @@ model Registration {
   qrToken   String? @unique
 
   // Paiement
-  paymentStatus     String    @default("pending") // pending | processing | success | failed | manual
+  paymentStatus     String    @default("pending") // pending | processing | success | failed | manual | refunded
   paymentMethod     String? // CIB / EDAHABIA / null
   orderNumber       String? // our 8-char order ID
   transactionId     String?   @unique
@@ -140,6 +140,7 @@ model Registration {
   approvalCode      String?
   paymentAmount     Int       @default(200000) // centimes
   paymentDate       DateTime?
+  refundedAt        DateTime? // set when admin initiates refund via Coureur drawer (paymentStatus → 'refunded')
   cardPan           String? // last 4 digits from SATIM
 
   // Statut

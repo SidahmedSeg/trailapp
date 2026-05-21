@@ -186,6 +186,7 @@ async function reconciliationRoutes(fastify) {
               paymentStatus: true,
               cardPan: true,
               createdAt: true,
+              refundedAt: true,
             },
           },
         },
