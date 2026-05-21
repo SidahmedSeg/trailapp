@@ -347,6 +347,7 @@ async function adminRoutes(fastify) {
       });
     }
 
+    const now = new Date();
     const txOps = [
       prisma.registration.update({
         where: { id },
@@ -354,6 +355,7 @@ async function adminRoutes(fastify) {
           bibNumber: null,
           qrToken: null,
           paymentStatus: 'refunded',
+          refundedAt: now,
         },
       }),
     ];

@@ -972,6 +972,9 @@ function DetailPanel({ runner, onClose, onUpdated }) {
               <Field label="Carte (4 derniers)" value={display.cardPan || '—'} />
               <Field label="Transaction SATIM" value={display.transactionNumber || '—'} />
               <Field label="Date paiement" value={display.paymentDate ? new Date(display.paymentDate).toLocaleString('fr-FR') : '—'} />
+              {display.refundedAt && (
+                <Field label="Date remboursement" value={new Date(display.refundedAt).toLocaleString('fr-FR')} />
+              )}
             </>
           )}
         </div>
