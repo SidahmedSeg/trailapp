@@ -4,6 +4,7 @@ const { validateManualBib } = require('../services/bib');
 const { getActiveEvent } = require('../services/event');
 const { validateRegistration, validateOptionalFields, buildE164 } = require('../schemas/registration');
 const { generateCSV } = require('../services/csv');
+const { buildBibsArchive } = require('../services/bibsZip');
 const { sendConfirmationEmail } = require('../services/sendgrid');
 const { AppError } = require('../utils/errors');
 const { v4: uuidv4 } = require('uuid');
@@ -423,6 +424,68 @@ async function adminRoutes(fastify) {
     reply.header('Content-Type', 'text/csv; charset=utf-8');
     reply.header('Content-Disposition', 'attachment; filename="coureurs.csv"');
     return csv;
+  });
+
+  // GET /api/admin/runners/export/bibs-zip — admin only
+  // Streams a .zip containing a CSV (Prénom, Nom, Dossard, Niveau, QR) plus
+  // one PNG per runner (filename = bib number) under qr-codes/.
+  // Mirrors the existing Coureurs filter shape.
+  fastify.get('/runners/export/bibs-zip', { preHandler: authorize('admin', 'super_admin') }, async (request, reply) => {
+    const { status, search, source, paymentFilter = 'paid' } = request.query;
+    const eventId = await resolveEventId(request.query);
+
+    const where = {
+      eventId,
+      bibNumber: { not: null },
+      qrToken: { not: null },
+    };
+
+    if (paymentFilter === 'paid') {
+      where.paymentStatus = { in: ['success', 'manual'] };
+    }
+    if (status && status !== 'all') {
+      where.status = status;
+    }
+    if (source && source !== 'all') {
+      where.source = source;
+    }
+    if (search) {
+      const s = search.trim();
+      const bibNum = parseInt(s, 10);
+      where.OR = [
+        { firstName: { contains: s, mode: 'insensitive' } },
+        { lastName: { contains: s, mode: 'insensitive' } },
+        { email: { contains: s, mode: 'insensitive' } },
+        { phone: { contains: s } },
+        { orderNumber: { contains: s, mode: 'insensitive' } },
+        { transactionId: { contains: s, mode: 'insensitive' } },
+        ...(isNaN(bibNum) ? [] : [{ bibNumber: bibNum }]),
+      ];
+    }
+
+    const registrations = await prisma.registration.findMany({
+      where,
+      orderBy: { bibNumber: 'asc' },
+      select: {
+        firstName: true,
+        lastName: true,
+        bibNumber: true,
+        runnerLevel: true,
+        qrToken: true,
+      },
+    });
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    reply.header('Content-Type', 'application/zip');
+    reply.header(
+      'Content-Disposition',
+      `attachment; filename="coureurs-bibs-${dateStr}.zip"`
+    );
+
+    // The archiver pipes itself into reply.raw and finalizes on its own;
+    // we just hijack the reply so Fastify doesn't try to serialize.
+    reply.hijack();
+    buildBibsArchive(registrations, reply.raw);
   });
 
   // GET /api/admin/stats
