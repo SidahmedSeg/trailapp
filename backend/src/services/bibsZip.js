@@ -9,8 +9,8 @@ const { generateQRBuffer } = require('./qrcode');
  *   qr-codes/<bibNumber>.png   (one per row)
  *
  * The CSV uses 5 columns: Prénom | Nom | Dossard | Niveau | QR
- * The QR column references the relative path inside the archive
- * (e.g. "qr-codes/6.png") so the spreadsheet stays linkable to the images.
+ * The QR column is just the image filename (e.g. "6.png"); the file lives
+ * inside the qr-codes/ folder of the archive.
  *
  * Caller is responsible for setting Content-Type / Content-Disposition
  * and piping `archive` into the response. Returns the archiver instance.
@@ -33,7 +33,7 @@ function buildBibsArchive(registrations, replyStream) {
       csvCell(r.lastName),
       bib,
       csvCell(r.runnerLevel),
-      `qr-codes/${bib}.png`,
+      `${bib}.png`,
     ].join(','));
   }
   archive.append(csvLines.join('\n'), { name: 'coureurs-bibs.csv' });
