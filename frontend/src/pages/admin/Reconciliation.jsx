@@ -551,6 +551,7 @@ export default function Reconciliation() {
                     <th className="px-4 py-3 text-left">Montant</th>
                     {tab === 'validations' && <th className="px-4 py-3 text-left">Coureur soumis</th>}
                     {tab === 'validations' && <th className="px-4 py-3 text-left">Dossard</th>}
+                    {tab === 'refunds' && <th className="px-4 py-3 text-left">Remb. créé le</th>}
                     <th className="px-4 py-3 text-left">Statut</th>
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
@@ -579,6 +580,13 @@ export default function Reconciliation() {
                       {tab === 'validations' && (
                         <td className="px-4 py-3 font-bold">
                           {r.registration?.bibNumber || '—'}
+                        </td>
+                      )}
+                      {tab === 'refunds' && (
+                        <td className="px-4 py-3 text-gray-600 text-xs">
+                          {r.registration?.refundedAt
+                            ? new Date(r.registration.refundedAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                            : '—'}
                         </td>
                       )}
                       <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
