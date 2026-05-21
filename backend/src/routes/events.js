@@ -363,8 +363,11 @@ async function eventsRoutes(fastify) {
     // Check if event has registrations
     const regCount = await prisma.registration.count({ where: { eventId: event.id } });
     if (regCount > 0) {
-      // Delete related email logs first, then registrations
+      // Delete dependent rows first to satisfy the new FK constraints, then registrations.
       await prisma.emailLog.deleteMany({
+        where: { registration: { eventId: event.id } },
+      });
+      await prisma.scannerSession.deleteMany({
         where: { registration: { eventId: event.id } },
       });
       await prisma.registration.deleteMany({ where: { eventId: event.id } });
