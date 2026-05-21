@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 
 const navItems = [
-  { to: '/admin', icon: LayoutDashboard, label: 'Tableau de bord', roles: ['super_admin', 'admin'] },
+  { to: '/admin', icon: LayoutDashboard, label: 'Tableau de bord' },
   { to: '/admin/runners', icon: UserCheck, label: 'Coureurs' },
   { to: '/admin/scan', icon: ScanLine, label: 'Scanner' },
   { to: '/admin/check-in', icon: Flag, label: 'Check-in' },
