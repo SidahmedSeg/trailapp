@@ -347,7 +347,6 @@ async function adminRoutes(fastify) {
       });
     }
 
-    const now = new Date();
     const txOps = [
       prisma.registration.update({
         where: { id },
@@ -355,7 +354,6 @@ async function adminRoutes(fastify) {
           bibNumber: null,
           qrToken: null,
           paymentStatus: 'refunded',
-          refundedAt: now,
         },
       }),
     ];
@@ -534,6 +532,7 @@ async function adminRoutes(fastify) {
       return reply.send(fs.createReadStream(absPath));
     }
   );
+
 
   // GET /api/admin/stats — Dashboard data, admin + super_admin only
   fastify.get('/stats', { preHandler: authorize('admin', 'super_admin') }, async (request) => {
