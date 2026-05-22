@@ -172,6 +172,12 @@ async function reconciliationRoutes(fastify) {
         }
       }
 
+      // Sort: refunds tab shows newest refund-action at top (registration.refundedAt);
+      // other tabs keep the CSV-upload order they've always used.
+      const orderBy = tab === 'refunds'
+        ? { registration: { refundedAt: { sort: 'desc', nulls: 'last' } } }
+        : { uploadedAt: 'desc' };
+
       const rows = await prisma.satimReconciliation.findMany({
         where,
         include: {
@@ -190,7 +196,7 @@ async function reconciliationRoutes(fastify) {
             },
           },
         },
-        orderBy: { uploadedAt: 'desc' },
+        orderBy,
       });
 
       return rows;
