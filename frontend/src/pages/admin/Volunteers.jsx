@@ -9,6 +9,7 @@ import {
   CalendarClock, CheckCircle, X, Clock, Search, FileText, IdCard,
   Mail, Phone, AlertCircle, Power, ExternalLink, Copy, CalendarCheck, XCircle,
   Camera, StopCircle, UserPlus, ScanLine, ChevronRight, Download,
+  MapPin, Video,
 } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
@@ -761,8 +762,13 @@ function DetailDrawer({ volunteer, isTLB, onClose, onPlanInterview, onValidate, 
               <p className="font-medium text-gray-700 mb-1">Entretien proposé le {formatDate(volunteer.interviewSentAt)}</p>
               <p className="text-gray-500">Email envoyé à {volunteer.interviewSentTo}</p>
               {volunteer.interviewType && (
-                <p className="text-gray-500 mt-0.5">
-                  Type : <span className="text-gray-700">{volunteer.interviewType === 'online' ? '💻 En ligne' : '🏢 Sur place'}</span>
+                <p className="text-gray-500 mt-0.5 inline-flex items-center gap-1.5">
+                  <span>Type :</span>
+                  {volunteer.interviewType === 'online' ? (
+                    <span className="inline-flex items-center gap-1 text-gray-700"><Video size={12} /> En ligne</span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-gray-700"><MapPin size={12} /> Sur place</span>
+                  )}
                 </p>
               )}
               {Array.isArray(volunteer.interviewSlots) && (
@@ -905,25 +911,25 @@ function InterviewModal({ volunteer, onClose, onDone, onError }) {
             <button
               type="button"
               onClick={() => setType('onsite')}
-              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition cursor-pointer ${
+              className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm transition cursor-pointer ${
                 type === 'onsite'
                   ? 'border-[#C42826] bg-[#C42826]/5 text-[#C42826] font-medium'
                   : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
               }`}
             >
-              <span>🏢</span>
+              <MapPin size={16} />
               <span>Sur place</span>
             </button>
             <button
               type="button"
               onClick={() => setType('online')}
-              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition cursor-pointer ${
+              className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm transition cursor-pointer ${
                 type === 'online'
                   ? 'border-[#C42826] bg-[#C42826]/5 text-[#C42826] font-medium'
                   : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
               }`}
             >
-              <span>💻</span>
+              <Video size={16} />
               <span>En ligne</span>
             </button>
           </div>
