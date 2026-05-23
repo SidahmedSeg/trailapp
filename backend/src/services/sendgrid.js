@@ -239,7 +239,7 @@ async function sendLateRegistrationInvitation({ toEmail, eventName, bibNumber, l
  * Volunteer interview proposal — admin sends 3 datetime slots; runner replies
  * by email (reply-to staff@lassm.dz) to coordinate outside the app.
  */
-async function sendVolunteerInterviewProposal({ toEmail, firstName, eventName, slots, adminNote }) {
+async function sendVolunteerInterviewProposal({ toEmail, firstName, eventName, slots, adminNote, type }) {
   const fmt = (iso) => new Date(iso).toLocaleString('fr-FR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
   });
@@ -249,6 +249,12 @@ async function sendVolunteerInterviewProposal({ toEmail, firstName, eventName, s
     .map((s) => `<li style="margin-bottom: 6px;">${fmt(s)}</li>`)
     .join('');
 
+  // Default to onsite for backwards compat with any caller that doesn't pass `type`.
+  const interviewType = type === 'online' ? 'online' : 'onsite';
+  const venueLine = interviewType === 'online'
+    ? `<p><strong>Format :</strong> Entretien en ligne. Le lien de la visioconférence vous sera envoyé dans un email séparé.</p>`
+    : `<p><strong>Lieu :</strong> TENNIS CLUB DE BEN AKNOUN — <a href="https://maps.app.goo.gl/1ooKBaRj9iNa5BQ18" style="color: #C42826; text-decoration: underline;">https://maps.app.goo.gl/1ooKBaRj9iNa5BQ18</a></p>`;
+
   const eventLabel = eventName || 'l\'événement';
   const subject = `Entretien bénévole — ${eventName || 'Événement'}`;
   const body = `<div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #444; line-height: 1.55;">
@@ -257,7 +263,7 @@ async function sendVolunteerInterviewProposal({ toEmail, firstName, eventName, s
     <p>Nous avons bien étudié votre profil et serions ravis d'échanger avec vous lors d'un court entretien afin de mieux faire connaissance et de vous présenter l'aventure bénévole.</p>
     <p>Nous vous proposons les créneaux suivants :</p>
     <ul style="padding-left: 24px;">${slotItems}</ul>
-    <p><strong>Lieu :</strong> TENNIS CLUB DE BEN AKNOUN — <a href="https://maps.app.goo.gl/1ooKBaRj9iNa5BQ18" style="color: #C42826; text-decoration: underline;">https://maps.app.goo.gl/1ooKBaRj9iNa5BQ18</a></p>
+    ${venueLine}
     ${adminNote ? `<p style="background: #fff7ed; border-left: 3px solid #f59e0b; padding: 10px 14px;">${adminNote}</p>` : ''}
     <p>Il vous suffit de répondre à cet email en indiquant le créneau qui vous convient le mieux.</p>
     <p>Au plaisir d'échanger prochainement avec vous.</p>

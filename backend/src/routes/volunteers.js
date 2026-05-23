@@ -426,12 +426,12 @@ async function volunteerRoutes(fastify) {
   );
 
   // POST /api/admin/volunteers/:id/plan-interview
-  // Body: { slots: [iso, iso, iso], adminNote? }
+  // Body: { slots: [iso, iso, iso], adminNote?, type? = 'onsite' | 'online' }
   fastify.post(
     '/admin/volunteers/:id/plan-interview',
     { preHandler: [authenticate, authorize(...VOLUNTEER_ROLES)] },
     async (request) => {
-      const { slots, adminNote } = request.body || {};
+      const { slots, adminNote, type } = request.body || {};
       if (!Array.isArray(slots) || slots.filter(Boolean).length === 0) {
         throw new AppError(400, 'Au moins un créneau requis', 'VALIDATION_ERROR');
       }
@@ -442,6 +442,8 @@ async function volunteerRoutes(fastify) {
           throw new AppError(400, 'Créneau invalide', 'VALIDATION_ERROR');
         }
       }
+      // Validate type — defaults to 'onsite' (backwards compat with older clients)
+      const interviewType = type === 'online' ? 'online' : 'onsite';
 
       const row = await prisma.volunteer.findUnique({
         where: { id: request.params.id },
@@ -459,6 +461,7 @@ async function volunteerRoutes(fastify) {
           eventName: row.event?.name || 'Événement',
           slots: cleanSlots,
           adminNote: adminNote || null,
+          type: interviewType,
         });
       } catch (err) {
         request.log.error(err, 'Volunteer interview email failed');
@@ -475,6 +478,7 @@ async function volunteerRoutes(fastify) {
           interviewSlots: cleanSlots,
           interviewSentAt: new Date(),
           interviewSentTo: row.email,
+          interviewType,
         },
       });
 
@@ -488,6 +492,7 @@ async function volunteerRoutes(fastify) {
           email: row.email,
           slots: cleanSlots,
           slotCount: cleanSlots.length,
+          interviewType,
         },
       });
 
