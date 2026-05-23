@@ -760,6 +760,11 @@ function DetailDrawer({ volunteer, isTLB, onClose, onPlanInterview, onValidate, 
             <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-xs text-gray-600">
               <p className="font-medium text-gray-700 mb-1">Entretien proposé le {formatDate(volunteer.interviewSentAt)}</p>
               <p className="text-gray-500">Email envoyé à {volunteer.interviewSentTo}</p>
+              {volunteer.interviewType && (
+                <p className="text-gray-500 mt-0.5">
+                  Type : <span className="text-gray-700">{volunteer.interviewType === 'online' ? '💻 En ligne' : '🏢 Sur place'}</span>
+                </p>
+              )}
               {Array.isArray(volunteer.interviewSlots) && (
                 <ul className="list-disc list-inside mt-2 text-gray-600">
                   {volunteer.interviewSlots.map((s, i) => (
@@ -852,6 +857,7 @@ function DetailDrawer({ volunteer, isTLB, onClose, onPlanInterview, onValidate, 
 function InterviewModal({ volunteer, onClose, onDone, onError }) {
   const [slots, setSlots] = useState(['', '', '']);
   const [adminNote, setAdminNote] = useState('');
+  const [type, setType] = useState('onsite'); // 'onsite' | 'online'
   const [submitting, setSubmitting] = useState(false);
 
   function updateSlot(i, val) {
@@ -866,6 +872,7 @@ function InterviewModal({ volunteer, onClose, onDone, onError }) {
       await post(`/admin/volunteers/${volunteer.id}/plan-interview`, {
         slots: filled.map((s) => new Date(s).toISOString()),
         adminNote: adminNote.trim() || undefined,
+        type,
       });
       onDone();
     } catch (err) {
@@ -890,6 +897,42 @@ function InterviewModal({ volunteer, onClose, onDone, onError }) {
         <p className="text-sm text-gray-600 mb-4">
           Proposez jusqu'à 3 créneaux. Un email sera envoyé au candidat avec une adresse de réponse <span className="font-mono">staff@lassm.dz</span>.
         </p>
+
+        {/* Interview type — Onsite (default) vs Online */}
+        <div className="mb-4">
+          <label className="block text-xs font-medium text-gray-600 mb-2">Type d'entretien</label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setType('onsite')}
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition cursor-pointer ${
+                type === 'onsite'
+                  ? 'border-[#C42826] bg-[#C42826]/5 text-[#C42826] font-medium'
+                  : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <span>🏢</span>
+              <span>Sur place</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setType('online')}
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition cursor-pointer ${
+                type === 'online'
+                  ? 'border-[#C42826] bg-[#C42826]/5 text-[#C42826] font-medium'
+                  : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <span>💻</span>
+              <span>En ligne</span>
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-1.5">
+            {type === 'onsite'
+              ? "L'email inclura l'adresse du TENNIS CLUB DE BEN AKNOUN."
+              : 'L\'email indiquera que le lien de visioconférence sera envoyé séparément.'}
+          </p>
+        </div>
 
         <div className="space-y-2 mb-4">
           {[0, 1, 2].map((i) => (
