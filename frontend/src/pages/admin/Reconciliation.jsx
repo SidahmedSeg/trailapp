@@ -584,9 +584,16 @@ export default function Reconciliation() {
                       )}
                       {tab === 'refunds' && (
                         <td className="px-4 py-3 text-gray-600 text-xs">
-                          {r.registration?.refundedAt
-                            ? new Date(r.registration.refundedAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-                            : '—'}
+                          {r.registration?.refundedAt ? (
+                            new Date(r.registration.refundedAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                          ) : r.updatedAt ? (
+                            <>
+                              {new Date(r.updatedAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              <span className="ml-1 text-amber-600">(SATIM)</span>
+                            </>
+                          ) : (
+                            '—'
+                          )}
                         </td>
                       )}
                       <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
