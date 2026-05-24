@@ -394,6 +394,7 @@ model Volunteer {
   interviewSlots  Json? // Array of datetime ISO strings proposed by admin
   interviewSentAt DateTime?
   interviewSentTo String? // copy of email at time of send (audit)
+  interviewType   String? // 'onsite' | 'online' — picks email template variant (location vs videocall blurb)
 
   // Validation
   validatedAt DateTime?
