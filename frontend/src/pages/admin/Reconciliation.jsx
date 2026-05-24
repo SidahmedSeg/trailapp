@@ -307,7 +307,9 @@ export default function Reconciliation() {
         linkSentAt: r.linkSentAt || '',
         uploadedBy: r.uploadedBy,
         uploadedAt: r.uploadedAt,
-        refundedAt: r.registration?.refundedAt || '',
+        refundedAt: r.registration?.refundedAt
+          ? r.registration.refundedAt
+          : (r.updatedAt ? `${r.updatedAt} (SATIM)` : ''),
       }));
       downloadCsv(`reconciliation_${tab}_${ts}.csv`, header, data);
       flash('success', `${data.length} ligne(s) exportée(s)`);
