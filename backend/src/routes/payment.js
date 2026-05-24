@@ -1,10 +1,33 @@
 const { registerPayment, confirmOrder, getOrderStatus } = require('../services/satim');
 const { sendConfirmationEmail } = require('../services/sendgrid');
 const { getNextBib } = require('../services/bib');
+const { logActivity } = require('../middleware/activityLogger');
 const registrationGuard = require('../middleware/registrationGuard');
 const { AppError } = require('../utils/errors');
 const { v4: uuidv4 } = require('uuid');
 const env = require('../config/env');
+
+// If a Registration linked from a `used` LateRegistrationLink ends up `failed`,
+// the bib that the link reserved is effectively free again. Flip the link to
+// `released` so the admin UI shows the bib as available without manual action.
+async function autoReleaseLateRegistrationLink(prisma, registrationId, reason) {
+  const link = await prisma.lateRegistrationLink.findFirst({
+    where: { registrationId, status: 'used' },
+    select: { id: true, bibNumber: true, eventId: true },
+  });
+  if (!link) return;
+  await prisma.lateRegistrationLink.update({
+    where: { id: link.id },
+    data: { status: 'released' },
+  });
+  await logActivity({
+    action: 'late_registration_link_auto_released',
+    adminUsername: 'system',
+    targetType: 'late_registration_link',
+    targetId: link.id,
+    details: { bibNumber: link.bibNumber, eventId: link.eventId, reason },
+  });
+}
 
 async function paymentRoutes(fastify) {
   const { prisma, redis } = fastify;
@@ -187,6 +210,7 @@ async function paymentRoutes(fastify) {
           where: { id: registrationId },
           data: { paymentStatus: 'failed' },
         });
+        await autoReleaseLateRegistrationLink(prisma, registrationId, 'payment_callback_failed');
 
         const reason = encodeURIComponent(
           satimStatus.actionCodeDescription || satimStatus.errorMessage || `Code erreur: ${satimStatus.actionCode || satimStatus.errorCode || 'inconnu'}`
@@ -206,15 +230,27 @@ async function paymentRoutes(fastify) {
   const cleanupJob = setInterval(async () => {
     try {
       const threshold = new Date(Date.now() - STALE_THRESHOLD);
-      const result = await prisma.registration.updateMany({
+      const stale = await prisma.registration.findMany({
         where: {
           paymentStatus: 'processing',
           updatedAt: { lt: threshold },
         },
+        select: { id: true },
+      });
+      if (stale.length === 0) return;
+
+      await prisma.registration.updateMany({
+        where: { id: { in: stale.map((r) => r.id) } },
         data: { paymentStatus: 'failed' },
       });
-      if (result.count > 0) {
-        fastify.log.info(`Cleanup: marked ${result.count} stale processing payments as failed`);
+      fastify.log.info(`Cleanup: marked ${stale.length} stale processing payments as failed`);
+
+      for (const r of stale) {
+        try {
+          await autoReleaseLateRegistrationLink(prisma, r.id, 'payment_sweep_stale');
+        } catch (err) {
+          fastify.log.error({ err, registrationId: r.id }, 'auto-release link failed');
+        }
       }
     } catch (err) {
       fastify.log.error(err, 'Cleanup job error');
