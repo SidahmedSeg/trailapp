@@ -17,6 +17,7 @@ const FIELD_MAP = {
   paymentStatus: 'Statut paiement',
   paymentAmount: 'Montant',
   paymentDate: 'Date paiement',
+  refundedAt: 'Date remboursement',
   status: 'Statut',
   source: 'Source',
   createdAt: 'Date inscription',
