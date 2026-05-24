@@ -110,6 +110,7 @@ const CSV_FIELD_GROUPS = [
       { key: 'paymentStatus', label: 'Statut paiement' },
       { key: 'paymentAmount', label: 'Montant' },
       { key: 'paymentDate', label: 'Date paiement' },
+      { key: 'refundedAt', label: 'Date remboursement' },
     ],
   },
   {
