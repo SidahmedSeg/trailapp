@@ -374,6 +374,54 @@ async function lateRegistrationRoutes(fastify) {
     }
   );
 
+  // POST /api/admin/late-registration/:id/delete
+  // Removes a terminal-state link from the list. Snapshots to ActivityLog first.
+  // Only allowed for cancelled / expired / released, or used+failed.
+  fastify.post(
+    '/admin/late-registration/:id/delete',
+    { preHandler: [authenticate, authorize(...LATE_REG_ROLES)] },
+    async (request) => {
+      const row = await prisma.lateRegistrationLink.findUnique({
+        where: { id: request.params.id },
+        include: { registration: { select: { paymentStatus: true } } },
+      });
+      if (!row) throw new AppError(404, 'Lien introuvable', 'NOT_FOUND');
+
+      const ps = row.registration?.paymentStatus;
+      const terminal =
+        row.status === 'cancelled' ||
+        row.status === 'expired' ||
+        row.status === 'released' ||
+        (row.status === 'used' && ps && ps !== 'success' && ps !== 'manual');
+
+      if (!terminal) {
+        throw new AppError(409,
+          'Seuls les liens annulés, expirés, libérés ou abandonnés peuvent être supprimés',
+          'NOT_TERMINAL'
+        );
+      }
+
+      await logActivity({
+        action: 'late_registration_link_deleted',
+        adminUsername: request.user.username,
+        targetType: 'late_registration_link',
+        targetId: row.id,
+        details: {
+          bibNumber: row.bibNumber,
+          eventId: row.eventId,
+          previousStatus: row.status,
+          linkedPaymentStatus: ps || null,
+          createdBy: row.createdBy,
+          sentToEmail: row.sentToEmail,
+        },
+      });
+
+      await prisma.lateRegistrationLink.delete({ where: { id: row.id } });
+
+      return { deleted: true };
+    }
+  );
+
   // ────────────────────────────────────────────────────────────────────
   // PUBLIC ENDPOINTS (no auth, gated by token)
   // ────────────────────────────────────────────────────────────────────

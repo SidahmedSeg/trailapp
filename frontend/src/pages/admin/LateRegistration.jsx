@@ -6,7 +6,7 @@ import { useEvent } from '../../hooks/useEvent';
 import { useAuth } from '../../hooks/useAuth';
 import Sidebar from '../../components/ui/Sidebar';
 import {
-  Link2, Copy, Mail, X, CheckCircle, AlertCircle, Clock, Search, RefreshCcw, Plus, Ban,
+  Link2, Copy, Mail, X, CheckCircle, AlertCircle, Clock, Search, RefreshCcw, Plus, Ban, Trash2, Unlock,
 } from 'lucide-react';
 
 const ALLOWED_ROLES = ['super_admin', 'reconciliation_specialist'];
@@ -41,10 +41,11 @@ const bibSelectStyles = { ...statusSelectStyles, control: (base, state) => ({
 
 function StatusBadge({ status }) {
   const map = {
-    pending:   { label: 'En attente',  cls: 'bg-blue-100 text-blue-700',     Icon: Clock },
-    used:      { label: 'Inscrit',     cls: 'bg-emerald-100 text-emerald-700', Icon: CheckCircle },
-    expired:   { label: 'Expiré',      cls: 'bg-amber-100 text-amber-700',   Icon: Clock },
-    cancelled: { label: 'Annulé',      cls: 'bg-gray-100 text-gray-500',     Icon: X },
+    pending:   { label: 'En attente',     cls: 'bg-blue-100 text-blue-700',       Icon: Clock },
+    used:      { label: 'Inscrit',        cls: 'bg-emerald-100 text-emerald-700', Icon: CheckCircle },
+    expired:   { label: 'Expiré',         cls: 'bg-amber-100 text-amber-700',     Icon: Clock },
+    cancelled: { label: 'Annulé',         cls: 'bg-gray-100 text-gray-500',       Icon: X },
+    released:  { label: 'Dossard libéré', cls: 'bg-emerald-50 text-emerald-700',  Icon: Unlock },
   };
   const def = map[status] || { label: status, cls: 'bg-gray-100 text-gray-700', Icon: Clock };
   const I = def.Icon;
@@ -226,7 +227,10 @@ export default function LateRegistration() {
         flash('success', 'Lien annulé');
       } else if (action === 'regenerate') {
         await post(`/admin/late-registration/${row.id}/regenerate`);
-        flash('success', 'Lien régénéré');
+        flash('success', 'Nouveau lien généré — même dossard');
+      } else if (action === 'delete') {
+        await post(`/admin/late-registration/${row.id}/delete`);
+        flash('success', 'Dossard libéré et lien supprimé');
       }
       setConfirmModal(null);
       await fetchRows();
@@ -284,6 +288,7 @@ export default function LateRegistration() {
               { value: 'used', label: 'Inscrit' },
               { value: 'expired', label: 'Expiré' },
               { value: 'cancelled', label: 'Annulé' },
+              { value: 'released', label: 'Dossard libéré' },
             ]}
             value={(() => {
               const opts = [
@@ -370,12 +375,19 @@ export default function LateRegistration() {
                               </button>
                             </>
                           )}
-                          {(r.status === 'expired' || r.status === 'cancelled' || isUsedButUnpaid(r)) && (
-                            <button onClick={() => setConfirmModal({ row: r, action: 'regenerate', submitting: false })}
-                              title={isUsedButUnpaid(r) ? 'Le coureur n\'a pas finalisé son paiement — régénérer libère le dossard' : undefined}
-                              className="inline-flex items-center gap-1 rounded-md bg-[#C42826] text-white px-3 py-1.5 text-xs font-medium hover:bg-[#a82220] cursor-pointer">
-                              <RefreshCcw size={12} /> Régénérer
-                            </button>
+                          {(r.status === 'expired' || r.status === 'cancelled' || r.status === 'released' || isUsedButUnpaid(r)) && (
+                            <>
+                              <button onClick={() => setConfirmModal({ row: r, action: 'regenerate', submitting: false })}
+                                title="Émet un nouveau lien pour ce dossard"
+                                className="inline-flex items-center gap-1 rounded-md bg-[#C42826] text-white px-3 py-1.5 text-xs font-medium hover:bg-[#a82220] cursor-pointer">
+                                <RefreshCcw size={12} /> Réutiliser ce dossard
+                              </button>
+                              <button onClick={() => setConfirmModal({ row: r, action: 'delete', submitting: false })}
+                                title="Libère le dossard et retire la ligne (auditée)"
+                                className="inline-flex items-center gap-1 rounded-md text-gray-500 hover:text-red-600 hover:bg-red-50 px-2 py-1 text-xs cursor-pointer">
+                                <Trash2 size={12} />
+                              </button>
+                            </>
                           )}
                           {r.status === 'used' && r.registration && !isUsedButUnpaid(r) && (
                             <button onClick={() => navigate(`/admin/runners?search=${encodeURIComponent(r.registration.email)}`)}
@@ -479,31 +491,43 @@ export default function LateRegistration() {
         </div>
       )}
 
-      {/* Confirm Modal (cancel / regenerate) */}
+      {/* Confirm Modal (cancel / regenerate / delete) */}
       {confirmModal && (() => {
-        const isCancel = confirmModal.action === 'cancel';
-        const palette = isCancel
-          ? { iconBg: 'bg-red-100', iconColor: 'text-red-600', btn: 'bg-red-600 hover:bg-red-700', Icon: Ban }
-          : { iconBg: 'bg-emerald-100', iconColor: 'text-emerald-600', btn: 'bg-emerald-600 hover:bg-emerald-700', Icon: RefreshCcw };
-        const I = palette.Icon;
+        const { action } = confirmModal;
+        const config = {
+          cancel: {
+            palette: { iconBg: 'bg-red-100', iconColor: 'text-red-600', btn: 'bg-red-600 hover:bg-red-700', Icon: Ban },
+            title: 'Annuler ce lien',
+            body: 'Le lien deviendra inactif. Le dossard pourra être réutilisé pour un nouveau lien.',
+            confirmLabel: 'Confirmer l\'annulation',
+          },
+          regenerate: {
+            palette: { iconBg: 'bg-emerald-100', iconColor: 'text-emerald-600', btn: 'bg-emerald-600 hover:bg-emerald-700', Icon: RefreshCcw },
+            title: 'Réutiliser ce dossard',
+            body: 'Un nouveau lien sera généré (valide 7 jours) pour le même dossard. L\'ancien lien sera invalidé.',
+            confirmLabel: 'Générer le nouveau lien',
+          },
+          delete: {
+            palette: { iconBg: 'bg-gray-100', iconColor: 'text-gray-600', btn: 'bg-gray-700 hover:bg-gray-800', Icon: Trash2 },
+            title: 'Libérer le dossard',
+            body: 'Le dossard sera retiré de la liste. L\'historique est conservé dans le journal d\'activité. Action irréversible.',
+            confirmLabel: 'Libérer et retirer',
+          },
+        }[action];
+        if (!config) return null;
+        const I = config.palette.Icon;
         return (
           <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center px-4"
             onClick={() => !confirmModal.submitting && setConfirmModal(null)}>
             <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6"
               onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center gap-3 mb-4">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${palette.iconBg}`}>
-                  <I size={20} className={palette.iconColor} />
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${config.palette.iconBg}`}>
+                  <I size={20} className={config.palette.iconColor} />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {isCancel ? 'Annuler ce lien' : 'Régénérer ce lien'}
-                </h3>
+                <h3 className="text-lg font-semibold text-gray-900">{config.title}</h3>
               </div>
-              <p className="text-sm text-gray-600 mb-4">
-                {isCancel
-                  ? 'Le lien deviendra inactif. Le dossard pourra être réutilisé pour un nouveau lien.'
-                  : 'Un nouveau lien sera généré (valide 7 jours). L\'ancien lien sera invalidé.'}
-              </p>
+              <p className="text-sm text-gray-600 mb-4">{config.body}</p>
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-5">
                 <p className="text-sm">Dossard <span className="font-mono text-[#C42826] font-bold">#{confirmModal.row.bibNumber}</span></p>
               </div>
@@ -513,9 +537,9 @@ export default function LateRegistration() {
                   Annuler
                 </button>
                 <button onClick={confirmAction} disabled={confirmModal.submitting}
-                  className={`inline-flex items-center gap-1.5 rounded-lg text-white px-4 py-2 text-sm font-medium cursor-pointer disabled:opacity-60 ${palette.btn}`}>
+                  className={`inline-flex items-center gap-1.5 rounded-lg text-white px-4 py-2 text-sm font-medium cursor-pointer disabled:opacity-60 ${config.palette.btn}`}>
                   <I size={14} />
-                  {confirmModal.submitting ? 'Traitement…' : (isCancel ? 'Confirmer l\'annulation' : 'Régénérer')}
+                  {confirmModal.submitting ? 'Traitement…' : config.confirmLabel}
                 </button>
               </div>
             </div>
