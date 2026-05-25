@@ -526,6 +526,63 @@ async function lateRegistrationRoutes(fastify) {
       throw new AppError(409, 'Cet email est déjà inscrit à cet événement', 'EMAIL_TAKEN');
     }
 
+    // Block live in-flight SATIM payment (< 30 min old)
+    const processingReg = await prisma.registration.findFirst({
+      where: {
+        email: emailLower,
+        eventId: event.id,
+        paymentStatus: 'processing',
+        updatedAt: { gt: new Date(Date.now() - STALE_THRESHOLD_MS) },
+      },
+    });
+    if (processingReg) {
+      throw new AppError(409, 'Un paiement est déjà en cours pour cet email', 'PAYMENT_PROCESSING');
+    }
+
+    // Snapshot + purge any previous pending/failed/stale-processing rows on this
+    // email+event pair. Mirrors the normal /api/register flow so the @@unique
+    // ([email, eventId]) constraint doesn't trip the create below. ActivityLog
+    // snapshot first preserves forensic data (hard-delete-audit pattern).
+    const purgeWhere = {
+      email: emailLower,
+      eventId: event.id,
+      OR: [
+        { paymentStatus: { in: ['pending', 'failed'] } },
+        { paymentStatus: 'processing', updatedAt: { lt: new Date(Date.now() - STALE_THRESHOLD_MS) } },
+      ],
+    };
+    const toPurge = await prisma.registration.findMany({ where: purgeWhere });
+    if (toPurge.length > 0) {
+      await prisma.activityLog.createMany({
+        data: toPurge.map((r) => ({
+          action: 'registration_purged_on_late_re_registration',
+          adminUsername: 'system',
+          targetType: 'registration',
+          targetId: r.id,
+          details: {
+            email: r.email,
+            firstName: r.firstName,
+            lastName: r.lastName,
+            phone: r.phone,
+            paymentStatus: r.paymentStatus,
+            bibNumber: r.bibNumber,
+            orderNumber: r.orderNumber,
+            transactionId: r.transactionId,
+            paymentMethod: r.paymentMethod,
+            paymentDate: r.paymentDate,
+            cardPan: r.cardPan,
+            approvalCode: r.approvalCode,
+            eventId: r.eventId,
+            createdAt: r.createdAt,
+            purgedAt: new Date().toISOString(),
+            lateRegistrationLinkId: row.id,
+            lateRegistrationBibNumber: row.bibNumber,
+          },
+        })),
+      });
+      await prisma.registration.deleteMany({ where: purgeWhere });
+    }
+
     // Verify the reserved bib is still free
     const bibTaken = await prisma.registration.findFirst({
       where: { eventId: event.id, bibNumber: row.bibNumber },
