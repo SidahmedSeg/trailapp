@@ -11,6 +11,8 @@ const { sendConfirmationEmail } = require('../services/sendgrid');
 const { AppError } = require('../utils/errors');
 const { v4: uuidv4 } = require('uuid');
 
+const STALE_THRESHOLD_MS = 30 * 60 * 1000; // same as public + late-reg flows
+
 async function adminRoutes(fastify) {
   const { prisma } = fastify;
 
@@ -132,6 +134,76 @@ async function adminRoutes(fastify) {
     const emergencyPhone = buildE164(body.emergencyPhoneCountryCode, body.emergencyPhoneNumber);
     const qrToken = uuidv4();
 
+    const emailLower = body.email.toLowerCase().trim();
+
+    // Real duplicate — runner already paid (success or manual) on this event.
+    // Surface a clear EMAIL_TAKEN instead of the opaque P2002 -> DUPLICATE map.
+    const existingSuccess = await prisma.registration.findFirst({
+      where: {
+        email: emailLower,
+        eventId,
+        paymentStatus: { in: ['success', 'manual'] },
+      },
+    });
+    if (existingSuccess) {
+      throw new AppError(409, 'Cet email est déjà inscrit à cet événement', 'EMAIL_TAKEN');
+    }
+
+    // Protect an in-flight SATIM payment (< 30 min old).
+    const processingReg = await prisma.registration.findFirst({
+      where: {
+        email: emailLower,
+        eventId,
+        paymentStatus: 'processing',
+        updatedAt: { gt: new Date(Date.now() - STALE_THRESHOLD_MS) },
+      },
+    });
+    if (processingReg) {
+      throw new AppError(409, 'Un paiement est déjà en cours pour cet email', 'PAYMENT_PROCESSING');
+    }
+
+    // Snapshot + purge any stale pending/failed/stale-processing rows on the same
+    // (email, eventId) so the @@unique constraint doesn't trip the create below.
+    // Mirrors the public /api/register and /late-registration/.../register flows.
+    const purgeWhere = {
+      email: emailLower,
+      eventId,
+      OR: [
+        { paymentStatus: { in: ['pending', 'failed'] } },
+        { paymentStatus: 'processing', updatedAt: { lt: new Date(Date.now() - STALE_THRESHOLD_MS) } },
+      ],
+    };
+    const toPurge = await prisma.registration.findMany({ where: purgeWhere });
+    if (toPurge.length > 0) {
+      await prisma.activityLog.createMany({
+        data: toPurge.map((r) => ({
+          action: 'registration_purged_on_manual_create',
+          adminUsername: request.user.username,
+          targetType: 'registration',
+          targetId: r.id,
+          details: {
+            email: r.email,
+            firstName: r.firstName,
+            lastName: r.lastName,
+            phone: r.phone,
+            paymentStatus: r.paymentStatus,
+            bibNumber: r.bibNumber,
+            orderNumber: r.orderNumber,
+            transactionId: r.transactionId,
+            paymentMethod: r.paymentMethod,
+            paymentDate: r.paymentDate,
+            cardPan: r.cardPan,
+            approvalCode: r.approvalCode,
+            eventId: r.eventId,
+            createdAt: r.createdAt,
+            purgedAt: new Date().toISOString(),
+            purgedByAdmin: request.user.username,
+          },
+        })),
+      });
+      await prisma.registration.deleteMany({ where: purgeWhere });
+    }
+
     // Build optional fields data
     const of = event.optionalFields || {};
     const optionalData = {};
@@ -155,7 +227,7 @@ async function adminRoutes(fastify) {
         phoneCountryCode: body.phoneCountryCode,
         phoneNumber: body.phoneNumber,
         phone,
-        email: body.email.toLowerCase().trim(),
+        email: emailLower,
         countryOfResidence: body.countryOfResidence,
         wilaya: body.wilaya || null,
         commune: body.commune || null,
