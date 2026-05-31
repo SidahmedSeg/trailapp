@@ -3,7 +3,7 @@ import { get } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import { useEvent } from '../../hooks/useEvent';
 import Sidebar from '../../components/ui/Sidebar';
-import { Users, Clock, CheckCircle, Ticket, DollarSign } from 'lucide-react';
+import { Users, Clock, CheckCircle, Ticket, DollarSign, UserCheck } from 'lucide-react';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   AreaChart, Area, ResponsiveContainer, Legend,
@@ -20,6 +20,7 @@ function StatCard({ label, value, icon: Icon, color }) {
     emerald: 'bg-emerald-50 text-emerald-600 border-emerald-200',
     purple: 'bg-purple-50 text-purple-600 border-purple-200',
     rose: 'bg-rose-50 text-rose-600 border-rose-200',
+    teal: 'bg-teal-50 text-teal-600 border-teal-200',
   };
   return (
     <div className={`rounded-xl border p-5 ${colorMap[color] || colorMap.blue}`}>
@@ -152,11 +153,12 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
           <StatCard label="Total inscrits" value={stats?.totalInscrits} icon={Users} color="blue" />
           <StatCard label="En attente" value={stats?.totalEnAttente} icon={Clock} color="amber" />
           <StatCard label="Distribués" value={stats?.totalDistribues} icon={CheckCircle} color="emerald" />
           <StatCard label="Dossards restants" value={stats?.dossardsRestants} icon={Ticket} color="purple" />
+          <StatCard label="Check-in" value={stats?.totalCheckedIn} icon={UserCheck} color="teal" />
           <StatCard label="Revenus" value={revenueDisplay} icon={DollarSign} color="rose" />
         </div>
 
