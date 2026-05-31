@@ -614,10 +614,11 @@ async function adminRoutes(fastify) {
 
     const event = await prisma.event.findUnique({ where: { id: eventId } });
 
-    const [total, enAttente, distribues, revenue] = await Promise.all([
+    const [total, enAttente, distribues, checkedIn, revenue] = await Promise.all([
       prisma.registration.count({ where }),
       prisma.registration.count({ where: { ...where, status: 'en_attente' } }),
       prisma.registration.count({ where: { ...where, status: 'distribué' } }),
+      prisma.registration.count({ where: { ...where, checkedInAt: { not: null } } }),
       prisma.registration.aggregate({
         where: { eventId, paymentStatus: 'success' },
         _sum: { paymentAmount: true },
@@ -633,6 +634,7 @@ async function adminRoutes(fastify) {
       totalInscrits: total,
       totalEnAttente: enAttente,
       totalDistribues: distribues,
+      totalCheckedIn: checkedIn,
       dossardsRestants: stockTotal - bibsAuto,
       revenuTotal: revenue._sum.paymentAmount || 0,
       stockTotal,
