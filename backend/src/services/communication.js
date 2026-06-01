@@ -8,6 +8,18 @@ const RATE_LIMIT_BACKOFFS_MS = [1000, 2000, 4000];
 
 const AUDIENCE_TYPES = ['custom', 'all_runners', 'all_volunteers', 'volunteers_by_tlb'];
 
+const VOLUNTEER_STATUSES = ['en_attente', 'interview_planned', 'validee', 'rejected'];
+
+// For all_volunteers, audienceParam is a CSV of statuses (subset of VOLUNTEER_STATUSES)
+// or null/empty to mean "all statuses" (backward-compat with pre-filter campaigns).
+function parseVolunteerStatuses(param) {
+  if (!param || typeof param !== 'string') return null;
+  const parsed = param.split(',').map((s) => s.trim()).filter(Boolean);
+  const valid = parsed.filter((s) => VOLUNTEER_STATUSES.includes(s));
+  if (valid.length === 0 || valid.length === VOLUNTEER_STATUSES.length) return null;
+  return valid;
+}
+
 const FROM_RULES = {
   all_runners:        { email: 'noreply@lassm.dz', name: 'LASSM' },
   all_volunteers:     { email: 'staff@lassm.dz',   name: 'LASSM' },
@@ -89,8 +101,12 @@ async function resolveAudience(prisma, campaign) {
     }
     case 'all_volunteers': {
       if (!campaign.eventId) return [];
+      const statuses = parseVolunteerStatuses(campaign.audienceParam);
       const rows = await prisma.volunteer.findMany({
-        where: { eventId: campaign.eventId },
+        where: {
+          eventId: campaign.eventId,
+          ...(statuses ? { status: { in: statuses } } : {}),
+        },
         select: { firstName: true, lastName: true, email: true, volunteerId: true },
       });
       return rows
@@ -133,11 +149,17 @@ async function getAudienceCount(prisma, audienceType, audienceParam, eventId) {
           email: { not: '' },
         },
       });
-    case 'all_volunteers':
+    case 'all_volunteers': {
       if (!eventId) return 0;
+      const statuses = parseVolunteerStatuses(audienceParam);
       return prisma.volunteer.count({
-        where: { eventId, email: { not: '' } },
+        where: {
+          eventId,
+          email: { not: '' },
+          ...(statuses ? { status: { in: statuses } } : {}),
+        },
       });
+    }
     case 'volunteers_by_tlb':
       if (!eventId || !audienceParam) return 0;
       return prisma.volunteer.count({
@@ -328,6 +350,8 @@ async function sweepStuckCampaigns(prisma) {
 
 module.exports = {
   AUDIENCE_TYPES,
+  VOLUNTEER_STATUSES,
+  parseVolunteerStatuses,
   resolveAudience,
   getAudienceCount,
   runCampaign,

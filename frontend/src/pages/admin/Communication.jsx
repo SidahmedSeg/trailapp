@@ -331,6 +331,8 @@ export default function Communication() {
     const params = new URLSearchParams({ audienceType, eventId: selectedEventId });
     if (audienceType === 'volunteers_by_tlb' && audienceParam) {
       params.set('audienceParam', audienceParam);
+    } else if (audienceType === 'all_volunteers' && audienceParam) {
+      params.set('audienceParam', audienceParam);
     } else if (audienceType === 'custom') {
       params.set('audienceParam', customEmailsRaw);
     }
@@ -404,6 +406,7 @@ export default function Communication() {
         audienceType,
         audienceParam: audienceType === 'custom' ? customEmailsRaw
           : audienceType === 'volunteers_by_tlb' ? (isTlb ? undefined : audienceParam)
+          : audienceType === 'all_volunteers' ? (audienceParam || undefined)
           : undefined,
         subject,
         bodyHtml,
@@ -436,6 +439,7 @@ export default function Communication() {
         audienceType,
         audienceParam: audienceType === 'custom' ? customEmailsRaw
           : audienceType === 'volunteers_by_tlb' ? (isTlb ? undefined : audienceParam)
+          : audienceType === 'all_volunteers' ? (audienceParam || undefined)
           : undefined,
         subject,
         bodyHtml,
@@ -621,6 +625,13 @@ function Composer({
                   ))}
                 </select>
               </div>
+            )}
+
+            {audienceType === 'all_volunteers' && (
+              <VolunteerStatusFilter
+                audienceParam={audienceParam}
+                setAudienceParam={setAudienceParam}
+              />
             )}
 
             {audienceType === 'custom' && (
@@ -825,6 +836,72 @@ function History({ isTlb }) {
       )}
 
       <HistoryDetailModal campaign={detail} onClose={() => setDetail(null)} />
+    </div>
+  );
+}
+
+/* ─── Volunteer status filter (rendered only when audience = all_volunteers) ─── */
+const VOLUNTEER_STATUS_OPTIONS = [
+  { slug: 'validee',           label: 'Validé' },
+  { slug: 'en_attente',        label: 'En attente' },
+  { slug: 'interview_planned', label: 'Interview planifié' },
+  { slug: 'rejected',          label: 'Rejeté' },
+];
+
+function VolunteerStatusFilter({ audienceParam, setAudienceParam }) {
+  // audienceParam is a CSV; empty string means "all statuses" (backward compat).
+  const selected = audienceParam
+    ? new Set(audienceParam.split(',').map((s) => s.trim()).filter(Boolean))
+    : new Set(VOLUNTEER_STATUS_OPTIONS.map((o) => o.slug));
+
+  function toggle(slug) {
+    const next = new Set(selected);
+    if (next.has(slug)) next.delete(slug);
+    else next.add(slug);
+
+    // If all four are checked, store as empty string (= "all", route normalizes to null).
+    if (next.size === VOLUNTEER_STATUS_OPTIONS.length) {
+      setAudienceParam('');
+      return;
+    }
+    // Don't allow zero — fall back to "all".
+    if (next.size === 0) {
+      setAudienceParam('');
+      return;
+    }
+    setAudienceParam([...next].sort().join(','));
+  }
+
+  return (
+    <div className="mt-3">
+      <label className="block text-xs text-gray-500 mb-2">Filtrer par statut</label>
+      <div className="grid grid-cols-2 gap-2">
+        {VOLUNTEER_STATUS_OPTIONS.map((opt) => {
+          const checked = selected.has(opt.slug);
+          return (
+            <button
+              key={opt.slug}
+              type="button"
+              onClick={() => toggle(opt.slug)}
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition cursor-pointer ${
+                checked
+                  ? 'border-[#C42826] bg-[#C42826]/5 text-[#C42826]'
+                  : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <span className={`w-4 h-4 rounded border flex items-center justify-center ${
+                checked ? 'bg-[#C42826] border-[#C42826]' : 'border-gray-300 bg-white'
+              }`}>
+                {checked && <Check size={12} className="text-white" />}
+              </span>
+              <span className={checked ? 'font-medium' : ''}>{opt.label}</span>
+            </button>
+          );
+        })}
+      </div>
+      <p className="mt-2 text-xs text-gray-400">
+        Tous cochés = envoi à tous les bénévoles (comportement par défaut).
+      </p>
     </div>
   );
 }

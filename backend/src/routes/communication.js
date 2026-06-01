@@ -17,6 +17,7 @@ const { AppError } = require('../utils/errors');
 const { getActiveEvent } = require('../services/event');
 const {
   AUDIENCE_TYPES,
+  VOLUNTEER_STATUSES,
   resolveAudience,
   getAudienceCount,
   runCampaign,
@@ -74,6 +75,21 @@ async function communicationRoutes(fastify) {
       const normalized = pipeJoinEmails(audienceParam || '');
       if (!normalized) throw new AppError(400, 'Au moins un email valide requis', 'VALIDATION_ERROR');
       return { audienceType, audienceParam: normalized };
+    }
+    if (audienceType === 'all_volunteers' && audienceParam) {
+      // Optional comma-separated whitelist of Volunteer.status values. Empty → all.
+      const parts = String(audienceParam).split(',').map((s) => s.trim()).filter(Boolean);
+      const unknown = parts.filter((s) => !VOLUNTEER_STATUSES.includes(s));
+      if (unknown.length > 0) {
+        throw new AppError(400, `Statut bénévole inconnu : ${unknown.join(', ')}`, 'VALIDATION_ERROR');
+      }
+      const normalized = [...new Set(parts)].sort().join(',');
+      // All four selected → equivalent to "no filter" → drop the param to keep the
+      // backward-compat semantics (audienceParam=null means "send to all").
+      return {
+        audienceType,
+        audienceParam: normalized && normalized.split(',').length < VOLUNTEER_STATUSES.length ? normalized : null,
+      };
     }
     return { audienceType, audienceParam: audienceParam || null };
   }
