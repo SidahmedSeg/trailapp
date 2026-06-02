@@ -104,29 +104,41 @@ async function communicationRoutes(fastify) {
       const norm = {};
       // distribution
       if (Array.isArray(obj.distribution)) {
-        const unknown = obj.distribution.filter((v) => !RUNNER_DISTRIBUTION_STATUSES.includes(v));
-        if (unknown.length > 0) {
-          throw new AppError(400, `Statut distribution inconnu : ${unknown.join(', ')}`, 'VALIDATION_ERROR');
-        }
-        const valid = [...new Set(obj.distribution)];
-        if (valid.length > 0 && valid.length < RUNNER_DISTRIBUTION_STATUSES.length) {
-          norm.distribution = valid.sort();
+        if (obj.distribution.length === 0) {
+          norm.distribution = []; // user explicitly excluded all
+        } else {
+          const unknown = obj.distribution.filter((v) => !RUNNER_DISTRIBUTION_STATUSES.includes(v));
+          if (unknown.length > 0) {
+            throw new AppError(400, `Statut distribution inconnu : ${unknown.join(', ')}`, 'VALIDATION_ERROR');
+          }
+          const valid = [...new Set(obj.distribution)];
+          if (valid.length > 0 && valid.length < RUNNER_DISTRIBUTION_STATUSES.length) {
+            norm.distribution = valid.sort();
+          }
         }
       }
       // checkin
       if (Array.isArray(obj.checkin)) {
-        const unknown = obj.checkin.filter((v) => !RUNNER_CHECKIN_BUCKETS.includes(v));
-        if (unknown.length > 0) {
-          throw new AppError(400, `Statut check-in inconnu : ${unknown.join(', ')}`, 'VALIDATION_ERROR');
+        if (obj.checkin.length === 0) {
+          norm.checkin = [];
+        } else {
+          const unknown = obj.checkin.filter((v) => !RUNNER_CHECKIN_BUCKETS.includes(v));
+          if (unknown.length > 0) {
+            throw new AppError(400, `Statut check-in inconnu : ${unknown.join(', ')}`, 'VALIDATION_ERROR');
+          }
+          const valid = [...new Set(obj.checkin)];
+          if (valid.length === 1) norm.checkin = valid;
         }
-        const valid = [...new Set(obj.checkin)];
-        if (valid.length === 1) norm.checkin = valid;
       }
       // level — accept any non-empty strings (events have customisable levels;
       // bad values match 0 rows in Prisma, no correctness risk)
       if (Array.isArray(obj.level)) {
-        const valid = [...new Set(obj.level.filter((v) => typeof v === 'string' && v.trim()))];
-        if (valid.length > 0) norm.level = valid.sort();
+        if (obj.level.length === 0) {
+          norm.level = [];
+        } else {
+          const valid = [...new Set(obj.level.filter((v) => typeof v === 'string' && v.trim()))];
+          if (valid.length > 0) norm.level = valid.sort();
+        }
       }
       const hasAny = Object.keys(norm).length > 0;
       return { audienceType, audienceParam: hasAny ? JSON.stringify(norm) : null };

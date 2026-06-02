@@ -918,37 +918,42 @@ function RunnerStatusFilter({ audienceParam, setAudienceParam, runnerLevels }) {
     try { return JSON.parse(audienceParam); } catch { return null; }
   })();
 
+  // Missing key in the JSON → default to "all selected" (= no filter for that dim).
+  // Present key (even empty array) → use it verbatim so the user's "uncheck all" is preserved.
   const distSet = new Set(
-    Array.isArray(parsed?.distribution) && parsed.distribution.length > 0
+    Array.isArray(parsed?.distribution)
       ? parsed.distribution
       : RUNNER_DISTRIBUTION_OPTIONS.map((o) => o.slug)
   );
   const chkSet = new Set(
-    Array.isArray(parsed?.checkin) && parsed.checkin.length > 0
+    Array.isArray(parsed?.checkin)
       ? parsed.checkin
       : RUNNER_CHECKIN_OPTIONS.map((o) => o.slug)
   );
   const lvlSet = new Set(
-    Array.isArray(parsed?.level) && parsed.level.length > 0
+    Array.isArray(parsed?.level)
       ? parsed.level
       : allLevels
   );
 
   function commit(nextDist, nextChk, nextLvl) {
-    // For each dimension: if the chosen set equals "all of that dimension", drop it.
-    // If nothing is selected in a dimension, treat as "all" too (UX: don't ever lock
-    // the audience to zero by accident).
+    // Per dimension:
+    //   all-of-that-dimension selected → drop the key (= no filter)
+    //   partial selection             → store the array
+    //   empty (user unchecked all)    → store an empty array (= filter to nothing → 0 results)
     const out = {};
     const distArr = [...nextDist];
-    if (distArr.length > 0 && distArr.length < RUNNER_DISTRIBUTION_OPTIONS.length) {
-      out.distribution = distArr.sort();
-    }
+    if (distArr.length === 0) out.distribution = [];
+    else if (distArr.length < RUNNER_DISTRIBUTION_OPTIONS.length) out.distribution = distArr.sort();
+
     const chkArr = [...nextChk];
-    if (chkArr.length === 1) out.checkin = chkArr;
+    if (chkArr.length === 0) out.checkin = [];
+    else if (chkArr.length < RUNNER_CHECKIN_OPTIONS.length) out.checkin = chkArr.sort();
+
     const lvlArr = [...nextLvl];
-    if (lvlArr.length > 0 && lvlArr.length < allLevels.length) {
-      out.level = lvlArr.sort();
-    }
+    if (lvlArr.length === 0) out.level = [];
+    else if (lvlArr.length < allLevels.length) out.level = lvlArr.sort();
+
     if (Object.keys(out).length === 0) {
       setAudienceParam('');
     } else {
@@ -959,19 +964,16 @@ function RunnerStatusFilter({ audienceParam, setAudienceParam, runnerLevels }) {
   function toggleDist(slug) {
     const next = new Set(distSet);
     if (next.has(slug)) next.delete(slug); else next.add(slug);
-    if (next.size === 0) RUNNER_DISTRIBUTION_OPTIONS.forEach((o) => next.add(o.slug));
     commit(next, chkSet, lvlSet);
   }
   function toggleChk(slug) {
     const next = new Set(chkSet);
     if (next.has(slug)) next.delete(slug); else next.add(slug);
-    if (next.size === 0) RUNNER_CHECKIN_OPTIONS.forEach((o) => next.add(o.slug));
     commit(distSet, next, lvlSet);
   }
   function toggleLvl(slug) {
     const next = new Set(lvlSet);
     if (next.has(slug)) next.delete(slug); else next.add(slug);
-    if (next.size === 0) allLevels.forEach((s) => next.add(s));
     commit(distSet, chkSet, next);
   }
 

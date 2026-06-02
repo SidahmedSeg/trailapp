@@ -35,19 +35,36 @@ function parseRunnerFilters(param) {
 
   const out = {};
 
+  // Per-dimension semantic:
+  //   key missing            → no filter for this dimension
+  //   key present, empty []  → user explicitly excluded all → filter to nothing
+  //   key present, all values → equivalent to no filter (collapsed)
+  //   key present, subset    → filter to that subset
   if (Array.isArray(obj.distribution)) {
-    const valid = [...new Set(obj.distribution.filter((v) => RUNNER_DISTRIBUTION_STATUSES.includes(v)))];
-    if (valid.length > 0 && valid.length < RUNNER_DISTRIBUTION_STATUSES.length) {
-      out.distribution = valid;
+    if (obj.distribution.length === 0) {
+      out.distribution = [];
+    } else {
+      const valid = [...new Set(obj.distribution.filter((v) => RUNNER_DISTRIBUTION_STATUSES.includes(v)))];
+      if (valid.length > 0 && valid.length < RUNNER_DISTRIBUTION_STATUSES.length) {
+        out.distribution = valid;
+      }
     }
   }
   if (Array.isArray(obj.checkin)) {
-    const valid = [...new Set(obj.checkin.filter((v) => RUNNER_CHECKIN_BUCKETS.includes(v)))];
-    if (valid.length === 1) out.checkin = valid;
+    if (obj.checkin.length === 0) {
+      out.checkin = [];
+    } else {
+      const valid = [...new Set(obj.checkin.filter((v) => RUNNER_CHECKIN_BUCKETS.includes(v)))];
+      if (valid.length === 1) out.checkin = valid;
+    }
   }
   if (Array.isArray(obj.level)) {
-    const valid = [...new Set(obj.level.filter((v) => typeof v === 'string' && v.trim()))];
-    if (valid.length > 0) out.level = valid;
+    if (obj.level.length === 0) {
+      out.level = [];
+    } else {
+      const valid = [...new Set(obj.level.filter((v) => typeof v === 'string' && v.trim()))];
+      if (valid.length > 0) out.level = valid;
+    }
   }
 
   return Object.keys(out).length > 0 ? out : null;
@@ -118,6 +135,15 @@ async function resolveAudience(prisma, campaign) {
     case 'all_runners': {
       if (!campaign.eventId) return [];
       const filters = parseRunnerFilters(campaign.audienceParam);
+      // Any dimension explicitly emptied by the user (e.g. all check-in chips unchecked)
+      // → zero recipients in that dimension → zero recipients overall.
+      if (
+        (Array.isArray(filters?.distribution) && filters.distribution.length === 0) ||
+        (Array.isArray(filters?.checkin)      && filters.checkin.length === 0) ||
+        (Array.isArray(filters?.level)        && filters.level.length === 0)
+      ) {
+        return [];
+      }
       const where = {
         eventId: campaign.eventId,
         paymentStatus: { in: ['success', 'manual'] },
@@ -183,6 +209,13 @@ async function getAudienceCount(prisma, audienceType, audienceParam, eventId) {
     case 'all_runners': {
       if (!eventId) return 0;
       const filters = parseRunnerFilters(audienceParam);
+      if (
+        (Array.isArray(filters?.distribution) && filters.distribution.length === 0) ||
+        (Array.isArray(filters?.checkin)      && filters.checkin.length === 0) ||
+        (Array.isArray(filters?.level)        && filters.level.length === 0)
+      ) {
+        return 0;
+      }
       const where = {
         eventId,
         paymentStatus: { in: ['success', 'manual'] },
