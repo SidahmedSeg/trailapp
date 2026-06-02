@@ -18,6 +18,8 @@ const { getActiveEvent } = require('../services/event');
 const {
   AUDIENCE_TYPES,
   VOLUNTEER_STATUSES,
+  RUNNER_DISTRIBUTION_STATUSES,
+  RUNNER_CHECKIN_BUCKETS,
   resolveAudience,
   getAudienceCount,
   runCampaign,
@@ -90,6 +92,44 @@ async function communicationRoutes(fastify) {
         audienceType,
         audienceParam: normalized && normalized.split(',').length < VOLUNTEER_STATUSES.length ? normalized : null,
       };
+    }
+    if (audienceType === 'all_runners' && audienceParam) {
+      // JSON blob: { distribution?: string[], checkin?: string[], level?: string[] }
+      let obj;
+      try { obj = JSON.parse(audienceParam); }
+      catch { throw new AppError(400, 'Filtre coureur invalide (JSON)', 'VALIDATION_ERROR'); }
+      if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+        throw new AppError(400, 'Filtre coureur invalide (objet attendu)', 'VALIDATION_ERROR');
+      }
+      const norm = {};
+      // distribution
+      if (Array.isArray(obj.distribution)) {
+        const unknown = obj.distribution.filter((v) => !RUNNER_DISTRIBUTION_STATUSES.includes(v));
+        if (unknown.length > 0) {
+          throw new AppError(400, `Statut distribution inconnu : ${unknown.join(', ')}`, 'VALIDATION_ERROR');
+        }
+        const valid = [...new Set(obj.distribution)];
+        if (valid.length > 0 && valid.length < RUNNER_DISTRIBUTION_STATUSES.length) {
+          norm.distribution = valid.sort();
+        }
+      }
+      // checkin
+      if (Array.isArray(obj.checkin)) {
+        const unknown = obj.checkin.filter((v) => !RUNNER_CHECKIN_BUCKETS.includes(v));
+        if (unknown.length > 0) {
+          throw new AppError(400, `Statut check-in inconnu : ${unknown.join(', ')}`, 'VALIDATION_ERROR');
+        }
+        const valid = [...new Set(obj.checkin)];
+        if (valid.length === 1) norm.checkin = valid;
+      }
+      // level — accept any non-empty strings (events have customisable levels;
+      // bad values match 0 rows in Prisma, no correctness risk)
+      if (Array.isArray(obj.level)) {
+        const valid = [...new Set(obj.level.filter((v) => typeof v === 'string' && v.trim()))];
+        if (valid.length > 0) norm.level = valid.sort();
+      }
+      const hasAny = Object.keys(norm).length > 0;
+      return { audienceType, audienceParam: hasAny ? JSON.stringify(norm) : null };
     }
     return { audienceType, audienceParam: audienceParam || null };
   }

@@ -20,6 +20,39 @@ function parseVolunteerStatuses(param) {
   return valid;
 }
 
+const RUNNER_DISTRIBUTION_STATUSES = ['en_attente', 'distribué'];
+const RUNNER_CHECKIN_BUCKETS = ['present', 'absent'];
+
+// For all_runners, audienceParam is a JSON object:
+//   { distribution?: string[], checkin?: string[], level?: string[] }
+// Each dimension is optional. Empty / missing / "all values selected" → no filter
+// for that dimension. Returns a normalised filter object or null if no narrowing.
+function parseRunnerFilters(param) {
+  if (!param || typeof param !== 'string') return null;
+  let obj;
+  try { obj = JSON.parse(param); } catch { return null; }
+  if (!obj || typeof obj !== 'object') return null;
+
+  const out = {};
+
+  if (Array.isArray(obj.distribution)) {
+    const valid = [...new Set(obj.distribution.filter((v) => RUNNER_DISTRIBUTION_STATUSES.includes(v)))];
+    if (valid.length > 0 && valid.length < RUNNER_DISTRIBUTION_STATUSES.length) {
+      out.distribution = valid;
+    }
+  }
+  if (Array.isArray(obj.checkin)) {
+    const valid = [...new Set(obj.checkin.filter((v) => RUNNER_CHECKIN_BUCKETS.includes(v)))];
+    if (valid.length === 1) out.checkin = valid;
+  }
+  if (Array.isArray(obj.level)) {
+    const valid = [...new Set(obj.level.filter((v) => typeof v === 'string' && v.trim()))];
+    if (valid.length > 0) out.level = valid;
+  }
+
+  return Object.keys(out).length > 0 ? out : null;
+}
+
 const FROM_RULES = {
   all_runners:        { email: 'noreply@lassm.dz', name: 'LASSM' },
   all_volunteers:     { email: 'staff@lassm.dz',   name: 'LASSM' },
@@ -84,12 +117,19 @@ async function resolveAudience(prisma, campaign) {
   switch (campaign.audienceType) {
     case 'all_runners': {
       if (!campaign.eventId) return [];
+      const filters = parseRunnerFilters(campaign.audienceParam);
+      const where = {
+        eventId: campaign.eventId,
+        paymentStatus: { in: ['success', 'manual'] },
+        email: { not: '' },
+      };
+      if (filters?.distribution) where.status = { in: filters.distribution };
+      if (filters?.checkin) {
+        where.checkedInAt = filters.checkin[0] === 'present' ? { not: null } : null;
+      }
+      if (filters?.level) where.runnerLevel = { in: filters.level };
       const rows = await prisma.registration.findMany({
-        where: {
-          eventId: campaign.eventId,
-          paymentStatus: { in: ['success', 'manual'] },
-          email: { not: '' },
-        },
+        where,
         select: {
           firstName: true, lastName: true, email: true,
           bibNumber: true, runnerLevel: true,
@@ -140,15 +180,21 @@ async function resolveAudience(prisma, campaign) {
 async function getAudienceCount(prisma, audienceType, audienceParam, eventId) {
   if (!AUDIENCE_TYPES.includes(audienceType)) return 0;
   switch (audienceType) {
-    case 'all_runners':
+    case 'all_runners': {
       if (!eventId) return 0;
-      return prisma.registration.count({
-        where: {
-          eventId,
-          paymentStatus: { in: ['success', 'manual'] },
-          email: { not: '' },
-        },
-      });
+      const filters = parseRunnerFilters(audienceParam);
+      const where = {
+        eventId,
+        paymentStatus: { in: ['success', 'manual'] },
+        email: { not: '' },
+      };
+      if (filters?.distribution) where.status = { in: filters.distribution };
+      if (filters?.checkin) {
+        where.checkedInAt = filters.checkin[0] === 'present' ? { not: null } : null;
+      }
+      if (filters?.level) where.runnerLevel = { in: filters.level };
+      return prisma.registration.count({ where });
+    }
     case 'all_volunteers': {
       if (!eventId) return 0;
       const statuses = parseVolunteerStatuses(audienceParam);
@@ -352,6 +398,9 @@ module.exports = {
   AUDIENCE_TYPES,
   VOLUNTEER_STATUSES,
   parseVolunteerStatuses,
+  RUNNER_DISTRIBUTION_STATUSES,
+  RUNNER_CHECKIN_BUCKETS,
+  parseRunnerFilters,
   resolveAudience,
   getAudienceCount,
   runCampaign,

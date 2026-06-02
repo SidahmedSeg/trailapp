@@ -333,6 +333,8 @@ export default function Communication() {
       params.set('audienceParam', audienceParam);
     } else if (audienceType === 'all_volunteers' && audienceParam) {
       params.set('audienceParam', audienceParam);
+    } else if (audienceType === 'all_runners' && audienceParam) {
+      params.set('audienceParam', audienceParam);
     } else if (audienceType === 'custom') {
       params.set('audienceParam', customEmailsRaw);
     }
@@ -407,6 +409,7 @@ export default function Communication() {
         audienceParam: audienceType === 'custom' ? customEmailsRaw
           : audienceType === 'volunteers_by_tlb' ? (isTlb ? undefined : audienceParam)
           : audienceType === 'all_volunteers' ? (audienceParam || undefined)
+          : audienceType === 'all_runners' ? (audienceParam || undefined)
           : undefined,
         subject,
         bodyHtml,
@@ -440,6 +443,7 @@ export default function Communication() {
         audienceParam: audienceType === 'custom' ? customEmailsRaw
           : audienceType === 'volunteers_by_tlb' ? (isTlb ? undefined : audienceParam)
           : audienceType === 'all_volunteers' ? (audienceParam || undefined)
+          : audienceType === 'all_runners' ? (audienceParam || undefined)
           : undefined,
         subject,
         bodyHtml,
@@ -495,6 +499,7 @@ export default function Communication() {
             customEmailsRaw={customEmailsRaw}
             setCustomEmailsRaw={setCustomEmailsRaw}
             teamLeaders={teamLeaders}
+            runnerLevels={Array.isArray(selectedEvent?.runnerLevels) ? selectedEvent.runnerLevels : ['Débutant', 'Confirmé', 'Elite']}
             audienceCount={audienceCount}
             audienceCountLoading={audienceCountLoading}
             availableVars={availableVars}
@@ -549,7 +554,7 @@ export default function Communication() {
 function Composer({
   user, isTlb, isPrivileged, isAB,
   audienceType, setAudienceType, audienceParam, setAudienceParam,
-  customEmailsRaw, setCustomEmailsRaw, teamLeaders,
+  customEmailsRaw, setCustomEmailsRaw, teamLeaders, runnerLevels,
   audienceCount, audienceCountLoading, availableVars,
   subject, setSubject, subjectInputRef, insertIntoSubject,
   bodyHtml, setBodyHtml, insertIntoBody, quillRef,
@@ -631,6 +636,14 @@ function Composer({
               <VolunteerStatusFilter
                 audienceParam={audienceParam}
                 setAudienceParam={setAudienceParam}
+              />
+            )}
+
+            {audienceType === 'all_runners' && (
+              <RunnerStatusFilter
+                audienceParam={audienceParam}
+                setAudienceParam={setAudienceParam}
+                runnerLevels={runnerLevels}
               />
             )}
 
@@ -875,33 +888,140 @@ function VolunteerStatusFilter({ audienceParam, setAudienceParam }) {
   return (
     <div className="mt-3">
       <label className="block text-xs text-gray-500 mb-2">Filtrer par statut</label>
-      <div className="grid grid-cols-2 gap-2">
-        {VOLUNTEER_STATUS_OPTIONS.map((opt) => {
-          const checked = selected.has(opt.slug);
-          return (
-            <button
-              key={opt.slug}
-              type="button"
-              onClick={() => toggle(opt.slug)}
-              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition cursor-pointer ${
-                checked
-                  ? 'border-[#C42826] bg-[#C42826]/5 text-[#C42826]'
-                  : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <span className={`w-4 h-4 rounded border flex items-center justify-center ${
-                checked ? 'bg-[#C42826] border-[#C42826]' : 'border-gray-300 bg-white'
-              }`}>
-                {checked && <Check size={12} className="text-white" />}
-              </span>
-              <span className={checked ? 'font-medium' : ''}>{opt.label}</span>
-            </button>
-          );
-        })}
-      </div>
+      <ChipGroup options={VOLUNTEER_STATUS_OPTIONS} selected={selected} onToggle={toggle} />
       <p className="mt-2 text-xs text-gray-400">
         Tous cochés = envoi à tous les bénévoles (comportement par défaut).
       </p>
+    </div>
+  );
+}
+
+/* ─── Runner filter (rendered only when audience = all_runners) ─── */
+const RUNNER_DISTRIBUTION_OPTIONS = [
+  { slug: 'distribué',  label: 'Distribué' },
+  { slug: 'en_attente', label: 'En attente' },
+];
+const RUNNER_CHECKIN_OPTIONS = [
+  { slug: 'present', label: 'Présent (check-in)' },
+  { slug: 'absent',  label: 'Absent' },
+];
+
+function RunnerStatusFilter({ audienceParam, setAudienceParam, runnerLevels }) {
+  const allLevels = Array.isArray(runnerLevels) && runnerLevels.length > 0
+    ? runnerLevels
+    : ['Débutant', 'Confirmé', 'Elite'];
+
+  // Parse the JSON blob (or empty) into three Sets of currently-selected slugs.
+  // Missing dimension → treat as "all selected".
+  const parsed = (() => {
+    if (!audienceParam) return null;
+    try { return JSON.parse(audienceParam); } catch { return null; }
+  })();
+
+  const distSet = new Set(
+    Array.isArray(parsed?.distribution) && parsed.distribution.length > 0
+      ? parsed.distribution
+      : RUNNER_DISTRIBUTION_OPTIONS.map((o) => o.slug)
+  );
+  const chkSet = new Set(
+    Array.isArray(parsed?.checkin) && parsed.checkin.length > 0
+      ? parsed.checkin
+      : RUNNER_CHECKIN_OPTIONS.map((o) => o.slug)
+  );
+  const lvlSet = new Set(
+    Array.isArray(parsed?.level) && parsed.level.length > 0
+      ? parsed.level
+      : allLevels
+  );
+
+  function commit(nextDist, nextChk, nextLvl) {
+    // For each dimension: if the chosen set equals "all of that dimension", drop it.
+    // If nothing is selected in a dimension, treat as "all" too (UX: don't ever lock
+    // the audience to zero by accident).
+    const out = {};
+    const distArr = [...nextDist];
+    if (distArr.length > 0 && distArr.length < RUNNER_DISTRIBUTION_OPTIONS.length) {
+      out.distribution = distArr.sort();
+    }
+    const chkArr = [...nextChk];
+    if (chkArr.length === 1) out.checkin = chkArr;
+    const lvlArr = [...nextLvl];
+    if (lvlArr.length > 0 && lvlArr.length < allLevels.length) {
+      out.level = lvlArr.sort();
+    }
+    if (Object.keys(out).length === 0) {
+      setAudienceParam('');
+    } else {
+      setAudienceParam(JSON.stringify(out));
+    }
+  }
+
+  function toggleDist(slug) {
+    const next = new Set(distSet);
+    if (next.has(slug)) next.delete(slug); else next.add(slug);
+    if (next.size === 0) RUNNER_DISTRIBUTION_OPTIONS.forEach((o) => next.add(o.slug));
+    commit(next, chkSet, lvlSet);
+  }
+  function toggleChk(slug) {
+    const next = new Set(chkSet);
+    if (next.has(slug)) next.delete(slug); else next.add(slug);
+    if (next.size === 0) RUNNER_CHECKIN_OPTIONS.forEach((o) => next.add(o.slug));
+    commit(distSet, next, lvlSet);
+  }
+  function toggleLvl(slug) {
+    const next = new Set(lvlSet);
+    if (next.has(slug)) next.delete(slug); else next.add(slug);
+    if (next.size === 0) allLevels.forEach((s) => next.add(s));
+    commit(distSet, chkSet, next);
+  }
+
+  return (
+    <div className="mt-3 space-y-4">
+      <div>
+        <label className="block text-xs text-gray-500 mb-2">Distribution dossard</label>
+        <ChipGroup options={RUNNER_DISTRIBUTION_OPTIONS} selected={distSet} onToggle={toggleDist} />
+      </div>
+      <div>
+        <label className="block text-xs text-gray-500 mb-2">Check-in</label>
+        <ChipGroup options={RUNNER_CHECKIN_OPTIONS} selected={chkSet} onToggle={toggleChk} />
+      </div>
+      <div>
+        <label className="block text-xs text-gray-500 mb-2">Niveau</label>
+        <ChipGroup options={allLevels.map((l) => ({ slug: l, label: l }))} selected={lvlSet} onToggle={toggleLvl} />
+      </div>
+      <p className="text-xs text-gray-400">
+        Tout coché dans une dimension = pas de filtre pour celle-ci.
+      </p>
+    </div>
+  );
+}
+
+/* ─── Shared toggle chip group used by both filter subcomponents ─── */
+function ChipGroup({ options, selected, onToggle }) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {options.map((opt) => {
+        const checked = selected.has(opt.slug);
+        return (
+          <button
+            key={opt.slug}
+            type="button"
+            onClick={() => onToggle(opt.slug)}
+            className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition cursor-pointer ${
+              checked
+                ? 'border-[#C42826] bg-[#C42826]/5 text-[#C42826]'
+                : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <span className={`w-4 h-4 rounded border flex items-center justify-center ${
+              checked ? 'bg-[#C42826] border-[#C42826]' : 'border-gray-300 bg-white'
+            }`}>
+              {checked && <Check size={12} className="text-white" />}
+            </span>
+            <span className={checked ? 'font-medium' : ''}>{opt.label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
